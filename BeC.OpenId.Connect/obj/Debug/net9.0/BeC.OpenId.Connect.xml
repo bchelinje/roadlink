@@ -1,0 +1,432 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>BeC.OpenId.Connect</name>
+    </assembly>
+    <members>
+        <member name="P:BeC.OpenId.Connect.Features.ActivityLogs.ActivityLog.MetadataJson">
+            <summary>
+            JSON string for additional metadata
+            </summary>
+        </member>
+        <member name="M:BeC.OpenId.Connect.Features.ActivityLogs.Controllers.ActivityLogsController.GetLogs(System.String,System.String,System.String,System.String,System.Nullable{System.DateTime},System.Nullable{System.DateTime},System.String,System.Int32,System.Int32)">
+            <summary>
+            Get activity logs with filtering and pagination
+            </summary>
+        </member>
+        <member name="M:BeC.OpenId.Connect.Features.ActivityLogs.Controllers.ActivityLogsController.GetLogById(System.String)">
+            <summary>
+            Get a single activity log by ID
+            </summary>
+        </member>
+        <member name="M:BeC.OpenId.Connect.Features.ActivityLogs.Controllers.ActivityLogsController.GetRecentLogs(System.Int32)">
+            <summary>
+            Get recent activity logs (last 24 hours)
+            </summary>
+        </member>
+        <member name="M:BeC.OpenId.Connect.Features.ActivityLogs.Controllers.ActivityLogsController.ExportLogs(System.String,System.String,System.String,System.String,System.Nullable{System.DateTime},System.Nullable{System.DateTime},System.String)">
+            <summary>
+            Export activity logs to CSV
+            </summary>
+        </member>
+        <member name="M:BeC.OpenId.Connect.Features.ActivityLogs.Controllers.ActivityLogsController.CreateLog(BeC.OpenId.Connect.Features.ActivityLogs.Controllers.CreateActivityLogRequest)">
+            <summary>
+            Create a new activity log
+            </summary>
+        </member>
+        <member name="M:BeC.OpenId.Connect.Features.ActivityLogs.Controllers.ActivityLogsController.DeleteOldLogs(System.DateTime)">
+            <summary>
+            Delete old activity logs (cleanup)
+            </summary>
+        </member>
+        <member name="M:BeC.OpenId.Connect.Features.ActivityLogs.Controllers.ActivityLogsController.GetStatistics(System.Int32)">
+            <summary>
+            Get activity statistics
+            </summary>
+        </member>
+        <member name="M:BeC.OpenId.Connect.Features.ActivityLogs.Services.Interfaces.IActivityLogService.LogActivityAsync(System.String,System.String,System.String,System.String,System.String,System.String,System.String,System.String,System.String,System.Collections.Generic.Dictionary{System.String,System.Object})">
+            <summary>
+            Log an activity with optional metadata
+            </summary>
+            <param name="action">The action performed (e.g., "USER_CREATED")</param>
+            <param name="entityType">The type of entity (e.g., "USER")</param>
+            <param name="entityId">The ID of the entity</param>
+            <param name="entityName">The name of the entity</param>
+            <param name="description">Human-readable description</param>
+            <param name="severity">Severity level: INFO, WARNING, ERROR, CRITICAL</param>
+            <param name="userId">Optional: Override the user ID (if not using current user)</param>
+            <param name="userName">Optional: Override the user name</param>
+            <param name="userEmail">Optional: Override the user email</param>
+            <param name="metadata">Optional: Additional structured data</param>
+        </member>
+        <member name="T:BeC.OpenId.Connect.Features.Demo.Controllers.DemoController">
+            <summary>
+            Demo endpoints showing different authorization levels
+            </summary>
+        </member>
+        <member name="M:BeC.OpenId.Connect.Features.Demo.Controllers.DemoController.Public">
+            <summary>
+            Public endpoint - accessible to all authenticated users
+            </summary>
+        </member>
+        <member name="M:BeC.OpenId.Connect.Features.Demo.Controllers.DemoController.CustomerOnly">
+            <summary>
+            Customer-only endpoint - accessible to customers
+            </summary>
+        </member>
+        <member name="M:BeC.OpenId.Connect.Features.Demo.Controllers.DemoController.DriverOnly">
+            <summary>
+            Driver-only endpoint - accessible to drivers
+            </summary>
+        </member>
+        <member name="M:BeC.OpenId.Connect.Features.Demo.Controllers.DemoController.AdminOnly">
+            <summary>
+            Admin-only endpoint - accessible to admins and super admins
+            </summary>
+        </member>
+        <member name="M:BeC.OpenId.Connect.Features.Demo.Controllers.DemoController.SuperAdminOnly">
+            <summary>
+            SuperAdmin-only endpoint - accessible only to super admins
+            </summary>
+        </member>
+        <member name="M:BeC.OpenId.Connect.Features.Demo.Controllers.DemoController.DriverOrAdmin">
+            <summary>
+            Policy-based endpoint - using authorization policy
+            </summary>
+        </member>
+        <member name="M:BeC.OpenId.Connect.Features.Demo.Controllers.DemoController.GetClaims">
+            <summary>
+            Get all claims for the current user
+            </summary>
+        </member>
+        <member name="T:BeC.OpenId.Connect.Features.Ping.Controllers.PingController">
+            <summary>
+            Health check and API testing endpoint
+            </summary>
+        </member>
+        <member name="M:BeC.OpenId.Connect.Features.Ping.Controllers.PingController.Get">
+            <summary>
+            Check if the API is accessible and responding
+            </summary>
+            <returns>Status and current UTC time</returns>
+            <response code="200">API is healthy and accessible</response>
+            <response code="401">Unauthorized - Valid bearer token required</response>
+        </member>
+        <member name="M:BeC.OpenId.Connect.Features.Ping.Controllers.PingController.GetPublic">
+            <summary>
+            Public ping endpoint (no authentication required)
+            </summary>
+            <returns>Public status message</returns>
+            <response code="200">Server is responding</response>
+        </member>
+        <member name="T:BeC.OpenId.Connect.Features.Ping.Controllers.PingResponse">
+            <summary>
+            Ping response model
+            </summary>
+        </member>
+        <member name="P:BeC.OpenId.Connect.Features.Ping.Controllers.PingResponse.Ok">
+            <summary>
+            Indicates if the service is operational
+            </summary>
+        </member>
+        <member name="P:BeC.OpenId.Connect.Features.Ping.Controllers.PingResponse.Time">
+            <summary>
+            Current UTC timestamp
+            </summary>
+        </member>
+        <member name="P:BeC.OpenId.Connect.Features.Ping.Controllers.PingResponse.Message">
+            <summary>
+            Status message
+            </summary>
+        </member>
+        <member name="P:BeC.OpenId.Connect.Features.Ping.Controllers.PingResponse.User">
+            <summary>
+            Authenticated user (if applicable)
+            </summary>
+        </member>
+        <member name="T:BeC.OpenId.Connect.Features.Roles.Controllers.RolesController">
+            <summary>
+            Role management endpoints
+            </summary>
+        </member>
+        <member name="M:BeC.OpenId.Connect.Features.Roles.Controllers.RolesController.GetRoles">
+            <summary>
+            Get all roles
+            </summary>
+        </member>
+        <member name="M:BeC.OpenId.Connect.Features.Roles.Controllers.RolesController.GetRole(System.String)">
+            <summary>
+            Get role by ID
+            </summary>
+        </member>
+        <member name="M:BeC.OpenId.Connect.Features.Roles.Controllers.RolesController.CreateRole(BeC.OpenId.Connect.Features.Roles.Controllers.CreateRoleRequest)">
+            <summary>
+            Create new role
+            </summary>
+        </member>
+        <member name="M:BeC.OpenId.Connect.Features.Roles.Controllers.RolesController.UpdateRole(System.String,BeC.OpenId.Connect.Features.Roles.Controllers.UpdateRoleRequest)">
+            <summary>
+            Update role
+            </summary>
+        </member>
+        <member name="M:BeC.OpenId.Connect.Features.Roles.Controllers.RolesController.DeleteRole(System.String)">
+            <summary>
+            Delete role
+            </summary>
+        </member>
+        <member name="M:BeC.OpenId.Connect.Features.Roles.Controllers.RolesController.GetUsersInRole(System.String)">
+            <summary>
+            Get users in a specific role
+            </summary>
+        </member>
+        <member name="M:BeC.OpenId.Connect.Features.Users.Controllers.UserInfoController.GetUserInfo">
+            <summary>
+            Get user information from the authenticated token
+            This endpoint accepts both JWT and JWE tokens
+            </summary>
+        </member>
+        <member name="T:BeC.OpenId.Connect.Features.Users.Controllers.UsersController">
+            <summary>
+            User management endpoints for administrators and authentication
+            </summary>
+        </member>
+        <member name="M:BeC.OpenId.Connect.Features.Users.Controllers.UsersController.GetUsers(System.Int32,System.Int32,System.String)">
+            <summary>
+            Get all users (Admin only)
+            </summary>
+        </member>
+        <member name="M:BeC.OpenId.Connect.Features.Users.Controllers.UsersController.GetUser(System.String)">
+            <summary>
+            Get user by ID (Admin only)
+            </summary>
+        </member>
+        <member name="M:BeC.OpenId.Connect.Features.Users.Controllers.UsersController.GetCurrentUser">
+            <summary>
+            Get current user's profile
+            </summary>
+        </member>
+        <member name="M:BeC.OpenId.Connect.Features.Users.Controllers.UsersController.AssignRole(System.String,BeC.OpenId.Connect.Features.Users.Controllers.AssignRoleRequest)">
+            <summary>
+            Assign role to user (SuperAdmin only)
+            </summary>
+        </member>
+        <member name="M:BeC.OpenId.Connect.Features.Users.Controllers.UsersController.RemoveRole(System.String,System.String)">
+            <summary>
+            Remove role from user (SuperAdmin only)
+            </summary>
+        </member>
+        <member name="M:BeC.OpenId.Connect.Features.Users.Controllers.UsersController.LockUser(System.String,BeC.OpenId.Connect.Features.Users.Controllers.LockUserRequest)">
+            <summary>
+            Lock/Suspend user account (Admin only)
+            </summary>
+        </member>
+        <member name="M:BeC.OpenId.Connect.Features.Users.Controllers.UsersController.UnlockUser(System.String)">
+            <summary>
+            Unlock/Unsuspend user account (Admin only)
+            </summary>
+        </member>
+        <member name="M:BeC.OpenId.Connect.Features.Users.Controllers.UsersController.Register(BeC.OpenId.Connect.Features.Users.Controllers.RegisterRequest)">
+            <summary>
+            Register a new user
+            </summary>
+        </member>
+        <member name="M:BeC.OpenId.Connect.Features.Users.Controllers.UsersController.ConfirmEmail(System.String,System.String)">
+            <summary>
+            Confirm email address
+            </summary>
+        </member>
+        <member name="M:BeC.OpenId.Connect.Features.Users.Controllers.UsersController.GetConfirmationTokenDebug(System.String)">
+            <summary>
+            Get email confirmation token for testing (DEVELOPMENT ONLY)
+            </summary>
+        </member>
+        <member name="M:BeC.OpenId.Connect.Features.Users.Controllers.UsersController.ResendConfirmation(BeC.OpenId.Connect.Features.Users.Controllers.ResendConfirmationRequest)">
+            <summary>
+            Resend email confirmation
+            </summary>
+        </member>
+        <member name="M:BeC.OpenId.Connect.Features.Users.Controllers.UsersController.ForgotPassword(BeC.OpenId.Connect.Features.Users.Controllers.ForgotPasswordRequest)">
+            <summary>
+            Request password reset
+            </summary>
+        </member>
+        <member name="M:BeC.OpenId.Connect.Features.Users.Controllers.UsersController.ResetPassword(BeC.OpenId.Connect.Features.Users.Controllers.ResetPasswordRequest)">
+            <summary>
+            Reset password with token
+            </summary>
+        </member>
+        <member name="M:BeC.OpenId.Connect.Features.Users.Controllers.UsersController.ChangePassword(BeC.OpenId.Connect.Features.Users.Controllers.ChangePasswordRequest)">
+            <summary>
+            Change password (for authenticated users)
+            </summary>
+        </member>
+        <member name="M:BeC.OpenId.Connect.Features.Users.Controllers.UsersController.ChangePassword(System.String,BeC.OpenId.Connect.Features.Users.Dtos.ChangePasswordDto)">
+            <summary>
+            Change user password
+            </summary>
+            <param name="id">User ID</param>
+            <param name="dto">Change password data</param>
+            <returns>Success message</returns>
+        </member>
+        <member name="M:BeC.OpenId.Connect.Features.Users.Controllers.UsersController.UploadProfilePicture(System.String,Microsoft.AspNetCore.Http.IFormFile)">
+            <summary>
+            Upload user profile picture
+            </summary>
+            <param name="id">User ID</param>
+            <param name="file">Profile picture file</param>
+            <returns>Profile picture URL</returns>
+        </member>
+        <member name="M:BeC.OpenId.Connect.Features.Users.Controllers.UsersController.DeleteProfilePicture(System.String)">
+            <summary>
+            Delete user profile picture
+            </summary>
+            <param name="id">User ID</param>
+            <returns>Success message</returns>
+        </member>
+        <member name="M:BeC.OpenId.Connect.Features.Users.Controllers.UsersController.CreateUser(BeC.OpenId.Connect.Features.Users.Controllers.CreateUserDto)">
+            <summary>
+            Create new user (SuperAdmin only)
+            </summary>
+        </member>
+        <member name="M:BeC.OpenId.Connect.Features.Users.Controllers.UsersController.UpdateUser(System.String,BeC.OpenId.Connect.Features.Users.Controllers.UpdateUserDto)">
+            <summary>
+            Update user (Admin only)
+            </summary>
+        </member>
+        <member name="P:BeC.OpenId.Connect.Features.Users.Dtos.ApplicationUser.DisplayName">
+            <summary>
+            User's display name
+            </summary>
+        </member>
+        <member name="P:BeC.OpenId.Connect.Features.Users.Dtos.ApplicationUser.ProfilePictureUrl">
+            <summary>
+            URL to user's profile picture
+            </summary>
+        </member>
+        <member name="P:BeC.OpenId.Connect.Features.Users.Dtos.ApplicationUser.CreatedAt">
+            <summary>
+            Date when account was created
+            </summary>
+        </member>
+        <member name="P:BeC.OpenId.Connect.Features.Users.Dtos.ApplicationUser.UpdatedAt">
+            <summary>
+            Date when profile was last updated
+            </summary>
+        </member>
+        <member name="P:BeC.OpenId.Connect.Features.Users.Dtos.ChangePasswordDto.CurrentPassword">
+            <summary>
+            Current password for verification
+            </summary>
+        </member>
+        <member name="P:BeC.OpenId.Connect.Features.Users.Dtos.ChangePasswordDto.NewPassword">
+            <summary>
+            New password to set
+            </summary>
+        </member>
+        <member name="P:BeC.OpenId.Connect.Features.Users.Dtos.ProfilePictureResponseDto.Message">
+            <summary>
+            Success message
+            </summary>
+        </member>
+        <member name="P:BeC.OpenId.Connect.Features.Users.Dtos.ProfilePictureResponseDto.Url">
+            <summary>
+            URL of the uploaded profile picture
+            </summary>
+        </member>
+        <member name="P:BeC.OpenId.Connect.Features.Users.Dtos.ProfilePictureResponseDto.FileName">
+            <summary>
+            File name of the uploaded picture
+            </summary>
+        </member>
+        <member name="T:BeC.OpenId.Connect.Infrastructure.Authorization.Policies">
+            <summary>
+            Defines authorization policy names used throughout the application
+            </summary>
+        </member>
+        <member name="T:BeC.OpenId.Connect.Infrastructure.Authorization.Roles">
+            <summary>
+            Defines role names used in the application
+            </summary>
+        </member>
+        <member name="T:BeC.OpenId.Connect.Infrastructure.Email.EmailSettings">
+            <summary>
+            Configuration options for the email service
+            </summary>
+        </member>
+        <member name="T:BeC.OpenId.Connect.Infrastructure.Email.IEmailService">
+            <summary>
+            Interface for email service operations
+            </summary>
+        </member>
+        <member name="T:BeC.OpenId.Connect.Infrastructure.Email.EmailService">
+            <summary>
+            Production email service implementation using SMTP
+            </summary>
+        </member>
+        <member name="T:BeC.OpenId.Connect.Infrastructure.Email.MockEmailService">
+            <summary>
+            Mock email service for development and testing
+            </summary>
+        </member>
+        <member name="T:BeC.OpenId.Connect.Infrastructure.Email.EmailSendException">
+            <summary>
+            Custom exception for email send failures
+            </summary>
+        </member>
+        <member name="T:BeC.OpenId.Connect.Infrastructure.Email.EmailServiceExtensions">
+            <summary>
+            Extension methods for registering email services
+            </summary>
+        </member>
+        <member name="M:BeC.OpenId.Connect.Infrastructure.Email.EmailServiceExtensions.AddEmailServices(Microsoft.Extensions.DependencyInjection.IServiceCollection,Microsoft.Extensions.Configuration.IConfiguration)">
+            <summary>
+            Adds email services to the service collection
+            </summary>
+            <param name="services">The service collection</param>
+            <param name="configuration">The configuration</param>
+            <returns>The service collection for chaining</returns>
+        </member>
+        <member name="M:BeC.OpenId.Connect.Infrastructure.Email.EmailServiceExtensions.AddEmailServices(Microsoft.Extensions.DependencyInjection.IServiceCollection,System.Action{BeC.OpenId.Connect.Infrastructure.Email.EmailSettings})">
+            <summary>
+            Adds email services with custom settings
+            </summary>
+            <param name="services">The service collection</param>
+            <param name="configureOptions">Action to configure email settings</param>
+            <returns>The service collection for chaining</returns>
+        </member>
+        <member name="M:BeC.OpenId.Connect.Infrastructure.Email.EmailServiceExtensions.AddMockEmailService(Microsoft.Extensions.DependencyInjection.IServiceCollection)">
+            <summary>
+            Adds mock email service for testing
+            </summary>
+            <param name="services">The service collection</param>
+            <returns>The service collection for chaining</returns>
+        </member>
+        <member name="T:BeC.OpenId.Connect.Infrastructure.Email.IEmailTemplateService">
+            <summary>
+            Interface for email template rendering
+            </summary>
+        </member>
+        <member name="T:BeC.OpenId.Connect.Infrastructure.Email.EmailTemplateService">
+            <summary>
+            Email template service with modern, responsive HTML templates
+            </summary>
+        </member>
+        <member name="T:BeC.OpenId.Connect.Infrastructure.Hosting.RoleSeedWorker">
+            <summary>
+            Seeds default roles and admin user on application startup
+            </summary>
+        </member>
+        <member name="T:BeC.OpenId.Connect.Migrations.InitialSync">
+            <inheritdoc />
+        </member>
+        <member name="M:BeC.OpenId.Connect.Migrations.InitialSync.Up(Microsoft.EntityFrameworkCore.Migrations.MigrationBuilder)">
+            <inheritdoc />
+        </member>
+        <member name="M:BeC.OpenId.Connect.Migrations.InitialSync.Down(Microsoft.EntityFrameworkCore.Migrations.MigrationBuilder)">
+            <inheritdoc />
+        </member>
+        <member name="M:BeC.OpenId.Connect.Migrations.InitialSync.BuildTargetModel(Microsoft.EntityFrameworkCore.ModelBuilder)">
+            <inheritdoc />
+        </member>
+    </members>
+</doc>

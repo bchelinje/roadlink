@@ -1,0 +1,7 @@
+﻿services:
+  bec.openid.connect:
+    image: bec.openid.connect
+    build:
+      context: .
+      dockerfile: BeC.OpenId.Connect/Dockerfile
+
