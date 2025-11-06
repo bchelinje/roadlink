@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Text;
-using BeC.OpenId.Connect.Data;
+using BeC.OpenId.Connect.Dto;
 using OpenIddict.Validation.AspNetCore;
 
 namespace BeC.OpenId.Connect.Features.ActivityLogs.Controllers

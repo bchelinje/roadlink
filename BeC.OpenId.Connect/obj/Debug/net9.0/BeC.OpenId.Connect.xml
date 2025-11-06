@@ -99,6 +99,76 @@
             Get all claims for the current user
             </summary>
         </member>
+        <member name="M:BeC.OpenId.Connect.Features.Drivers.Controllers.DriversController.GetCurrentDriver">
+            <summary>
+            Get current logged-in driver's profile
+            </summary>
+        </member>
+        <member name="M:BeC.OpenId.Connect.Features.Drivers.Controllers.DriversController.GetDriver(System.Guid)">
+            <summary>
+            Get driver by ID (Admin only)
+            </summary>
+        </member>
+        <member name="M:BeC.OpenId.Connect.Features.Drivers.Controllers.DriversController.UpdateDriver(System.Guid,BeC.OpenId.Connect.Features.Drivers.Controllers.UpdateDriverDto)">
+            <summary>
+            Update driver profile
+            </summary>
+        </member>
+        <member name="M:BeC.OpenId.Connect.Features.Drivers.Controllers.DriversController.UploadProfileImage(System.Guid,Microsoft.AspNetCore.Http.IFormFile)">
+            <summary>
+            Upload driver profile image
+            </summary>
+        </member>
+        <member name="M:BeC.OpenId.Connect.Features.Drivers.Controllers.DriversController.UpdateStatus(BeC.OpenId.Connect.Features.Drivers.Controllers.UpdateStatusDto)">
+            <summary>
+            Update driver status
+            </summary>
+        </member>
+        <member name="M:BeC.OpenId.Connect.Features.Drivers.Controllers.DriversController.GetMyJobs(System.String,System.Nullable{System.DateTime},System.Nullable{System.DateTime},System.Int32,System.Int32)">
+            <summary>
+            Get driver's jobs with filtering
+            </summary>
+        </member>
+        <member name="M:BeC.OpenId.Connect.Features.Drivers.Controllers.DriversController.GetJob(System.Guid)">
+            <summary>
+            Get specific job details
+            </summary>
+        </member>
+        <member name="M:BeC.OpenId.Connect.Features.Drivers.Controllers.DriversController.AcceptJob(System.Guid)">
+            <summary>
+            Accept a job assignment
+            </summary>
+        </member>
+        <member name="M:BeC.OpenId.Connect.Features.Drivers.Controllers.DriversController.StartJob(System.Guid)">
+            <summary>
+            Start a job
+            </summary>
+        </member>
+        <member name="M:BeC.OpenId.Connect.Features.Drivers.Controllers.DriversController.CompleteJob(System.Guid,BeC.OpenId.Connect.Features.Drivers.Controllers.CompleteJobDto)">
+            <summary>
+            Complete a job
+            </summary>
+        </member>
+        <member name="M:BeC.OpenId.Connect.Features.Drivers.Controllers.DriversController.UpdateJobStatus(System.Guid,BeC.OpenId.Connect.Features.Drivers.Controllers.UpdateJobStatusDto)">
+            <summary>
+            Update job status
+            </summary>
+        </member>
+        <member name="M:BeC.OpenId.Connect.Features.Drivers.Controllers.DriversController.AddJobNote(System.Guid,BeC.OpenId.Connect.Features.Drivers.Controllers.AddNoteDto)">
+            <summary>
+            Add note to job
+            </summary>
+        </member>
+        <member name="M:BeC.OpenId.Connect.Features.Drivers.Controllers.DriversController.UploadJobPhoto(System.Guid,BeC.OpenId.Connect.Features.Drivers.Controllers.UploadJobPhotoRequest)">
+            <summary>
+            Upload job photo
+            </summary>
+        </member>
+        <member name="M:BeC.OpenId.Connect.Features.Drivers.Controllers.DriversController.GetMyStats">
+            <summary>
+            Get driver statistics
+            </summary>
+        </member>
         <member name="T:BeC.OpenId.Connect.Features.Ping.Controllers.PingController">
             <summary>
             Health check and API testing endpoint
@@ -264,24 +334,16 @@
             <summary>
             Change user password
             </summary>
-            <param name="id">User ID</param>
-            <param name="dto">Change password data</param>
-            <returns>Success message</returns>
         </member>
         <member name="M:BeC.OpenId.Connect.Features.Users.Controllers.UsersController.UploadProfilePicture(System.String,Microsoft.AspNetCore.Http.IFormFile)">
             <summary>
             Upload user profile picture
             </summary>
-            <param name="id">User ID</param>
-            <param name="file">Profile picture file</param>
-            <returns>Profile picture URL</returns>
         </member>
         <member name="M:BeC.OpenId.Connect.Features.Users.Controllers.UsersController.DeleteProfilePicture(System.String)">
             <summary>
             Delete user profile picture
             </summary>
-            <param name="id">User ID</param>
-            <returns>Success message</returns>
         </member>
         <member name="M:BeC.OpenId.Connect.Features.Users.Controllers.UsersController.CreateUser(BeC.OpenId.Connect.Features.Users.Controllers.CreateUserDto)">
             <summary>
@@ -416,16 +478,16 @@
             Seeds default roles and admin user on application startup
             </summary>
         </member>
-        <member name="T:BeC.OpenId.Connect.Migrations.InitialSync">
+        <member name="T:BeC.OpenId.Connect.Migrations.InitialCreate">
             <inheritdoc />
         </member>
-        <member name="M:BeC.OpenId.Connect.Migrations.InitialSync.Up(Microsoft.EntityFrameworkCore.Migrations.MigrationBuilder)">
+        <member name="M:BeC.OpenId.Connect.Migrations.InitialCreate.Up(Microsoft.EntityFrameworkCore.Migrations.MigrationBuilder)">
             <inheritdoc />
         </member>
-        <member name="M:BeC.OpenId.Connect.Migrations.InitialSync.Down(Microsoft.EntityFrameworkCore.Migrations.MigrationBuilder)">
+        <member name="M:BeC.OpenId.Connect.Migrations.InitialCreate.Down(Microsoft.EntityFrameworkCore.Migrations.MigrationBuilder)">
             <inheritdoc />
         </member>
-        <member name="M:BeC.OpenId.Connect.Migrations.InitialSync.BuildTargetModel(Microsoft.EntityFrameworkCore.ModelBuilder)">
+        <member name="M:BeC.OpenId.Connect.Migrations.InitialCreate.BuildTargetModel(Microsoft.EntityFrameworkCore.ModelBuilder)">
             <inheritdoc />
         </member>
     </members>

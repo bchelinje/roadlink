@@ -1,4 +1,4 @@
-using BeC.OpenId.Connect.Data;
+using BeC.OpenId.Connect.Dto;
 using OpenIddict.Abstractions;
 using static OpenIddict.Abstractions.OpenIddictConstants;
 

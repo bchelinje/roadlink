@@ -15,7 +15,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("BeC.OpenId.Connect")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+cd0b4f86b9ddd1f613c35750f8d4b259d285c081")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+c0fda609028bf5a34a8a1be9b1ee698748effa81")]
 [assembly: System.Reflection.AssemblyProductAttribute("BeC.OpenId.Connect")]
 [assembly: System.Reflection.AssemblyTitleAttribute("BeC.OpenId.Connect")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

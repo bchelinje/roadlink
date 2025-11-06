@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "dgSpecHash": "WqKPDb8a+oM=",
+  "dgSpecHash": "LNobLQQC1Yg=",
   "success": true,
   "projectFilePath": "/Users/bless/Projects/BeC.OpenId.Connect/BeC.OpenId.Connect/BeC.OpenId.Connect.csproj",
   "expectedPackageFiles": [
@@ -178,6 +178,7 @@
     "/Users/bless/.nuget/packages/runtime.ubuntu.14.04-x64.runtime.native.system.security.cryptography.openssl/4.3.2/runtime.ubuntu.14.04-x64.runtime.native.system.security.cryptography.openssl.4.3.2.nupkg.sha512",
     "/Users/bless/.nuget/packages/runtime.ubuntu.16.04-x64.runtime.native.system.security.cryptography.openssl/4.3.2/runtime.ubuntu.16.04-x64.runtime.native.system.security.cryptography.openssl.4.3.2.nupkg.sha512",
     "/Users/bless/.nuget/packages/runtime.ubuntu.16.10-x64.runtime.native.system.security.cryptography.openssl/4.3.2/runtime.ubuntu.16.10-x64.runtime.native.system.security.cryptography.openssl.4.3.2.nupkg.sha512",
+    "/Users/bless/.nuget/packages/scrutor/6.1.0/scrutor.6.1.0.nupkg.sha512",
     "/Users/bless/.nuget/packages/serilog/4.2.0/serilog.4.2.0.nupkg.sha512",
     "/Users/bless/.nuget/packages/sqlitepclraw.bundle_e_sqlite3/2.1.10/sqlitepclraw.bundle_e_sqlite3.2.1.10.nupkg.sha512",
     "/Users/bless/.nuget/packages/sqlitepclraw.core/2.1.10/sqlitepclraw.core.2.1.10.nupkg.sha512",
@@ -255,5 +256,15 @@
     "/Users/bless/.nuget/packages/system.threading.tasks.extensions/4.6.0/system.threading.tasks.extensions.4.6.0.nupkg.sha512",
     "/Users/bless/.nuget/packages/system.windows.extensions/6.0.0/system.windows.extensions.6.0.0.nupkg.sha512"
   ],
-  "logs": []
+  "logs": [
+    {
+      "code": "NU1900",
+      "level": "Warning",
+      "message": "Error occurred while getting package vulnerability data: Unable to load the service index for source https://pkgs.dev.azure.com/becsoft/_packaging/becsoft/nuget/v3/index.json.",
+      "projectPath": "/Users/bless/Projects/BeC.OpenId.Connect/BeC.OpenId.Connect/BeC.OpenId.Connect.csproj",
+      "warningLevel": 1,
+      "filePath": "/Users/bless/Projects/BeC.OpenId.Connect/BeC.OpenId.Connect/BeC.OpenId.Connect.csproj",
+      "targetGraphs": []
+    }
+  ]
 }

@@ -1,6 +1,6 @@
 // Features/ActivityLogs/Services/ActivityLogService.cs
 
-using BeC.OpenId.Connect.Data;
+using BeC.OpenId.Connect.Dto;
 using BeC.OpenId.Connect.Features.ActivityLogs.Services.Interfaces;
 using System.Text.Json;
 

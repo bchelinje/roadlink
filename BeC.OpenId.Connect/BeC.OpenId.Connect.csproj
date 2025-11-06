@@ -30,6 +30,7 @@
         <PackageReference Include="OpenIddict.AspNetCore" Version="7.1.0" />
         <PackageReference Include="OpenIddict.EntityFrameworkCore" Version="7.1.0" />
         <PackageReference Include="OpenIddict.Validation.AspNetCore" Version="7.1.0" />
+        <PackageReference Include="Scrutor" Version="6.1.0" />
         <PackageReference Include="Swashbuckle.AspNetCore" Version="9.0.6" />
         <PackageReference Include="System.Linq" Version="4.3.0" />
     </ItemGroup>
@@ -41,7 +42,30 @@
     </ItemGroup>
 
     <ItemGroup>
-      <Folder Include="Data\Migrations\" />
+      <Folder Include="Features\ActivityLogs\MappingProfiles\" />
+      <Folder Include="Features\ActivityLogs\Repositories\Interfaces\" />
+      <Folder Include="Features\ActivityLogs\RequestModels\" />
+      <Folder Include="Features\ActivityLogs\ViewModels\" />
+      <Folder Include="Features\Authorization\MappingProfiles\" />
+      <Folder Include="Features\Authorization\Repositories\Interfaces\" />
+      <Folder Include="Features\Authorization\RequestModels\" />
+      <Folder Include="Features\Authorization\Services\Interfaces\" />
+      <Folder Include="Features\Authorization\ViewModels\" />
+      <Folder Include="Features\Demo\MappingProfiles\" />
+      <Folder Include="Features\Demo\Repositories\Interfaces\" />
+      <Folder Include="Features\Demo\RequestModels\" />
+      <Folder Include="Features\Demo\Services\Interfaces\" />
+      <Folder Include="Features\Demo\ViewModels\" />
+      <Folder Include="Features\Drivers\MappingProfiles\" />
+      <Folder Include="Features\Drivers\Repositories\Interfaces\" />
+      <Folder Include="Features\Drivers\RequestModels\" />
+      <Folder Include="Features\Drivers\Services\Interfaces\" />
+      <Folder Include="Features\Drivers\ViewModels\" />
+      <Folder Include="Features\Roles\MappingProfiles\" />
+      <Folder Include="Features\Roles\Repositories\Interfaces\" />
+      <Folder Include="Features\Roles\RequestModels\" />
+      <Folder Include="Features\Roles\Services\Interfaces\" />
+      <Folder Include="Features\Roles\ViewModels\" />
       <Folder Include="Features\Users\MappingProfiles\" />
       <Folder Include="Features\Users\RequestModels\" />
       <Folder Include="Features\Users\ViewModels\" />

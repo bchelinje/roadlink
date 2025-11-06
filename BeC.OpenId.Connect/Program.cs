@@ -1,12 +1,14 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
-using BeC.OpenId.Connect.Data;
+using BeC.OpenId.Connect.Dto;
 using BeC.OpenId.Connect.Features.ActivityLogs.Services;
 using BeC.OpenId.Connect.Features.ActivityLogs.Services.Interfaces;
 using BeC.OpenId.Connect.Features.Users.Dtos;
 using BeC.OpenId.Connect.Infrastructure.Authorization;
 using BeC.OpenId.Connect.Infrastructure.Email;
 using BeC.OpenId.Connect.Infrastructure.Hosting;
+using BeC.OpenId.Connect.Shared.Interfaces;
+using Microsoft.AspNetCore.Http.Features;
 using Microsoft.OpenApi.Models;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -15,10 +17,27 @@ var builder = WebApplication.CreateBuilder(args);
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") ??
                        throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
 
+builder.Services.AddAutoMapper(typeof(Program));
 builder.Services.AddDatabaseDeveloperPageExceptionFilter();
-
 builder.Services.AddHttpContextAccessor();
-builder.Services.AddScoped<IActivityLogService, ActivityLogService>();
+
+builder.Services.Scan(s => s.FromAssemblyOf<ITransient>()
+    .AddClasses(c => c.AssignableTo<ITransient>())
+    .AsImplementedInterfaces()
+    .WithTransientLifetime());
+builder.Services.Scan(s => s.FromAssemblyOf<ISingleton>()
+    .AddClasses(c => c.AssignableTo<ISingleton>())
+    .AsImplementedInterfaces()
+    .WithSingletonLifetime());
+builder.Services.Scan(s => s.FromAssemblyOf<IScoped>()
+    .AddClasses(c => c.AssignableTo<IScoped>())
+    .AsImplementedInterfaces()
+    .WithScopedLifetime());
+
+builder.Services.Configure<FormOptions>(options =>
+{
+    options.MultipartBodyLengthLimit = 10 * 1024 * 1024; // 10MB
+});
 
 // Configure Identity with roles
 builder.Services.AddDefaultIdentity<ApplicationUser>(options => 
@@ -73,7 +92,6 @@ builder.Services.AddControllers();
 builder.Services.AddHostedService<OpenIddictSeedWorker>();
 builder.Services.AddHostedService<RoleSeedWorker>();
 builder.Services.AddEmailServices(builder.Configuration);
-
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
 {
     options.UseSqlServer(connectionString);
@@ -126,7 +144,7 @@ builder.Services.AddSwaggerGen(options =>
 {
     options.SwaggerDoc("v1", new OpenApiInfo
     {
-        Title = "BeC Identity Server API",
+        Title = "BeC API",
         Version = "v1",
         Description = "Authentication and Authorization API using OpenIddict",
         Contact = new OpenApiContact
@@ -237,6 +255,7 @@ else
 app.UseCors("AllowAngularApp");
 
 app.UseRouting();
+app.UseStaticFiles();
 
 app.UseAuthentication(); 
 app.UseAuthorization(); 

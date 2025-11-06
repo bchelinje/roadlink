@@ -392,3 +392,4 @@
 /Users/bless/Projects/BeC.OpenId.Connect/BeC.OpenId.Connect/bin/Debug/net9.0/BeC.Common.Events.dll
 /Users/bless/Projects/BeC.OpenId.Connect/BeC.OpenId.Connect/bin/Debug/net9.0/Microsoft.Azure.Amqp.dll
 /Users/bless/Projects/BeC.OpenId.Connect/BeC.OpenId.Connect/bin/Debug/net9.0/Serilog.dll
+/Users/bless/Projects/BeC.OpenId.Connect/BeC.OpenId.Connect/bin/Debug/net9.0/Scrutor.dll
