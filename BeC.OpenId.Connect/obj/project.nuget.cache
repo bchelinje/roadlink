@@ -256,15 +256,5 @@
     "/Users/bless/.nuget/packages/system.threading.tasks.extensions/4.6.0/system.threading.tasks.extensions.4.6.0.nupkg.sha512",
     "/Users/bless/.nuget/packages/system.windows.extensions/6.0.0/system.windows.extensions.6.0.0.nupkg.sha512"
   ],
-  "logs": [
-    {
-      "code": "NU1900",
-      "level": "Warning",
-      "message": "Error occurred while getting package vulnerability data: Unable to load the service index for source https://pkgs.dev.azure.com/becsoft/_packaging/becsoft/nuget/v3/index.json.",
-      "projectPath": "/Users/bless/Projects/BeC.OpenId.Connect/BeC.OpenId.Connect/BeC.OpenId.Connect.csproj",
-      "warningLevel": 1,
-      "filePath": "/Users/bless/Projects/BeC.OpenId.Connect/BeC.OpenId.Connect/BeC.OpenId.Connect.csproj",
-      "targetGraphs": []
-    }
-  ]
+  "logs": []
 }

@@ -127,6 +127,9 @@ public class Job
     [MaxLength(50)]
     public required string JobType { get; set; } // local_move, long_distance, commercial, etc.
 
+    [MaxLength(50)]
+    public string? VehicleTypeRequired { get; set; } // van, cargo_van, small_truck, large_truck, etc.
+
     [Required]
     [MaxLength(20)]
     public string Status { get; set; } = "pending"; // pending, assigned, confirmed, in_progress, completed, cancelled, on_hold

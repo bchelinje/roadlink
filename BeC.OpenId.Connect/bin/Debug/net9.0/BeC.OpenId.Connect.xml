@@ -134,6 +134,16 @@
             Get specific job details
             </summary>
         </member>
+        <member name="M:BeC.OpenId.Connect.Features.Drivers.Controllers.DriversController.GetMarketplaceJobs(System.String,System.String,System.String,System.Nullable{System.DateTime},System.Nullable{System.DateTime},System.Int32,System.Int32)">
+            <summary>
+            Get available jobs from marketplace (unassigned jobs)
+            </summary>
+        </member>
+        <member name="M:BeC.OpenId.Connect.Features.Drivers.Controllers.DriversController.ClaimMarketplaceJob(System.Guid)">
+            <summary>
+            Claim/accept a job from the marketplace
+            </summary>
+        </member>
         <member name="M:BeC.OpenId.Connect.Features.Drivers.Controllers.DriversController.AcceptJob(System.Guid)">
             <summary>
             Accept a job assignment
@@ -167,6 +177,36 @@
         <member name="M:BeC.OpenId.Connect.Features.Drivers.Controllers.DriversController.GetMyStats">
             <summary>
             Get driver statistics
+            </summary>
+        </member>
+        <member name="M:BeC.OpenId.Connect.Features.Jobs.Controllers.JobsController.GetJobs(System.String,System.String,System.String,System.Nullable{System.Guid},System.String,System.Nullable{System.DateTime},System.Nullable{System.DateTime},System.String,System.String,System.Int32,System.Int32)">
+            <summary>
+            Get all jobs with filtering and pagination (Admin only)
+            </summary>
+        </member>
+        <member name="M:BeC.OpenId.Connect.Features.Jobs.Controllers.JobsController.GetJob(System.Guid)">
+            <summary>
+            Get job by ID (Admin only)
+            </summary>
+        </member>
+        <member name="M:BeC.OpenId.Connect.Features.Jobs.Controllers.JobsController.CreateJob(BeC.OpenId.Connect.Features.Jobs.Dtos.CreateJobDto)">
+            <summary>
+            Create new job (Admin only)
+            </summary>
+        </member>
+        <member name="M:BeC.OpenId.Connect.Features.Jobs.Controllers.JobsController.UpdateJob(System.Guid,BeC.OpenId.Connect.Features.Jobs.Dtos.UpdateJobDto)">
+            <summary>
+            Update job (Admin only)
+            </summary>
+        </member>
+        <member name="M:BeC.OpenId.Connect.Features.Jobs.Controllers.JobsController.AssignJob(System.Guid,BeC.OpenId.Connect.Features.Jobs.Dtos.AssignJobDto)">
+            <summary>
+            Assign job to driver (Admin only)
+            </summary>
+        </member>
+        <member name="M:BeC.OpenId.Connect.Features.Jobs.Controllers.JobsController.DeleteJob(System.Guid)">
+            <summary>
+            Delete job (Admin only)
             </summary>
         </member>
         <member name="T:BeC.OpenId.Connect.Features.Ping.Controllers.PingController">
@@ -488,6 +528,18 @@
             <inheritdoc />
         </member>
         <member name="M:BeC.OpenId.Connect.Migrations.InitialCreate.BuildTargetModel(Microsoft.EntityFrameworkCore.ModelBuilder)">
+            <inheritdoc />
+        </member>
+        <member name="T:BeC.OpenId.Connect.Migrations.AddVehicleTypeRequiredToJob">
+            <inheritdoc />
+        </member>
+        <member name="M:BeC.OpenId.Connect.Migrations.AddVehicleTypeRequiredToJob.Up(Microsoft.EntityFrameworkCore.Migrations.MigrationBuilder)">
+            <inheritdoc />
+        </member>
+        <member name="M:BeC.OpenId.Connect.Migrations.AddVehicleTypeRequiredToJob.Down(Microsoft.EntityFrameworkCore.Migrations.MigrationBuilder)">
+            <inheritdoc />
+        </member>
+        <member name="M:BeC.OpenId.Connect.Migrations.AddVehicleTypeRequiredToJob.BuildTargetModel(Microsoft.EntityFrameworkCore.ModelBuilder)">
             <inheritdoc />
         </member>
     </members>

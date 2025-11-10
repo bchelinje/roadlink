@@ -12,12 +12,13 @@ using System.Security.Claims;
 using BeC.OpenId.Connect.Features.ActivityLogs.Services.Interfaces;
 using BeC.OpenId.Connect.Features.Drivers.Dtos;
 using BeC.OpenId.Connect.Features.Users.Dtos;
+using OpenIddict.Validation.AspNetCore;
 
 namespace BeC.OpenId.Connect.Features.Drivers.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-[Authorize] // All endpoints require authentication
+[Authorize(AuthenticationSchemes = OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme)] // Use Bearer token authentication
 public class DriversController : ControllerBase
 {
     private readonly ApplicationDbContext _context;
@@ -43,7 +44,7 @@ public class DriversController : ControllerBase
     /// Get current logged-in driver's profile
     /// </summary>
     [HttpGet("me")]
-    [Authorize(Roles = "Driver")]
+    [Authorize(AuthenticationSchemes = OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme, Roles = "Driver")]
     [ProducesResponseType(typeof(DriverDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<DriverDto>> GetCurrentDriver()
@@ -76,7 +77,7 @@ public class DriversController : ControllerBase
     /// Get driver by ID (Admin only)
     /// </summary>
     [HttpGet("{id}")]
-    [Authorize(Roles = "Admin,SuperAdmin")]
+    [Authorize(AuthenticationSchemes = OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme, Roles = "Admin,SuperAdmin")]
     [ProducesResponseType(typeof(DriverDto), StatusCodes.Status200OK)]
     public async Task<ActionResult<DriverDto>> GetDriver(Guid id)
     {
@@ -95,7 +96,7 @@ public class DriversController : ControllerBase
     /// Update driver profile
     /// </summary>
     [HttpPut("{id}")]
-    [Authorize(Roles = "Driver,Admin,SuperAdmin")]
+    [Authorize(AuthenticationSchemes = OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme, Roles = "Driver,Admin,SuperAdmin")]
     [ProducesResponseType(typeof(DriverDto), StatusCodes.Status200OK)]
     public async Task<ActionResult<DriverDto>> UpdateDriver(Guid id, [FromBody] UpdateDriverDto dto)
     {
@@ -150,7 +151,7 @@ public class DriversController : ControllerBase
     /// Upload driver profile image
     /// </summary>
     [HttpPost("{id}/profile-image")]
-    [Authorize(Roles = "Driver")]
+    [Authorize(AuthenticationSchemes = OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme, Roles = "Driver")]
     [ProducesResponseType(typeof(string), StatusCodes.Status200OK)]
     public async Task<ActionResult<string>> UploadProfileImage(Guid id, IFormFile image)
     {
@@ -214,7 +215,7 @@ public class DriversController : ControllerBase
     /// Update driver status
     /// </summary>
     [HttpPatch("me/status")]
-    [Authorize(Roles = "Driver")]
+    [Authorize(AuthenticationSchemes = OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme, Roles = "Driver")]
     [ProducesResponseType(typeof(DriverDto), StatusCodes.Status200OK)]
     public async Task<ActionResult<DriverDto>> UpdateStatus([FromBody] UpdateStatusDto dto)
     {
@@ -255,7 +256,7 @@ public class DriversController : ControllerBase
     /// Get driver's jobs with filtering
     /// </summary>
     [HttpGet("me/jobs")]
-    [Authorize(Roles = "Driver")]
+    [Authorize(AuthenticationSchemes = OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme, Roles = "Driver")]
     [ProducesResponseType(typeof(PaginatedResult<JobDto>), StatusCodes.Status200OK)]
     public async Task<ActionResult<PaginatedResult<JobDto>>> GetMyJobs(
         [FromQuery] string? status,
@@ -304,7 +305,7 @@ public class DriversController : ControllerBase
     /// Get specific job details
     /// </summary>
     [HttpGet("me/jobs/{jobId}")]
-    [Authorize(Roles = "Driver")]
+    [Authorize(AuthenticationSchemes = OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme, Roles = "Driver")]
     [ProducesResponseType(typeof(JobDto), StatusCodes.Status200OK)]
     public async Task<ActionResult<JobDto>> GetJob(Guid jobId)
     {
@@ -332,10 +333,134 @@ public class DriversController : ControllerBase
     }
 
     /// <summary>
+    /// Get available jobs from marketplace (unassigned jobs)
+    /// </summary>
+    [HttpGet("marketplace/jobs")]
+    [Authorize(AuthenticationSchemes = OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme, Roles = "Driver")]
+    [ProducesResponseType(typeof(PaginatedResult<JobDto>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<PaginatedResult<JobDto>>> GetMarketplaceJobs(
+        [FromQuery] string? location,
+        [FromQuery] string? vehicleType,
+        [FromQuery] string? jobType,
+        [FromQuery] DateTime? startDate,
+        [FromQuery] DateTime? endDate,
+        [FromQuery] int page = 1,
+        [FromQuery] int limit = 10)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        var driver = await _context.Drivers.FirstOrDefaultAsync(d => d.UserId == userId);
+
+        if (driver == null)
+            return NotFound("Driver profile not found");
+
+        // Query for pending (unassigned) jobs
+        var query = _context.Jobs.Where(j => j.Status == "pending" && j.DriverId == null);
+
+        // Filter by vehicle type if specified
+        if (!string.IsNullOrEmpty(vehicleType))
+            query = query.Where(j => j.VehicleTypeRequired == vehicleType || j.VehicleTypeRequired == null);
+
+        // Filter by job type
+        if (!string.IsNullOrEmpty(jobType))
+            query = query.Where(j => j.JobType == jobType);
+
+        // Filter by location (search in pickup location JSON)
+        if (!string.IsNullOrEmpty(location))
+            query = query.Where(j => j.PickupLocation.Contains(location) || j.DeliveryLocation.Contains(location));
+
+        // Filter by date range
+        if (startDate.HasValue)
+            query = query.Where(j => j.ScheduledDate >= startDate.Value);
+
+        if (endDate.HasValue)
+            query = query.Where(j => j.ScheduledDate <= endDate.Value);
+
+        var total = await query.CountAsync();
+        var jobs = await query
+            .OrderBy(j => j.ScheduledDate)
+            .ThenBy(j => j.Priority)
+            .Skip((page - 1) * limit)
+            .Take(limit)
+            .ToListAsync();
+
+        return Ok(new PaginatedResult<JobDto>
+        {
+            Items = jobs.Select(MapJobToDto).ToList(),
+            Total = total,
+            Page = page,
+            Limit = limit,
+            TotalPages = (int)Math.Ceiling(total / (double)limit)
+        });
+    }
+
+    /// <summary>
+    /// Claim/accept a job from the marketplace
+    /// </summary>
+    [HttpPost("marketplace/jobs/{jobId}/claim")]
+    [Authorize(AuthenticationSchemes = OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme, Roles = "Driver")]
+    [ProducesResponseType(typeof(JobDto), StatusCodes.Status200OK)]
+    public async Task<ActionResult<JobDto>> ClaimMarketplaceJob(Guid jobId)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        var driver = await _context.Drivers.FirstOrDefaultAsync(d => d.UserId == userId);
+
+        if (driver == null)
+            return NotFound("Driver profile not found");
+
+        // Check if driver is available
+        if (driver.Status != "active" && driver.Status != "available")
+            return BadRequest($"Driver must be active/available to claim jobs. Current status: {driver.Status}");
+
+        var job = await _context.Jobs.FirstOrDefaultAsync(j => j.Id == jobId);
+
+        if (job == null)
+            return NotFound("Job not found");
+
+        // Check if job is still available
+        if (job.Status != "pending" || job.DriverId != null)
+            return BadRequest("Job is no longer available in the marketplace");
+
+        // Assign job to driver
+        job.DriverId = driver.Id;
+        job.DriverName = $"{driver.FirstName} {driver.LastName}";
+        job.Status = "assigned";
+        job.UpdatedAt = DateTime.UtcNow;
+
+        // Update driver stats
+        driver.TotalJobs += 1;
+        driver.ActiveJobs += 1;
+        driver.LastActiveDate = DateTime.UtcNow;
+
+        // Add to status history
+        AddStatusHistory(job, "assigned", userId!, $"Job claimed by driver {driver.FirstName} {driver.LastName} from marketplace");
+
+        await _context.SaveChangesAsync();
+
+        await _activityLogService.LogActivityAsync(
+            action: "job.claimed",
+            entityType: "Job",
+            entityId: jobId.ToString(),
+            entityName: job.JobNumber,
+            description: $"Driver {driver.FirstName} {driver.LastName} claimed job {job.JobNumber} from marketplace",
+            severity: "INFO",
+            metadata: new Dictionary<string, object>
+            {
+                { "DriverId", driver.Id },
+                { "DriverName", $"{driver.FirstName} {driver.LastName}" },
+                { "CustomerId", job.CustomerId },
+                { "CustomerName", job.CustomerName },
+                { "ScheduledDate", job.ScheduledDate }
+            }
+        );
+
+        return Ok(MapJobToDto(job));
+    }
+
+    /// <summary>
     /// Accept a job assignment
     /// </summary>
     [HttpPost("me/jobs/{jobId}/accept")]
-    [Authorize(Roles = "Driver")]
+    [Authorize(AuthenticationSchemes = OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme, Roles = "Driver")]
     [ProducesResponseType(typeof(JobDto), StatusCodes.Status200OK)]
     public async Task<ActionResult<JobDto>> AcceptJob(Guid jobId)
     {
@@ -383,7 +508,7 @@ public class DriversController : ControllerBase
     /// Start a job
     /// </summary>
     [HttpPost("me/jobs/{jobId}/start")]
-    [Authorize(Roles = "Driver")]
+    [Authorize(AuthenticationSchemes = OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme, Roles = "Driver")]
     [ProducesResponseType(typeof(JobDto), StatusCodes.Status200OK)]
     public async Task<ActionResult<JobDto>> StartJob(Guid jobId)
     {
@@ -435,7 +560,7 @@ public class DriversController : ControllerBase
     /// Complete a job
     /// </summary>
     [HttpPost("me/jobs/{jobId}/complete")]
-    [Authorize(Roles = "Driver")]
+    [Authorize(AuthenticationSchemes = OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme, Roles = "Driver")]
     [ProducesResponseType(typeof(JobDto), StatusCodes.Status200OK)]
     public async Task<ActionResult<JobDto>> CompleteJob(Guid jobId, [FromBody] CompleteJobDto dto)
     {
@@ -494,7 +619,7 @@ public class DriversController : ControllerBase
     /// Update job status
     /// </summary>
     [HttpPatch("me/jobs/{jobId}/status")]
-    [Authorize(Roles = "Driver")]
+    [Authorize(AuthenticationSchemes = OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme, Roles = "Driver")]
     [ProducesResponseType(typeof(JobDto), StatusCodes.Status200OK)]
     public async Task<ActionResult<JobDto>> UpdateJobStatus(
         Guid jobId, 
@@ -541,7 +666,7 @@ public class DriversController : ControllerBase
     /// Add note to job
     /// </summary>
     [HttpPost("me/jobs/{jobId}/notes")]
-    [Authorize(Roles = "Driver")]
+    [Authorize(AuthenticationSchemes = OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme, Roles = "Driver")]
     [ProducesResponseType(typeof(JobDto), StatusCodes.Status200OK)]
     public async Task<ActionResult<JobDto>> AddJobNote(Guid jobId, [FromBody] AddNoteDto dto)
     {
@@ -675,7 +800,7 @@ public async Task<ActionResult<JobDto>> UploadJobPhoto(
     /// Get driver statistics
     /// </summary>
     [HttpGet("me/stats")]
-    [Authorize(Roles = "Driver")]
+    [Authorize(AuthenticationSchemes = OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme, Roles = "Driver")]
     [ProducesResponseType(typeof(DriverStatsDto), StatusCodes.Status200OK)]
     public async Task<ActionResult<DriverStatsDto>> GetMyStats()
     {
@@ -758,6 +883,7 @@ public async Task<ActionResult<JobDto>> UploadJobPhoto(
             DriverId = job.DriverId,
             DriverName = job.DriverName,
             JobType = job.JobType,
+            VehicleTypeRequired = job.VehicleTypeRequired,
             Status = job.Status,
             Priority = job.Priority,
             ScheduledDate = job.ScheduledDate,
@@ -868,6 +994,7 @@ public class JobDto
     public Guid? DriverId { get; set; }
     public string? DriverName { get; set; }
     public required string JobType { get; set; }
+    public string? VehicleTypeRequired { get; set; }
     public required string Status { get; set; }
     public required string Priority { get; set; }
     public DateTime ScheduledDate { get; set; }

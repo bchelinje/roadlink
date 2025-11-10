@@ -34,33 +34,62 @@ builder.Services.Scan(s => s.FromAssemblyOf<IScoped>()
     .AsImplementedInterfaces()
     .WithScopedLifetime());
 
+builder.Services.AddScoped<IActivityLogService, ActivityLogService>();
 builder.Services.Configure<FormOptions>(options =>
 {
     options.MultipartBodyLengthLimit = 10 * 1024 * 1024; // 10MB
 });
 
 // Configure Identity with roles
-builder.Services.AddDefaultIdentity<ApplicationUser>(options => 
+builder.Services.AddDefaultIdentity<ApplicationUser>(options =>
     {
         options.SignIn.RequireConfirmedAccount = false;
-    
+
         // Password settings
         options.Password.RequireDigit = true;
         options.Password.RequireLowercase = true;
         options.Password.RequireUppercase = true;
         options.Password.RequireNonAlphanumeric = true;
         options.Password.RequiredLength = 8;
-    
+
         // Lockout settings
         options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(15);
         options.Lockout.MaxFailedAccessAttempts = 5;
         options.Lockout.AllowedForNewUsers = true;
-    
+
         // User settings
         options.User.RequireUniqueEmail = true;
     })
     .AddRoles<IdentityRole>() // Add role support
     .AddEntityFrameworkStores<ApplicationDbContext>();
+
+// Configure cookie authentication to not redirect API requests
+builder.Services.ConfigureApplicationCookie(options =>
+{
+    options.Events.OnRedirectToLogin = context =>
+    {
+        // For API requests, return 401 instead of redirecting to login page
+        if (context.Request.Path.StartsWithSegments("/api"))
+        {
+            context.Response.StatusCode = 401;
+            return Task.CompletedTask;
+        }
+        context.Response.Redirect(context.RedirectUri);
+        return Task.CompletedTask;
+    };
+
+    options.Events.OnRedirectToAccessDenied = context =>
+    {
+        // For API requests, return 403 instead of redirecting to access denied page
+        if (context.Request.Path.StartsWithSegments("/api"))
+        {
+            context.Response.StatusCode = 403;
+            return Task.CompletedTask;
+        }
+        context.Response.Redirect(context.RedirectUri);
+        return Task.CompletedTask;
+    };
+});
 
 // Add Authorization Policies
 builder.Services.AddAuthorization(options =>
