@@ -96,8 +96,8 @@ public class GoogleMapsService : IGoogleMapsService
             var request = new DistanceMatrixRequest
             {
                 Key = _apiKey,
-                Origins = new[] { new Location(origin) },
-                Destinations = new[] { new Location(destination) },
+                Origins = new[] { origin },
+                Destinations = new[] { destination },
                 TravelMode = GoogleApi.Entities.Maps.Common.Enums.TravelMode.Driving
             };
 
@@ -111,7 +111,7 @@ public class GoogleMapsService : IGoogleMapsService
             }
 
             var element = response.Rows.First().Elements.First();
-            if (element.Status != DistanceMatrixElementStatus.Ok)
+            if (element.Status != GoogleApi.Entities.Maps.Common.Enums.Status.Ok)
             {
                 _logger.LogWarning("Distance element status not OK: {Status}", element.Status);
                 return null;
@@ -145,8 +145,8 @@ public class GoogleMapsService : IGoogleMapsService
             var request = new DistanceMatrixRequest
             {
                 Key = _apiKey,
-                Origins = new[] { new Location(new Coordinate(originLat, originLng)) },
-                Destinations = new[] { new Location(new Coordinate(destLat, destLng)) },
+                Origins = new[] { $"{originLat},{originLng}" },
+                Destinations = new[] { $"{destLat},{destLng}" },
                 TravelMode = GoogleApi.Entities.Maps.Common.Enums.TravelMode.Driving
             };
 
@@ -159,7 +159,7 @@ public class GoogleMapsService : IGoogleMapsService
             }
 
             var element = response.Rows.First().Elements.First();
-            if (element.Status != DistanceMatrixElementStatus.Ok)
+            if (element.Status != GoogleApi.Entities.Maps.Common.Enums.Status.Ok)
             {
                 return null;
             }
@@ -192,15 +192,15 @@ public class GoogleMapsService : IGoogleMapsService
             var request = new DirectionsRequest
             {
                 Key = _apiKey,
-                Origin = new Location(origin),
-                Destination = new Location(destination),
+                Origin = origin,
+                Destination = destination,
                 TravelMode = GoogleApi.Entities.Maps.Common.Enums.TravelMode.Driving,
                 OptimizeWaypoints = true
             };
 
             if (waypoints?.Any() == true)
             {
-                request.Waypoints = waypoints.Select(w => new WayPoint(new Location(w))).ToArray();
+                request.WayPoints = waypoints.Select(w => new WayPoint(w)).ToArray();
             }
 
             var response = await GoogleMaps.Directions.QueryAsync(request);
@@ -243,7 +243,7 @@ public class GoogleMapsService : IGoogleMapsService
                 TotalDurationInSeconds = totalDuration,
                 TotalDurationInMinutes = totalDuration / 60,
                 Steps = steps,
-                OverviewPolyline = route.OverviewPath.Line
+                OverviewPolyline = route.OverviewPolyLine?.Points ?? string.Empty
             };
         }
         catch (Exception ex)
