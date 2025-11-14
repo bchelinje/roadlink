@@ -120,7 +120,7 @@ public class ReviewsController : ControllerBase
 
         await _context.SaveChangesAsync();
 
-        await _activityLogService.LogAsync(
+        await _activityLogService.LogActivityAsync(
             userId,
             "review_created",
             "Review",
@@ -253,7 +253,7 @@ public class ReviewsController : ControllerBase
             }
         }
 
-        await _activityLogService.LogAsync(
+        await _activityLogService.LogActivityAsync(
             userId,
             "review_updated",
             "Review",
@@ -315,7 +315,7 @@ public class ReviewsController : ControllerBase
             }
         }
 
-        await _activityLogService.LogAsync(
+        await _activityLogService.LogActivityAsync(
             userId,
             "review_deleted",
             "Review",
@@ -352,7 +352,7 @@ public class ReviewsController : ControllerBase
 
         await _context.SaveChangesAsync();
 
-        await _activityLogService.LogAsync(
+        await _activityLogService.LogActivityAsync(
             userId,
             "review_reported",
             "Review",
@@ -403,7 +403,7 @@ public class ReviewsController : ControllerBase
 
         await _context.SaveChangesAsync();
 
-        await _activityLogService.LogAsync(
+        await _activityLogService.LogActivityAsync(
             userId,
             "review_response",
             "Review",

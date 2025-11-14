@@ -110,7 +110,7 @@ public class PaymentsController : ControllerBase
         _context.Payments.Add(payment);
         await _context.SaveChangesAsync();
 
-        await _activityLogService.LogAsync(
+        await _activityLogService.LogActivityAsync(
             userId,
             "payment_created",
             "Payment",
@@ -366,7 +366,7 @@ public class PaymentsController : ControllerBase
 
         await _context.SaveChangesAsync();
 
-        await _activityLogService.LogAsync(
+        await _activityLogService.LogActivityAsync(
             userId,
             "payment_refunded",
             "Payment",
@@ -504,7 +504,7 @@ public class PaymentsController : ControllerBase
 
         await _context.SaveChangesAsync();
 
-        await _activityLogService.LogAsync(
+        await _activityLogService.LogActivityAsync(
             userId,
             "payout_created",
             "Payout",

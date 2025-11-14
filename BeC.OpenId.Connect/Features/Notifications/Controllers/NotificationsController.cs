@@ -196,7 +196,7 @@ public class NotificationsController : ControllerBase
         // TODO: Implement user notification preferences table
         // For now, just acknowledge the request
 
-        await _activityLogService.LogAsync(
+        await _activityLogService.LogActivityAsync(
             userId,
             "notification_settings_updated",
             "User",
@@ -262,7 +262,7 @@ public class NotificationsController : ControllerBase
             _logger.LogInformation($"Push notification queued for user {request.UserId}");
         }
 
-        await _activityLogService.LogAsync(
+        await _activityLogService.LogActivityAsync(
             adminUserId,
             "notification_sent",
             "Notification",
@@ -320,7 +320,7 @@ public class NotificationsController : ControllerBase
         _context.Notifications.AddRange(notifications);
         await _context.SaveChangesAsync();
 
-        await _activityLogService.LogAsync(
+        await _activityLogService.LogActivityAsync(
             adminUserId,
             "notification_broadcast",
             "Notification",
@@ -408,7 +408,7 @@ public class NotificationsController : ControllerBase
         _context.Notifications.RemoveRange(expiredNotifications);
         await _context.SaveChangesAsync();
 
-        await _activityLogService.LogAsync(
+        await _activityLogService.LogActivityAsync(
             adminUserId,
             "notifications_cleanup",
             "System",

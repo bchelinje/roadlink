@@ -96,7 +96,7 @@ public class CustomersController : ControllerBase
         _context.Jobs.Add(job);
         await _context.SaveChangesAsync();
 
-        await _activityLogService.LogAsync(
+        await _activityLogService.LogActivityAsync(
             userId,
             "job_created",
             "Job",
@@ -217,7 +217,7 @@ public class CustomersController : ControllerBase
 
         await _context.SaveChangesAsync();
 
-        await _activityLogService.LogAsync(
+        await _activityLogService.LogActivityAsync(
             userId,
             "job_cancelled",
             "Job",
@@ -297,7 +297,7 @@ public class CustomersController : ControllerBase
 
         await _context.SaveChangesAsync();
 
-        await _activityLogService.LogAsync(
+        await _activityLogService.LogActivityAsync(
             userId,
             "review_created",
             "Review",
