@@ -176,15 +176,15 @@ public class VehiclesController : ControllerBase
             CargoLength = request.CargoLength,
             CargoWidth = request.CargoWidth,
             CargoHeight = request.CargoHeight,
-            Features = request.Features != null ? JsonSerializer.Serialize(request.Features) : null,
+            Features = request.Features,
             HasInsurance = request.HasInsurance,
             InsuranceExpiry = request.InsuranceExpiry,
-            Status = "active",
+            Status = request.Status ?? "active",
             LastInspectionDate = request.LastInspectionDate,
             NextInspectionDue = request.NextInspectionDue,
             Mileage = request.Mileage,
-            Photos = request.Photos != null ? JsonSerializer.Serialize(request.Photos) : null,
-            IsActive = true
+            Photos = request.Photos,
+            IsActive = request.IsActive
         };
 
         _context.Vehicles.Add(vehicle);
@@ -261,20 +261,13 @@ public class VehiclesController : ControllerBase
         vehicle.CargoHeight = request.CargoHeight ?? vehicle.CargoHeight;
         vehicle.HasInsurance = request.HasInsurance ?? vehicle.HasInsurance;
         vehicle.InsuranceExpiry = request.InsuranceExpiry ?? vehicle.InsuranceExpiry;
+        vehicle.Status = request.Status ?? vehicle.Status;
         vehicle.LastInspectionDate = request.LastInspectionDate ?? vehicle.LastInspectionDate;
         vehicle.NextInspectionDue = request.NextInspectionDue ?? vehicle.NextInspectionDue;
         vehicle.Mileage = request.Mileage ?? vehicle.Mileage;
-
-        if (request.Features != null)
-        {
-            vehicle.Features = JsonSerializer.Serialize(request.Features);
-        }
-
-        if (request.Photos != null)
-        {
-            vehicle.Photos = JsonSerializer.Serialize(request.Photos);
-        }
-
+        vehicle.Features = request.Features ?? vehicle.Features;
+        vehicle.Photos = request.Photos ?? vehicle.Photos;
+        vehicle.IsActive = request.IsActive ?? vehicle.IsActive;
         vehicle.UpdatedAt = DateTime.UtcNow;
 
         await _context.SaveChangesAsync();
@@ -468,52 +461,7 @@ public class VehiclesController : ControllerBase
 
 #region DTOs
 
-public class CreateVehicleDto
-{
-    public Guid? DriverId { get; set; } // Only for admin use
-    public required string Type { get; set; }
-    public required string Make { get; set; }
-    public required string Model { get; set; }
-    public required int Year { get; set; }
-    public required string RegistrationNumber { get; set; }
-    public string? VinNumber { get; set; }
-    public required int CargoCapacity { get; set; }
-    public required decimal MaxPayloadWeight { get; set; }
-    public required decimal MaxGrossWeight { get; set; }
-    public decimal? CargoLength { get; set; }
-    public decimal? CargoWidth { get; set; }
-    public decimal? CargoHeight { get; set; }
-    public List<string>? Features { get; set; }
-    public required bool HasInsurance { get; set; }
-    public DateTime? InsuranceExpiry { get; set; }
-    public DateTime? LastInspectionDate { get; set; }
-    public DateTime? NextInspectionDue { get; set; }
-    public int? Mileage { get; set; }
-    public List<string>? Photos { get; set; }
-}
-
-public class UpdateVehicleDto
-{
-    public string? Type { get; set; }
-    public string? Make { get; set; }
-    public string? Model { get; set; }
-    public int? Year { get; set; }
-    public string? RegistrationNumber { get; set; }
-    public string? VinNumber { get; set; }
-    public int? CargoCapacity { get; set; }
-    public decimal? MaxPayloadWeight { get; set; }
-    public decimal? MaxGrossWeight { get; set; }
-    public decimal? CargoLength { get; set; }
-    public decimal? CargoWidth { get; set; }
-    public decimal? CargoHeight { get; set; }
-    public List<string>? Features { get; set; }
-    public bool? HasInsurance { get; set; }
-    public DateTime? InsuranceExpiry { get; set; }
-    public DateTime? LastInspectionDate { get; set; }
-    public DateTime? NextInspectionDue { get; set; }
-    public int? Mileage { get; set; }
-    public List<string>? Photos { get; set; }
-}
+// Note: CreateVehicleDto and UpdateVehicleDto are imported from BeC.OpenId.Connect.Features.Drivers.Dtos
 
 public class UpdateVehicleStatusDto
 {

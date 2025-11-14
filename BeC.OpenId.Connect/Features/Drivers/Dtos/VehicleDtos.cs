@@ -40,6 +40,9 @@ public class VehicleDto
 // DTO for creating a new vehicle
 public class CreateVehicleDto
 {
+    // Only for admin use - allows admin to create vehicle for specific driver
+    public Guid? DriverId { get; set; }
+
     [Required]
     [MaxLength(50)]
     public required string Type { get; set; }
