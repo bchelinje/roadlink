@@ -96,8 +96,8 @@ public class GoogleMapsService : IGoogleMapsService
             var request = new DistanceMatrixRequest
             {
                 Key = _apiKey,
-                Origins = new[] { new LocationEx(origin) },
-                Destinations = new[] { new LocationEx(destination) },
+                Origins = new[] { new LocationEx(new Place(origin)) },
+                Destinations = new[] { new LocationEx(new Place(destination)) },
                 TravelMode = GoogleApi.Entities.Maps.Common.Enums.TravelMode.Driving
             };
 
@@ -145,8 +145,8 @@ public class GoogleMapsService : IGoogleMapsService
             var request = new DistanceMatrixRequest
             {
                 Key = _apiKey,
-                Origins = new[] { new LocationEx($"{originLat},{originLng}") },
-                Destinations = new[] { new LocationEx($"{destLat},{destLng}") },
+                Origins = new[] { new LocationEx(new Place($"{originLat},{originLng}")) },
+                Destinations = new[] { new LocationEx(new Place($"{destLat},{destLng}")) },
                 TravelMode = GoogleApi.Entities.Maps.Common.Enums.TravelMode.Driving
             };
 
@@ -192,15 +192,15 @@ public class GoogleMapsService : IGoogleMapsService
             var request = new DirectionsRequest
             {
                 Key = _apiKey,
-                Origin = new LocationEx(origin),
-                Destination = new LocationEx(destination),
+                Origin = new LocationEx(new Place(origin)),
+                Destination = new LocationEx(new Place(destination)),
                 TravelMode = GoogleApi.Entities.Maps.Common.Enums.TravelMode.Driving,
                 OptimizeWaypoints = true
             };
 
             if (waypoints?.Any() == true)
             {
-                request.WayPoints = waypoints.Select(w => new WayPoint(new LocationEx(w))).ToArray();
+                request.WayPoints = waypoints.Select(w => new WayPoint(new LocationEx(new Place(w)))).ToArray();
             }
 
             var response = await GoogleMaps.Directions.QueryAsync(request);

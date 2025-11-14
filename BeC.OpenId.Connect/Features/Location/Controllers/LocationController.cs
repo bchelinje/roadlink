@@ -277,7 +277,7 @@ public class LocationController : ControllerBase
             }
 
             // Get destination coordinates (pickup address)
-            var destinationGeocode = await _mapsService.GeocodeAddressAsync(job.PickupAddress);
+            var destinationGeocode = await _mapsService.GeocodeAddressAsync(job.PickupLocation);
 
             if (destinationGeocode == null)
             {
@@ -307,7 +307,7 @@ public class LocationController : ControllerBase
                 CurrentLongitude = driverLocation.Longitude,
                 DestinationLatitude = destinationGeocode.Latitude,
                 DestinationLongitude = destinationGeocode.Longitude,
-                DestinationAddress = job.PickupAddress,
+                DestinationAddress = job.PickupLocation,
                 DistanceInMiles = route.DistanceInMiles,
                 DurationInMinutes = route.DurationInMinutes,
                 EstimatedArrivalTime = eta,
