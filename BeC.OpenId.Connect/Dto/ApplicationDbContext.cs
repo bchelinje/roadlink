@@ -26,6 +26,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     public DbSet<PricingRule> PricingRules { get; set; }
     public DbSet<PricingHistory> PricingHistory { get; set; }
     public DbSet<DriverLocation> DriverLocations { get; set; }
+    public DbSet<Earning> Earnings { get; set; }
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -234,6 +235,45 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             entity.HasIndex(e => e.CurrentJobId);
             entity.HasIndex(e => e.Timestamp);
             entity.HasIndex(e => new { e.DriverId, e.Timestamp }); // Composite index for location history queries
+        });
+
+        // Earning configuration
+        builder.Entity<Earning>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.DriverId);
+            entity.HasIndex(e => e.JobId);
+            entity.HasIndex(e => e.PaymentStatus);
+            entity.HasIndex(e => e.JobCompletedDate);
+            entity.HasIndex(e => e.CreatedAt);
+
+            entity.Property(e => e.BaseAmount)
+                .HasPrecision(10, 2);
+
+            entity.Property(e => e.BonusAmount)
+                .HasPrecision(10, 2);
+
+            entity.Property(e => e.TipAmount)
+                .HasPrecision(10, 2);
+
+            entity.Property(e => e.DeductionAmount)
+                .HasPrecision(10, 2);
+
+            entity.Property(e => e.NetAmount)
+                .HasPrecision(10, 2);
+
+            entity.Property(e => e.JobDistance)
+                .HasPrecision(10, 2);
+
+            entity.HasOne(e => e.Driver)
+                .WithMany()
+                .HasForeignKey(e => e.DriverId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(e => e.Job)
+                .WithMany()
+                .HasForeignKey(e => e.JobId)
+                .OnDelete(DeleteBehavior.Restrict);
         });
     }
 }
