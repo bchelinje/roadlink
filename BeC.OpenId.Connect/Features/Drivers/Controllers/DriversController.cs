@@ -93,6 +93,139 @@ public class DriversController : ControllerBase
     }
 
     /// <summary>
+    /// Get all drivers with pagination and filtering (Admin only)
+    /// </summary>
+    [HttpGet]
+    [Authorize(AuthenticationSchemes = OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme, Roles = "Admin,SuperAdmin")]
+    [ProducesResponseType(typeof(DriverDtoPaginatedResult), StatusCodes.Status200OK)]
+    public async Task<ActionResult<DriverDtoPaginatedResult>> GetDrivers(
+        [FromQuery] string? status = null,
+        [FromQuery] string? search = null,
+        [FromQuery] string? vehicleType = null,
+        [FromQuery] string? location = null,
+        [FromQuery] double? minRating = null,
+        [FromQuery] bool? availability = null,
+        [FromQuery] int pageNumber = 1,
+        [FromQuery] int pageSize = 10)
+    {
+        var query = _context.Drivers.AsQueryable();
+
+        // Apply filters
+        if (!string.IsNullOrEmpty(status))
+        {
+            query = query.Where(d => d.Status == status);
+        }
+
+        if (!string.IsNullOrEmpty(search))
+        {
+            query = query.Where(d =>
+                (d.FirstName != null && d.FirstName.Contains(search)) ||
+                (d.LastName != null && d.LastName.Contains(search)) ||
+                (d.Email != null && d.Email.Contains(search)) ||
+                (d.Phone != null && d.Phone.Contains(search)));
+        }
+
+        if (!string.IsNullOrEmpty(vehicleType))
+        {
+            query = query.Where(d => d.VehicleType == vehicleType);
+        }
+
+        if (!string.IsNullOrEmpty(location))
+        {
+            query = query.Where(d => d.Address != null && d.Address.Contains(location));
+        }
+
+        if (minRating.HasValue)
+        {
+            query = query.Where(d => d.Rating >= (decimal)minRating.Value);
+        }
+
+        // Total count before pagination
+        var total = await query.CountAsync();
+
+        // Apply pagination
+        var drivers = await query
+            .OrderByDescending(d => d.CreatedAt)
+            .Skip((pageNumber - 1) * pageSize)
+            .Take(pageSize)
+            .Include(d => d.Vehicles)
+            .ToListAsync();
+
+        var driverDtos = drivers.Select(MapToDto).ToList();
+
+        return Ok(new DriverDtoPaginatedResult
+        {
+            Items = driverDtos,
+            Total = total,
+            PageNumber = pageNumber,
+            PageSize = pageSize
+        });
+    }
+
+    /// <summary>
+    /// Create a new driver profile (Admin only)
+    /// </summary>
+    [HttpPost]
+    [Authorize(AuthenticationSchemes = OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme, Roles = "Admin,SuperAdmin")]
+    [ProducesResponseType(typeof(DriverDto), StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<DriverDto>> CreateDriver([FromBody] CreateDriverDto dto)
+    {
+        // Validate that user exists
+        var user = await _userManager.FindByIdAsync(dto.UserId);
+        if (user == null)
+            return BadRequest("User not found");
+
+        // Check if driver profile already exists for this user
+        var existingDriver = await _context.Drivers.FirstOrDefaultAsync(d => d.UserId == dto.UserId);
+        if (existingDriver != null)
+            return BadRequest("Driver profile already exists for this user");
+
+        // Check if email is already used by another driver
+        if (await _context.Drivers.AnyAsync(d => d.Email == dto.Email))
+            return BadRequest("Email is already in use by another driver");
+
+        var driver = new Driver
+        {
+            UserId = dto.UserId,
+            FirstName = dto.FirstName,
+            LastName = dto.LastName,
+            Email = dto.Email,
+            Phone = dto.Phone,
+            LicenseNumber = dto.LicenseNumber,
+            LicenseExpiry = dto.LicenseExpiry,
+            VehicleType = dto.VehicleType,
+            VehicleRegistration = dto.VehicleRegistration,
+            Status = dto.Status ?? "inactive",
+            Address = dto.Address,
+            EmergencyContact = dto.EmergencyContact,
+            JoinedDate = DateTime.UtcNow,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+
+        _context.Drivers.Add(driver);
+        await _context.SaveChangesAsync();
+
+        await _activityLogService.LogActivityAsync(
+            action: "driver.created",
+            entityType: "Driver",
+            entityId: driver.Id.ToString(),
+            entityName: $"{driver.FirstName} {driver.LastName}",
+            description: "New driver profile created",
+            severity: "INFO",
+            metadata: new Dictionary<string, object>
+            {
+                { "UserId", driver.UserId },
+                { "Email", driver.Email },
+                { "Status", driver.Status }
+            }
+        );
+
+        return CreatedAtAction(nameof(GetDriver), new { id = driver.Id }, MapToDto(driver));
+    }
+
+    /// <summary>
     /// Update driver profile
     /// </summary>
     [HttpPut("{id}")]
@@ -407,8 +540,9 @@ public class DriversController : ControllerBase
         if (driver == null)
             return NotFound("Driver profile not found");
 
-        // Check if driver is available
-        if (driver.Status != "active" && driver.Status != "available")
+        // Check if driver is available (case-insensitive)
+        var driverStatus = driver.Status?.ToLower() ?? "";
+        if (driverStatus != "active" && driverStatus != "available")
             return BadRequest($"Driver must be active/available to claim jobs. Current status: {driver.Status}");
 
         var job = await _context.Jobs.FirstOrDefaultAsync(j => j.Id == jobId);
@@ -841,6 +975,206 @@ public async Task<ActionResult<JobDto>> UploadJobPhoto(
 
     #endregion
 
+    #region Driver Earnings
+
+    /// <summary>
+    /// Get current driver's earnings summary
+    /// </summary>
+    [HttpGet("me/earnings/summary")]
+    [Authorize(AuthenticationSchemes = OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme, Roles = "Driver")]
+    [ProducesResponseType(typeof(EarningSummaryDto), StatusCodes.Status200OK)]
+    public async Task<ActionResult<EarningSummaryDto>> GetEarningsSummary()
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        var driver = await _context.Drivers.FirstOrDefaultAsync(d => d.UserId == userId);
+
+        if (driver == null)
+            return NotFound("Driver profile not found");
+
+        var earnings = await _context.Earnings
+            .Where(e => e.DriverId == driver.Id)
+            .ToListAsync();
+
+        var summary = new EarningSummaryDto
+        {
+            TotalEarnings = earnings.Sum(e => e.NetAmount),
+            PendingEarnings = earnings.Where(e => e.PaymentStatus == "pending").Sum(e => e.NetAmount),
+            PaidEarnings = earnings.Where(e => e.PaymentStatus == "paid").Sum(e => e.NetAmount),
+            TotalJobs = earnings.Count,
+            PendingPayments = earnings.Count(e => e.PaymentStatus == "pending"),
+            CompletedPayments = earnings.Count(e => e.PaymentStatus == "paid"),
+            AverageEarningPerJob = earnings.Any() ? earnings.Average(e => e.NetAmount) : 0,
+            TotalBonuses = earnings.Sum(e => e.BonusAmount ?? 0),
+            TotalTips = earnings.Sum(e => e.TipAmount ?? 0),
+            TotalDeductions = earnings.Sum(e => e.DeductionAmount ?? 0),
+            LastPaymentDate = earnings
+                .Where(e => e.PaymentDate != null)
+                .OrderByDescending(e => e.PaymentDate)
+                .FirstOrDefault()?.PaymentDate
+        };
+
+        return Ok(summary);
+    }
+
+    /// <summary>
+    /// Get current driver's earnings list with pagination and filtering
+    /// </summary>
+    [HttpGet("me/earnings")]
+    [Authorize(AuthenticationSchemes = OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme, Roles = "Driver")]
+    [ProducesResponseType(typeof(List<EarningDto>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<List<EarningDto>>> GetMyEarnings(
+        [FromQuery] string? paymentStatus = null,
+        [FromQuery] DateTime? startDate = null,
+        [FromQuery] DateTime? endDate = null,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 20)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        var driver = await _context.Drivers.FirstOrDefaultAsync(d => d.UserId == userId);
+
+        if (driver == null)
+            return NotFound("Driver profile not found");
+
+        var query = _context.Earnings
+            .Where(e => e.DriverId == driver.Id);
+
+        if (!string.IsNullOrEmpty(paymentStatus))
+            query = query.Where(e => e.PaymentStatus == paymentStatus);
+
+        if (startDate.HasValue)
+            query = query.Where(e => e.JobCompletedDate >= startDate.Value);
+
+        if (endDate.HasValue)
+            query = query.Where(e => e.JobCompletedDate <= endDate.Value);
+
+        var earnings = await query
+            .OrderByDescending(e => e.JobCompletedDate)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync();
+
+        var earningDtos = earnings.Select(e => MapEarningToDto(e)).ToList();
+
+        return Ok(earningDtos);
+    }
+
+    /// <summary>
+    /// Get earnings for a specific period with daily breakdown
+    /// </summary>
+    [HttpGet("me/earnings/period")]
+    [Authorize(AuthenticationSchemes = OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme, Roles = "Driver")]
+    [ProducesResponseType(typeof(PeriodEarningsSummaryDto), StatusCodes.Status200OK)]
+    public async Task<ActionResult<PeriodEarningsSummaryDto>> GetPeriodEarnings(
+        [FromQuery] string period = "weekly", // daily, weekly, monthly
+        [FromQuery] DateTime? startDate = null,
+        [FromQuery] DateTime? endDate = null)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        var driver = await _context.Drivers.FirstOrDefaultAsync(d => d.UserId == userId);
+
+        if (driver == null)
+            return NotFound("Driver profile not found");
+
+        // Set default date range based on period
+        var now = DateTime.UtcNow;
+        startDate ??= period switch
+        {
+            "daily" => now.Date,
+            "weekly" => now.AddDays(-7),
+            "monthly" => now.AddDays(-30),
+            _ => now.AddDays(-7)
+        };
+        endDate ??= now;
+
+        var earnings = await _context.Earnings
+            .Where(e => e.DriverId == driver.Id &&
+                       e.JobCompletedDate >= startDate.Value &&
+                       e.JobCompletedDate <= endDate.Value)
+            .ToListAsync();
+
+        var dailyBreakdown = earnings
+            .GroupBy(e => e.JobCompletedDate.Date)
+            .Select(g => new DailyEarningDto
+            {
+                Date = g.Key,
+                TotalEarnings = g.Sum(e => e.NetAmount),
+                JobsCompleted = g.Count()
+            })
+            .OrderBy(d => d.Date)
+            .ToList();
+
+        var summary = new PeriodEarningsSummaryDto
+        {
+            Period = period,
+            StartDate = startDate.Value,
+            EndDate = endDate.Value,
+            TotalEarnings = earnings.Sum(e => e.NetAmount),
+            JobsCompleted = earnings.Count,
+            AverageEarningPerJob = earnings.Any() ? earnings.Average(e => e.NetAmount) : 0,
+            DailyBreakdown = dailyBreakdown
+        };
+
+        return Ok(summary);
+    }
+
+    /// <summary>
+    /// Get payment status summary
+    /// </summary>
+    [HttpGet("me/earnings/payment-status")]
+    [Authorize(AuthenticationSchemes = OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme, Roles = "Driver")]
+    [ProducesResponseType(typeof(PaymentStatusSummaryDto), StatusCodes.Status200OK)]
+    public async Task<ActionResult<PaymentStatusSummaryDto>> GetPaymentStatusSummary()
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        var driver = await _context.Drivers.FirstOrDefaultAsync(d => d.UserId == userId);
+
+        if (driver == null)
+            return NotFound("Driver profile not found");
+
+        var earnings = await _context.Earnings
+            .Where(e => e.DriverId == driver.Id)
+            .ToListAsync();
+
+        var summary = new PaymentStatusSummaryDto
+        {
+            PendingCount = earnings.Count(e => e.PaymentStatus == "pending"),
+            PendingAmount = earnings.Where(e => e.PaymentStatus == "pending").Sum(e => e.NetAmount),
+            ProcessingCount = earnings.Count(e => e.PaymentStatus == "processing"),
+            ProcessingAmount = earnings.Where(e => e.PaymentStatus == "processing").Sum(e => e.NetAmount),
+            PaidCount = earnings.Count(e => e.PaymentStatus == "paid"),
+            PaidAmount = earnings.Where(e => e.PaymentStatus == "paid").Sum(e => e.NetAmount),
+            FailedCount = earnings.Count(e => e.PaymentStatus == "failed"),
+            FailedAmount = earnings.Where(e => e.PaymentStatus == "failed").Sum(e => e.NetAmount)
+        };
+
+        return Ok(summary);
+    }
+
+    /// <summary>
+    /// Get specific earning details
+    /// </summary>
+    [HttpGet("me/earnings/{id}")]
+    [Authorize(AuthenticationSchemes = OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme, Roles = "Driver")]
+    [ProducesResponseType(typeof(EarningDto), StatusCodes.Status200OK)]
+    public async Task<ActionResult<EarningDto>> GetEarningById(Guid id)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        var driver = await _context.Drivers.FirstOrDefaultAsync(d => d.UserId == userId);
+
+        if (driver == null)
+            return NotFound("Driver profile not found");
+
+        var earning = await _context.Earnings
+            .FirstOrDefaultAsync(e => e.Id == id && e.DriverId == driver.Id);
+
+        if (earning == null)
+            return NotFound();
+
+        return Ok(MapEarningToDto(earning));
+    }
+
+    #endregion
+
     #region Helper Methods
 
     private static DriverDto MapToDto(Driver driver)
@@ -922,6 +1256,246 @@ public async Task<ActionResult<JobDto>> UploadJobPhoto(
         job.StatusHistory = System.Text.Json.JsonSerializer.Serialize(history);
     }
 
+    private static EarningDto MapEarningToDto(Earning earning)
+    {
+        return new EarningDto
+        {
+            Id = earning.Id,
+            DriverId = earning.DriverId,
+            JobId = earning.JobId,
+            JobNumber = earning.JobNumber,
+            BaseAmount = earning.BaseAmount,
+            BonusAmount = earning.BonusAmount,
+            TipAmount = earning.TipAmount,
+            DeductionAmount = earning.DeductionAmount,
+            NetAmount = earning.NetAmount,
+            PaymentStatus = earning.PaymentStatus,
+            PaymentMethod = earning.PaymentMethod,
+            PaymentReference = earning.PaymentReference,
+            PaymentDate = earning.PaymentDate,
+            PaymentProcessedDate = earning.PaymentProcessedDate,
+            JobCompletedDate = earning.JobCompletedDate,
+            JobDistance = earning.JobDistance,
+            JobDuration = earning.JobDuration,
+            Notes = earning.Notes,
+            PaymentDetails = earning.PaymentDetails,
+            CreatedAt = earning.CreatedAt,
+            UpdatedAt = earning.UpdatedAt
+        };
+    }
+
+    #endregion
+
+    #region Vehicle Management
+
+    // GET: api/Drivers/me/vehicles
+    [HttpGet("me/vehicles")]
+    [Authorize(AuthenticationSchemes = OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme, Roles = "Driver")]
+    [ProducesResponseType(typeof(List<VehicleDto>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<List<VehicleDto>>> GetMyVehicles()
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        var driver = await _context.Drivers.FirstOrDefaultAsync(d => d.UserId == userId);
+
+        if (driver == null)
+            return NotFound("Driver profile not found");
+
+        var vehicles = await _context.Vehicles
+            .Where(v => v.DriverId == driver.Id)
+            .OrderByDescending(v => v.CreatedAt)
+            .ToListAsync();
+
+        return Ok(vehicles.Select(MapVehicleToDto).ToList());
+    }
+
+    // GET: api/Drivers/me/vehicles/{id}
+    [HttpGet("me/vehicles/{id}")]
+    [Authorize(AuthenticationSchemes = OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme, Roles = "Driver")]
+    [ProducesResponseType(typeof(VehicleDto), StatusCodes.Status200OK)]
+    public async Task<ActionResult<VehicleDto>> GetMyVehicle(Guid id)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        var driver = await _context.Drivers.FirstOrDefaultAsync(d => d.UserId == userId);
+
+        if (driver == null)
+            return NotFound("Driver profile not found");
+
+        var vehicle = await _context.Vehicles
+            .FirstOrDefaultAsync(v => v.Id == id && v.DriverId == driver.Id);
+
+        if (vehicle == null)
+            return NotFound("Vehicle not found");
+
+        return Ok(MapVehicleToDto(vehicle));
+    }
+
+    // POST: api/Drivers/me/vehicles
+    [HttpPost("me/vehicles")]
+    [Authorize(AuthenticationSchemes = OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme, Roles = "Driver")]
+    [ProducesResponseType(typeof(VehicleDto), StatusCodes.Status201Created)]
+    public async Task<ActionResult<VehicleDto>> CreateVehicle([FromBody] CreateVehicleDto dto)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        var driver = await _context.Drivers.FirstOrDefaultAsync(d => d.UserId == userId);
+
+        if (driver == null)
+            return NotFound("Driver profile not found");
+
+        // Check if registration number already exists
+        var existingVehicle = await _context.Vehicles
+            .AnyAsync(v => v.RegistrationNumber == dto.RegistrationNumber);
+
+        if (existingVehicle)
+            return BadRequest("A vehicle with this registration number already exists");
+
+        var vehicle = new Vehicle
+        {
+            DriverId = driver.Id,
+            Type = dto.Type,
+            Make = dto.Make,
+            Model = dto.Model,
+            Year = dto.Year,
+            RegistrationNumber = dto.RegistrationNumber,
+            VinNumber = dto.VinNumber,
+            CargoCapacity = dto.CargoCapacity ?? 0,
+            MaxPayloadWeight = dto.MaxPayloadWeight ?? 0,
+            MaxGrossWeight = dto.MaxGrossWeight ?? 0,
+            CargoLength = dto.CargoLength,
+            CargoWidth = dto.CargoWidth,
+            CargoHeight = dto.CargoHeight,
+            Features = dto.Features,
+            HasInsurance = dto.HasInsurance,
+            InsuranceExpiry = dto.InsuranceExpiry,
+            Status = dto.Status,
+            LastInspectionDate = dto.LastInspectionDate,
+            NextInspectionDue = dto.NextInspectionDue,
+            Mileage = dto.Mileage,
+            Photos = dto.Photos,
+            IsActive = dto.IsActive,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+
+        _context.Vehicles.Add(vehicle);
+        await _context.SaveChangesAsync();
+
+        return CreatedAtAction(nameof(GetMyVehicle), new { id = vehicle.Id }, MapVehicleToDto(vehicle));
+    }
+
+    // PUT: api/Drivers/me/vehicles/{id}
+    [HttpPut("me/vehicles/{id}")]
+    [Authorize(AuthenticationSchemes = OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme, Roles = "Driver")]
+    [ProducesResponseType(typeof(VehicleDto), StatusCodes.Status200OK)]
+    public async Task<ActionResult<VehicleDto>> UpdateVehicle(Guid id, [FromBody] UpdateVehicleDto dto)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        var driver = await _context.Drivers.FirstOrDefaultAsync(d => d.UserId == userId);
+
+        if (driver == null)
+            return NotFound("Driver profile not found");
+
+        var vehicle = await _context.Vehicles
+            .FirstOrDefaultAsync(v => v.Id == id && v.DriverId == driver.Id);
+
+        if (vehicle == null)
+            return NotFound("Vehicle not found");
+
+        // Check if registration number is being changed and if it already exists
+        if (dto.RegistrationNumber != null && dto.RegistrationNumber != vehicle.RegistrationNumber)
+        {
+            var existingVehicle = await _context.Vehicles
+                .AnyAsync(v => v.RegistrationNumber == dto.RegistrationNumber && v.Id != id);
+
+            if (existingVehicle)
+                return BadRequest("A vehicle with this registration number already exists");
+        }
+
+        // Update fields that are provided
+        if (dto.Type != null) vehicle.Type = dto.Type;
+        if (dto.Make != null) vehicle.Make = dto.Make;
+        if (dto.Model != null) vehicle.Model = dto.Model;
+        if (dto.Year.HasValue) vehicle.Year = dto.Year.Value;
+        if (dto.RegistrationNumber != null) vehicle.RegistrationNumber = dto.RegistrationNumber;
+        if (dto.VinNumber != null) vehicle.VinNumber = dto.VinNumber;
+        if (dto.CargoCapacity.HasValue) vehicle.CargoCapacity = dto.CargoCapacity.Value;
+        if (dto.MaxPayloadWeight.HasValue) vehicle.MaxPayloadWeight = dto.MaxPayloadWeight.Value;
+        if (dto.MaxGrossWeight.HasValue) vehicle.MaxGrossWeight = dto.MaxGrossWeight.Value;
+        if (dto.CargoLength.HasValue) vehicle.CargoLength = dto.CargoLength;
+        if (dto.CargoWidth.HasValue) vehicle.CargoWidth = dto.CargoWidth;
+        if (dto.CargoHeight.HasValue) vehicle.CargoHeight = dto.CargoHeight;
+        if (dto.Features != null) vehicle.Features = dto.Features;
+        if (dto.HasInsurance.HasValue) vehicle.HasInsurance = dto.HasInsurance.Value;
+        if (dto.InsuranceExpiry.HasValue) vehicle.InsuranceExpiry = dto.InsuranceExpiry;
+        if (dto.Status != null) vehicle.Status = dto.Status;
+        if (dto.LastInspectionDate.HasValue) vehicle.LastInspectionDate = dto.LastInspectionDate;
+        if (dto.NextInspectionDue.HasValue) vehicle.NextInspectionDue = dto.NextInspectionDue;
+        if (dto.Mileage.HasValue) vehicle.Mileage = dto.Mileage;
+        if (dto.Photos != null) vehicle.Photos = dto.Photos;
+        if (dto.IsActive.HasValue) vehicle.IsActive = dto.IsActive.Value;
+
+        vehicle.UpdatedAt = DateTime.UtcNow;
+
+        await _context.SaveChangesAsync();
+
+        return Ok(MapVehicleToDto(vehicle));
+    }
+
+    // DELETE: api/Drivers/me/vehicles/{id}
+    [HttpDelete("me/vehicles/{id}")]
+    [Authorize(AuthenticationSchemes = OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme, Roles = "Driver")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    public async Task<ActionResult> DeleteVehicle(Guid id)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        var driver = await _context.Drivers.FirstOrDefaultAsync(d => d.UserId == userId);
+
+        if (driver == null)
+            return NotFound("Driver profile not found");
+
+        var vehicle = await _context.Vehicles
+            .FirstOrDefaultAsync(v => v.Id == id && v.DriverId == driver.Id);
+
+        if (vehicle == null)
+            return NotFound("Vehicle not found");
+
+        _context.Vehicles.Remove(vehicle);
+        await _context.SaveChangesAsync();
+
+        return NoContent();
+    }
+
+    private static VehicleDto MapVehicleToDto(Vehicle vehicle)
+    {
+        return new VehicleDto
+        {
+            Id = vehicle.Id,
+            DriverId = vehicle.DriverId,
+            Type = vehicle.Type,
+            Make = vehicle.Make,
+            Model = vehicle.Model,
+            Year = vehicle.Year,
+            RegistrationNumber = vehicle.RegistrationNumber,
+            VinNumber = vehicle.VinNumber,
+            CargoCapacity = vehicle.CargoCapacity,
+            MaxPayloadWeight = vehicle.MaxPayloadWeight,
+            MaxGrossWeight = vehicle.MaxGrossWeight,
+            CargoLength = vehicle.CargoLength,
+            CargoWidth = vehicle.CargoWidth,
+            CargoHeight = vehicle.CargoHeight,
+            Features = vehicle.Features,
+            HasInsurance = vehicle.HasInsurance,
+            InsuranceExpiry = vehicle.InsuranceExpiry,
+            Status = vehicle.Status,
+            LastInspectionDate = vehicle.LastInspectionDate,
+            NextInspectionDue = vehicle.NextInspectionDue,
+            Mileage = vehicle.Mileage,
+            Photos = vehicle.Photos,
+            IsActive = vehicle.IsActive,
+            CreatedAt = vehicle.CreatedAt,
+            UpdatedAt = vehicle.UpdatedAt
+        };
+    }
+
     #endregion
 }
 
@@ -979,6 +1553,30 @@ public class DriverDto
     public DateTime JoinedDate { get; set; }
     public DateTime? LastActiveDate { get; set; }
     public string? ProfileImage { get; set; }
+    public string? Address { get; set; }
+    public string? EmergencyContact { get; set; }
+}
+
+public class DriverDtoPaginatedResult
+{
+    public required List<DriverDto> Items { get; set; }
+    public int Total { get; set; }
+    public int PageNumber { get; set; }
+    public int PageSize { get; set; }
+}
+
+public class CreateDriverDto
+{
+    public required string UserId { get; set; }
+    public required string FirstName { get; set; }
+    public required string LastName { get; set; }
+    public required string Email { get; set; }
+    public required string Phone { get; set; }
+    public required string LicenseNumber { get; set; }
+    public DateTime LicenseExpiry { get; set; }
+    public string? VehicleType { get; set; }
+    public string? VehicleRegistration { get; set; }
+    public string? Status { get; set; }
     public string? Address { get; set; }
     public string? EmergencyContact { get; set; }
 }

@@ -1,5 +1,6 @@
 ﻿using BeC.OpenId.Connect.Features.ActivityLogs;
 using BeC.OpenId.Connect.Features.Drivers.Dtos;
+using BeC.OpenId.Connect.Features.Reviews.Models;
 using BeC.OpenId.Connect.Features.Users.Dtos;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
@@ -14,6 +15,8 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     public DbSet<Job> Jobs { get; set; }
     public DbSet<DriverDocument> DriverDocuments { get; set; }
     public DbSet<Vehicle> Vehicles { get; set; }
+    public DbSet<Earning> Earnings { get; set; }
+    public DbSet<Review> Reviews { get; set; }
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);
@@ -90,6 +93,64 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
 
             entity.Property(e => e.CargoHeight)
                 .HasPrecision(10, 2);
+        });
+
+        // Earning configuration
+        builder.Entity<Earning>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.DriverId);
+            entity.HasIndex(e => e.JobId);
+            entity.HasIndex(e => e.PaymentStatus);
+            entity.HasIndex(e => e.JobCompletedDate);
+
+            entity.Property(e => e.BaseAmount)
+                .HasPrecision(10, 2);
+
+            entity.Property(e => e.BonusAmount)
+                .HasPrecision(10, 2);
+
+            entity.Property(e => e.TipAmount)
+                .HasPrecision(10, 2);
+
+            entity.Property(e => e.DeductionAmount)
+                .HasPrecision(10, 2);
+
+            entity.Property(e => e.NetAmount)
+                .HasPrecision(10, 2);
+
+            entity.Property(e => e.JobDistance)
+                .HasPrecision(10, 2);
+
+            entity.HasOne(e => e.Driver)
+                .WithMany()
+                .HasForeignKey(e => e.DriverId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(e => e.Job)
+                .WithMany()
+                .HasForeignKey(e => e.JobId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // Review configuration
+        builder.Entity<Review>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.DriverId);
+            entity.HasIndex(e => e.JobId).IsUnique(); // One review per job
+            entity.HasIndex(e => e.Status);
+            entity.HasIndex(e => e.CreatedAt);
+
+            entity.HasOne(e => e.Driver)
+                .WithMany()
+                .HasForeignKey(e => e.DriverId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(e => e.Job)
+                .WithMany()
+                .HasForeignKey(e => e.JobId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
     }
 }

@@ -109,6 +109,16 @@
             Get driver by ID (Admin only)
             </summary>
         </member>
+        <member name="M:BeC.OpenId.Connect.Features.Drivers.Controllers.DriversController.GetDrivers(System.String,System.String,System.String,System.String,System.Nullable{System.Double},System.Nullable{System.Boolean},System.Int32,System.Int32)">
+            <summary>
+            Get all drivers with pagination and filtering (Admin only)
+            </summary>
+        </member>
+        <member name="M:BeC.OpenId.Connect.Features.Drivers.Controllers.DriversController.CreateDriver(BeC.OpenId.Connect.Features.Drivers.Controllers.CreateDriverDto)">
+            <summary>
+            Create a new driver profile (Admin only)
+            </summary>
+        </member>
         <member name="M:BeC.OpenId.Connect.Features.Drivers.Controllers.DriversController.UpdateDriver(System.Guid,BeC.OpenId.Connect.Features.Drivers.Controllers.UpdateDriverDto)">
             <summary>
             Update driver profile
@@ -179,19 +189,47 @@
             Get driver statistics
             </summary>
         </member>
+        <member name="M:BeC.OpenId.Connect.Features.Drivers.Controllers.DriversController.GetEarningsSummary">
+            <summary>
+            Get current driver's earnings summary
+            </summary>
+        </member>
+        <member name="M:BeC.OpenId.Connect.Features.Drivers.Controllers.DriversController.GetMyEarnings(System.String,System.Nullable{System.DateTime},System.Nullable{System.DateTime},System.Int32,System.Int32)">
+            <summary>
+            Get current driver's earnings list with pagination and filtering
+            </summary>
+        </member>
+        <member name="M:BeC.OpenId.Connect.Features.Drivers.Controllers.DriversController.GetPeriodEarnings(System.String,System.Nullable{System.DateTime},System.Nullable{System.DateTime})">
+            <summary>
+            Get earnings for a specific period with daily breakdown
+            </summary>
+        </member>
+        <member name="M:BeC.OpenId.Connect.Features.Drivers.Controllers.DriversController.GetPaymentStatusSummary">
+            <summary>
+            Get payment status summary
+            </summary>
+        </member>
+        <member name="M:BeC.OpenId.Connect.Features.Drivers.Controllers.DriversController.GetEarningById(System.Guid)">
+            <summary>
+            Get specific earning details
+            </summary>
+        </member>
         <member name="M:BeC.OpenId.Connect.Features.Jobs.Controllers.JobsController.GetJobs(System.String,System.String,System.String,System.Nullable{System.Guid},System.String,System.Nullable{System.DateTime},System.Nullable{System.DateTime},System.String,System.String,System.Int32,System.Int32)">
             <summary>
-            Get all jobs with filtering and pagination (Admin only)
+            Get all jobs with filtering and pagination
+            Admins see all jobs, Customers see only their jobs, Drivers see their assigned jobs
             </summary>
         </member>
         <member name="M:BeC.OpenId.Connect.Features.Jobs.Controllers.JobsController.GetJob(System.Guid)">
             <summary>
-            Get job by ID (Admin only)
+            Get job by ID
+            Admins see any job, Customers see only their jobs, Drivers see their assigned jobs
             </summary>
         </member>
         <member name="M:BeC.OpenId.Connect.Features.Jobs.Controllers.JobsController.CreateJob(BeC.OpenId.Connect.Features.Jobs.Dtos.CreateJobDto)">
             <summary>
-            Create new job (Admin only)
+            Create new job
+            Public endpoint - allows anyone to create a job request
             </summary>
         </member>
         <member name="M:BeC.OpenId.Connect.Features.Jobs.Controllers.JobsController.UpdateJob(System.Guid,BeC.OpenId.Connect.Features.Jobs.Dtos.UpdateJobDto)">
@@ -252,6 +290,31 @@
         <member name="P:BeC.OpenId.Connect.Features.Ping.Controllers.PingResponse.User">
             <summary>
             Authenticated user (if applicable)
+            </summary>
+        </member>
+        <member name="M:BeC.OpenId.Connect.Features.Reviews.Controllers.ReviewsController.CreateReview(BeC.OpenId.Connect.Features.Reviews.Dtos.CreateReviewDto)">
+            <summary>
+            Create a new review for a completed job
+            </summary>
+        </member>
+        <member name="M:BeC.OpenId.Connect.Features.Reviews.Controllers.ReviewsController.GetReview(System.Guid)">
+            <summary>
+            Get a specific review by ID
+            </summary>
+        </member>
+        <member name="M:BeC.OpenId.Connect.Features.Reviews.Controllers.ReviewsController.GetDriverReviews(System.Guid,System.String,System.Int32,System.Int32)">
+            <summary>
+            Get all reviews for a specific driver
+            </summary>
+        </member>
+        <member name="M:BeC.OpenId.Connect.Features.Reviews.Controllers.ReviewsController.GetDriverRatingSummary(System.Guid)">
+            <summary>
+            Get driver rating summary with statistics
+            </summary>
+        </member>
+        <member name="M:BeC.OpenId.Connect.Features.Reviews.Controllers.ReviewsController.AddDriverResponse(System.Guid,BeC.OpenId.Connect.Features.Reviews.Dtos.AddDriverResponseDto)">
+            <summary>
+            Add driver response to a review (drivers only)
             </summary>
         </member>
         <member name="T:BeC.OpenId.Connect.Features.Roles.Controllers.RolesController">
@@ -540,6 +603,30 @@
             <inheritdoc />
         </member>
         <member name="M:BeC.OpenId.Connect.Migrations.AddVehicleTypeRequiredToJob.BuildTargetModel(Microsoft.EntityFrameworkCore.ModelBuilder)">
+            <inheritdoc />
+        </member>
+        <member name="T:BeC.OpenId.Connect.Migrations.AddEarningsTable">
+            <inheritdoc />
+        </member>
+        <member name="M:BeC.OpenId.Connect.Migrations.AddEarningsTable.Up(Microsoft.EntityFrameworkCore.Migrations.MigrationBuilder)">
+            <inheritdoc />
+        </member>
+        <member name="M:BeC.OpenId.Connect.Migrations.AddEarningsTable.Down(Microsoft.EntityFrameworkCore.Migrations.MigrationBuilder)">
+            <inheritdoc />
+        </member>
+        <member name="M:BeC.OpenId.Connect.Migrations.AddEarningsTable.BuildTargetModel(Microsoft.EntityFrameworkCore.ModelBuilder)">
+            <inheritdoc />
+        </member>
+        <member name="T:BeC.OpenId.Connect.Migrations.AddReviewsTable">
+            <inheritdoc />
+        </member>
+        <member name="M:BeC.OpenId.Connect.Migrations.AddReviewsTable.Up(Microsoft.EntityFrameworkCore.Migrations.MigrationBuilder)">
+            <inheritdoc />
+        </member>
+        <member name="M:BeC.OpenId.Connect.Migrations.AddReviewsTable.Down(Microsoft.EntityFrameworkCore.Migrations.MigrationBuilder)">
+            <inheritdoc />
+        </member>
+        <member name="M:BeC.OpenId.Connect.Migrations.AddReviewsTable.BuildTargetModel(Microsoft.EntityFrameworkCore.ModelBuilder)">
             <inheritdoc />
         </member>
     </members>

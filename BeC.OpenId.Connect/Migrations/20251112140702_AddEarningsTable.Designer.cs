@@ -4,6 +4,7 @@ using BeC.OpenId.Connect.Dto;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace BeC.OpenId.Connect.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20251112140702_AddEarningsTable")]
+    partial class AddEarningsTable
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -571,82 +574,6 @@ namespace BeC.OpenId.Connect.Migrations
                     b.ToTable("Vehicles");
                 });
 
-            modelBuilder.Entity("BeC.OpenId.Connect.Features.Reviews.Models.Review", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<int?>("CareOfItemsRating")
-                        .HasColumnType("int");
-
-                    b.Property<string>("Comment")
-                        .HasMaxLength(1000)
-                        .HasColumnType("nvarchar(1000)");
-
-                    b.Property<int?>("CommunicationRating")
-                        .HasColumnType("int");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("CustomerEmail")
-                        .IsRequired()
-                        .HasMaxLength(255)
-                        .HasColumnType("nvarchar(255)");
-
-                    b.Property<string>("CustomerName")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
-                    b.Property<Guid>("DriverId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<string>("DriverResponse")
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
-
-                    b.Property<int>("HelpfulVotes")
-                        .HasColumnType("int");
-
-                    b.Property<Guid>("JobId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<int?>("ProfessionalismRating")
-                        .HasColumnType("int");
-
-                    b.Property<int?>("PunctualityRating")
-                        .HasColumnType("int");
-
-                    b.Property<int>("Rating")
-                        .HasColumnType("int");
-
-                    b.Property<DateTime?>("ResponseDate")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)");
-
-                    b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("CreatedAt");
-
-                    b.HasIndex("DriverId");
-
-                    b.HasIndex("JobId")
-                        .IsUnique();
-
-                    b.HasIndex("Status");
-
-                    b.ToTable("Reviews");
-                });
-
             modelBuilder.Entity("BeC.OpenId.Connect.Features.Users.Dtos.ApplicationUser", b =>
                 {
                     b.Property<string>("Id")
@@ -1132,25 +1059,6 @@ namespace BeC.OpenId.Connect.Migrations
                         .IsRequired();
 
                     b.Navigation("Driver");
-                });
-
-            modelBuilder.Entity("BeC.OpenId.Connect.Features.Reviews.Models.Review", b =>
-                {
-                    b.HasOne("BeC.OpenId.Connect.Features.Drivers.Dtos.Driver", "Driver")
-                        .WithMany()
-                        .HasForeignKey("DriverId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("BeC.OpenId.Connect.Features.Drivers.Dtos.Job", "Job")
-                        .WithMany()
-                        .HasForeignKey("JobId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Driver");
-
-                    b.Navigation("Job");
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<string>", b =>
