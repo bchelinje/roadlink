@@ -281,9 +281,6 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
-// Register recurring background jobs
-RecurringJobs.RegisterRecurringJobs();
-
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
@@ -335,6 +332,9 @@ app.MapHangfireDashboard("/hangfire", new DashboardOptions
     Authorization = new[] { new HangfireAuthorizationFilter() },
     DashboardTitle = "BeC Background Jobs"
 });
+
+// Register recurring background jobs (must be after Hangfire is fully configured)
+RecurringJobs.RegisterRecurringJobs();
 
 app.MapGet("/", context =>
 {
