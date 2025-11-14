@@ -7,7 +7,7 @@ using OpenIddict.Validation.AspNetCore;
 using BeC.OpenId.Connect.Dto;
 using BeC.OpenId.Connect.Features.Drivers.Dtos;
 using BeC.OpenId.Connect.Features.ActivityLogs.Services.Interfaces;
-using BeC.OpenId.Connect.Infrastructure.Authorization;
+using AuthRoles = BeC.OpenId.Connect.Infrastructure.Authorization.Roles;
 
 namespace BeC.OpenId.Connect.Features.Vehicles.Controllers;
 
@@ -38,7 +38,7 @@ public class VehiclesController : ControllerBase
     /// Get all vehicles (Admin only)
     /// </summary>
     [HttpGet]
-    [Authorize(Roles = Roles.Admin + "," + Roles.SuperAdmin)]
+    [Authorize(Roles = AuthRoles.Admin + "," + AuthRoles.SuperAdmin)]
     [ProducesResponseType(typeof(List<Vehicle>), StatusCodes.Status200OK)]
     public async Task<ActionResult<List<Vehicle>>> GetAllVehicles(
         [FromQuery] string? status = null,
@@ -94,7 +94,7 @@ public class VehiclesController : ControllerBase
     /// Get my vehicles (Driver)
     /// </summary>
     [HttpGet("~/api/drivers/me/vehicles")]
-    [Authorize(Roles = Roles.Driver)]
+    [Authorize(Roles = AuthRoles.Driver)]
     [ProducesResponseType(typeof(List<Vehicle>), StatusCodes.Status200OK)]
     public async Task<ActionResult<List<Vehicle>>> GetMyVehicles()
     {
@@ -118,7 +118,7 @@ public class VehiclesController : ControllerBase
     /// Create a new vehicle
     /// </summary>
     [HttpPost]
-    [Authorize(Roles = Roles.Driver + "," + Roles.Admin + "," + Roles.SuperAdmin)]
+    [Authorize(Roles = AuthRoles.Driver + "," + AuthRoles.Admin + "," + AuthRoles.SuperAdmin)]
     [ProducesResponseType(typeof(Vehicle), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<Vehicle>> CreateVehicle([FromBody] CreateVehicleDto request)
@@ -134,7 +134,7 @@ public class VehiclesController : ControllerBase
         {
             // Admin creating vehicle for a specific driver
             var userRoles = User.Claims.Where(c => c.Type == ClaimTypes.Role).Select(c => c.Value);
-            if (!userRoles.Contains(Roles.Admin) && !userRoles.Contains(Roles.SuperAdmin))
+            if (!userRoles.Contains(AuthRoles.Admin) && !userRoles.Contains(AuthRoles.SuperAdmin))
                 return Forbid("Only admins can create vehicles for other drivers");
 
             targetDriverId = request.DriverId.Value;
@@ -206,7 +206,7 @@ public class VehiclesController : ControllerBase
     /// Add my vehicle (Driver shorthand endpoint)
     /// </summary>
     [HttpPost("~/api/drivers/me/vehicles")]
-    [Authorize(Roles = Roles.Driver)]
+    [Authorize(Roles = AuthRoles.Driver)]
     [ProducesResponseType(typeof(Vehicle), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<Vehicle>> AddMyVehicle([FromBody] CreateVehicleDto request)
@@ -220,7 +220,7 @@ public class VehiclesController : ControllerBase
     /// Update a vehicle
     /// </summary>
     [HttpPut("{id}")]
-    [Authorize(Roles = Roles.Driver + "," + Roles.Admin + "," + Roles.SuperAdmin)]
+    [Authorize(Roles = AuthRoles.Driver + "," + AuthRoles.Admin + "," + AuthRoles.SuperAdmin)]
     [ProducesResponseType(typeof(Vehicle), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -239,7 +239,7 @@ public class VehiclesController : ControllerBase
 
         // Check permissions
         var userRoles = User.Claims.Where(c => c.Type == ClaimTypes.Role).Select(c => c.Value);
-        var isAdmin = userRoles.Contains(Roles.Admin) || userRoles.Contains(Roles.SuperAdmin);
+        var isAdmin = userRoles.Contains(AuthRoles.Admin) || userRoles.Contains(AuthRoles.SuperAdmin);
         var isOwner = vehicle.Driver.UserId == userId;
 
         if (!isAdmin && !isOwner)
@@ -294,7 +294,7 @@ public class VehiclesController : ControllerBase
     /// Update vehicle status
     /// </summary>
     [HttpPatch("{id}/status")]
-    [Authorize(Roles = Roles.Driver + "," + Roles.Admin + "," + Roles.SuperAdmin)]
+    [Authorize(Roles = AuthRoles.Driver + "," + AuthRoles.Admin + "," + AuthRoles.SuperAdmin)]
     [ProducesResponseType(typeof(Vehicle), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -313,7 +313,7 @@ public class VehiclesController : ControllerBase
 
         // Check permissions
         var userRoles = User.Claims.Where(c => c.Type == ClaimTypes.Role).Select(c => c.Value);
-        var isAdmin = userRoles.Contains(Roles.Admin) || userRoles.Contains(Roles.SuperAdmin);
+        var isAdmin = userRoles.Contains(AuthRoles.Admin) || userRoles.Contains(AuthRoles.SuperAdmin);
         var isOwner = vehicle.Driver.UserId == userId;
 
         if (!isAdmin && !isOwner)
@@ -341,7 +341,7 @@ public class VehiclesController : ControllerBase
     /// Log vehicle maintenance
     /// </summary>
     [HttpPost("{id}/maintenance")]
-    [Authorize(Roles = Roles.Driver + "," + Roles.Admin + "," + Roles.SuperAdmin)]
+    [Authorize(Roles = AuthRoles.Driver + "," + AuthRoles.Admin + "," + AuthRoles.SuperAdmin)]
     [ProducesResponseType(typeof(Vehicle), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -360,7 +360,7 @@ public class VehiclesController : ControllerBase
 
         // Check permissions
         var userRoles = User.Claims.Where(c => c.Type == ClaimTypes.Role).Select(c => c.Value);
-        var isAdmin = userRoles.Contains(Roles.Admin) || userRoles.Contains(Roles.SuperAdmin);
+        var isAdmin = userRoles.Contains(AuthRoles.Admin) || userRoles.Contains(AuthRoles.SuperAdmin);
         var isOwner = vehicle.Driver.UserId == userId;
 
         if (!isAdmin && !isOwner)
@@ -418,7 +418,7 @@ public class VehiclesController : ControllerBase
     /// Delete a vehicle
     /// </summary>
     [HttpDelete("{id}")]
-    [Authorize(Roles = Roles.Driver + "," + Roles.Admin + "," + Roles.SuperAdmin)]
+    [Authorize(Roles = AuthRoles.Driver + "," + AuthRoles.Admin + "," + AuthRoles.SuperAdmin)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -437,7 +437,7 @@ public class VehiclesController : ControllerBase
 
         // Check permissions
         var userRoles = User.Claims.Where(c => c.Type == ClaimTypes.Role).Select(c => c.Value);
-        var isAdmin = userRoles.Contains(Roles.Admin) || userRoles.Contains(Roles.SuperAdmin);
+        var isAdmin = userRoles.Contains(AuthRoles.Admin) || userRoles.Contains(AuthRoles.SuperAdmin);
         var isOwner = vehicle.Driver.UserId == userId;
 
         if (!isAdmin && !isOwner)

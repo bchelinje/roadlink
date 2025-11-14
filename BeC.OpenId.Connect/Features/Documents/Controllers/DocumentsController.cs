@@ -6,7 +6,7 @@ using OpenIddict.Validation.AspNetCore;
 using BeC.OpenId.Connect.Dto;
 using BeC.OpenId.Connect.Features.Drivers.Dtos;
 using BeC.OpenId.Connect.Features.ActivityLogs.Services.Interfaces;
-using BeC.OpenId.Connect.Infrastructure.Authorization;
+using AuthRoles = BeC.OpenId.Connect.Infrastructure.Authorization.Roles;
 
 namespace BeC.OpenId.Connect.Features.Documents.Controllers;
 
@@ -40,7 +40,7 @@ public class DocumentsController : ControllerBase
     /// Get my documents (Driver)
     /// </summary>
     [HttpGet("~/api/drivers/me/documents")]
-    [Authorize(Roles = Roles.Driver)]
+    [Authorize(Roles = AuthRoles.Driver)]
     [ProducesResponseType(typeof(List<DriverDocument>), StatusCodes.Status200OK)]
     public async Task<ActionResult<List<DriverDocument>>> GetMyDocuments()
     {
@@ -64,7 +64,7 @@ public class DocumentsController : ControllerBase
     /// Upload a document (Driver)
     /// </summary>
     [HttpPost("~/api/drivers/me/documents")]
-    [Authorize(Roles = Roles.Driver)]
+    [Authorize(Roles = AuthRoles.Driver)]
     [ProducesResponseType(typeof(DriverDocument), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [Consumes("multipart/form-data")]
@@ -158,7 +158,7 @@ public class DocumentsController : ControllerBase
 
         // Check permissions
         var userRoles = User.Claims.Where(c => c.Type == ClaimTypes.Role).Select(c => c.Value);
-        var isAdmin = userRoles.Contains(Roles.Admin) || userRoles.Contains(Roles.SuperAdmin);
+        var isAdmin = userRoles.Contains(AuthRoles.Admin) || userRoles.Contains(AuthRoles.SuperAdmin);
         var isOwner = document.Driver.UserId == userId;
 
         if (!isAdmin && !isOwner)
@@ -171,7 +171,7 @@ public class DocumentsController : ControllerBase
     /// Delete a document (Driver)
     /// </summary>
     [HttpDelete("~/api/drivers/me/documents/{id}")]
-    [Authorize(Roles = Roles.Driver)]
+    [Authorize(Roles = AuthRoles.Driver)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> DeleteMyDocument(Guid id)
@@ -220,7 +220,7 @@ public class DocumentsController : ControllerBase
     /// Get documents pending verification (Admin)
     /// </summary>
     [HttpGet("pending")]
-    [Authorize(Roles = Roles.Admin + "," + Roles.SuperAdmin)]
+    [Authorize(Roles = AuthRoles.Admin + "," + AuthRoles.SuperAdmin)]
     [ProducesResponseType(typeof(List<DriverDocument>), StatusCodes.Status200OK)]
     public async Task<ActionResult<List<DriverDocument>>> GetPendingDocuments(
         [FromQuery] int page = 1,
@@ -248,7 +248,7 @@ public class DocumentsController : ControllerBase
     /// Verify a document (Admin)
     /// </summary>
     [HttpPost("{id}/verify")]
-    [Authorize(Roles = Roles.Admin + "," + Roles.SuperAdmin)]
+    [Authorize(Roles = AuthRoles.Admin + "," + AuthRoles.SuperAdmin)]
     [ProducesResponseType(typeof(DriverDocument), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<DriverDocument>> VerifyDocument(Guid id)
@@ -286,7 +286,7 @@ public class DocumentsController : ControllerBase
     /// Reject a document (Admin)
     /// </summary>
     [HttpPost("{id}/reject")]
-    [Authorize(Roles = Roles.Admin + "," + Roles.SuperAdmin)]
+    [Authorize(Roles = AuthRoles.Admin + "," + AuthRoles.SuperAdmin)]
     [ProducesResponseType(typeof(DriverDocument), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<DriverDocument>> RejectDocument(Guid id, [FromBody] RejectDocumentDto? request = null)
@@ -326,7 +326,7 @@ public class DocumentsController : ControllerBase
     /// Get documents expiring soon (Admin)
     /// </summary>
     [HttpGet("expiring")]
-    [Authorize(Roles = Roles.Admin + "," + Roles.SuperAdmin)]
+    [Authorize(Roles = AuthRoles.Admin + "," + AuthRoles.SuperAdmin)]
     [ProducesResponseType(typeof(List<DriverDocument>), StatusCodes.Status200OK)]
     public async Task<ActionResult<List<DriverDocument>>> GetExpiringDocuments(
         [FromQuery] int daysAhead = 30)
@@ -349,7 +349,7 @@ public class DocumentsController : ControllerBase
     /// Get all documents for a specific driver (Admin)
     /// </summary>
     [HttpGet("drivers/{driverId}")]
-    [Authorize(Roles = Roles.Admin + "," + Roles.SuperAdmin)]
+    [Authorize(Roles = AuthRoles.Admin + "," + AuthRoles.SuperAdmin)]
     [ProducesResponseType(typeof(List<DriverDocument>), StatusCodes.Status200OK)]
     public async Task<ActionResult<List<DriverDocument>>> GetDriverDocuments(Guid driverId)
     {
@@ -365,7 +365,7 @@ public class DocumentsController : ControllerBase
     /// Get document statistics (Admin)
     /// </summary>
     [HttpGet("statistics")]
-    [Authorize(Roles = Roles.Admin + "," + Roles.SuperAdmin)]
+    [Authorize(Roles = AuthRoles.Admin + "," + AuthRoles.SuperAdmin)]
     [ProducesResponseType(typeof(DocumentStatistics), StatusCodes.Status200OK)]
     public async Task<ActionResult<DocumentStatistics>> GetDocumentStatistics()
     {

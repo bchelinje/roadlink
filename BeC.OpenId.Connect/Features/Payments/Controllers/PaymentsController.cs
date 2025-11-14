@@ -9,7 +9,7 @@ using BeC.OpenId.Connect.Dto;
 using BeC.OpenId.Connect.Features.Payments.Dtos;
 using BeC.OpenId.Connect.Features.Users.Dtos;
 using BeC.OpenId.Connect.Features.ActivityLogs.Services.Interfaces;
-using BeC.OpenId.Connect.Infrastructure.Authorization;
+using AuthRoles = BeC.OpenId.Connect.Infrastructure.Authorization.Roles;
 
 namespace BeC.OpenId.Connect.Features.Payments.Controllers;
 
@@ -145,7 +145,7 @@ public class PaymentsController : ControllerBase
         // Check permissions
         var user = await _userManager.FindByIdAsync(userId);
         var userRoles = await _userManager.GetRolesAsync(user!);
-        var isAdmin = userRoles.Contains(Roles.Admin) || userRoles.Contains(Roles.SuperAdmin);
+        var isAdmin = userRoles.Contains(AuthRoles.Admin) || userRoles.Contains(AuthRoles.SuperAdmin);
         var isCustomer = payment.CustomerId == userId;
 
         var isDriver = false;
@@ -182,7 +182,7 @@ public class PaymentsController : ControllerBase
 
         var user = await _userManager.FindByIdAsync(userId);
         var userRoles = await _userManager.GetRolesAsync(user!);
-        var isAdmin = userRoles.Contains(Roles.Admin) || userRoles.Contains(Roles.SuperAdmin);
+        var isAdmin = userRoles.Contains(AuthRoles.Admin) || userRoles.Contains(AuthRoles.SuperAdmin);
 
         if (!isAdmin && !isCustomer && !isDriver)
             return Forbid("You can only view payments for jobs you're involved in");
@@ -203,7 +203,7 @@ public class PaymentsController : ControllerBase
     /// Get my payment history (Customer)
     /// </summary>
     [HttpGet("~/api/customers/me/payments")]
-    [Authorize(Roles = Roles.Customer)]
+    [Authorize(Roles = AuthRoles.Customer)]
     [ProducesResponseType(typeof(List<Payment>), StatusCodes.Status200OK)]
     public async Task<ActionResult<List<Payment>>> GetMyPayments(
         [FromQuery] string? status = null,
@@ -247,7 +247,7 @@ public class PaymentsController : ControllerBase
     /// Get my earnings (Driver)
     /// </summary>
     [HttpGet("~/api/drivers/me/earnings")]
-    [Authorize(Roles = Roles.Driver)]
+    [Authorize(Roles = AuthRoles.Driver)]
     [ProducesResponseType(typeof(EarningsDto), StatusCodes.Status200OK)]
     public async Task<ActionResult<EarningsDto>> GetMyEarnings(
         [FromQuery] DateTime? startDate = null,
@@ -294,7 +294,7 @@ public class PaymentsController : ControllerBase
     /// Get my payout history (Driver)
     /// </summary>
     [HttpGet("~/api/drivers/me/payouts")]
-    [Authorize(Roles = Roles.Driver)]
+    [Authorize(Roles = AuthRoles.Driver)]
     [ProducesResponseType(typeof(List<Payout>), StatusCodes.Status200OK)]
     public async Task<ActionResult<List<Payout>>> GetMyPayouts(
         [FromQuery] int page = 1,
@@ -333,7 +333,7 @@ public class PaymentsController : ControllerBase
     /// Process a refund (Admin)
     /// </summary>
     [HttpPost("{id}/refund")]
-    [Authorize(Roles = Roles.Admin + "," + Roles.SuperAdmin)]
+    [Authorize(Roles = AuthRoles.Admin + "," + AuthRoles.SuperAdmin)]
     [ProducesResponseType(typeof(Payment), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -382,7 +382,7 @@ public class PaymentsController : ControllerBase
     /// Get payment statistics (Admin)
     /// </summary>
     [HttpGet("statistics")]
-    [Authorize(Roles = Roles.Admin + "," + Roles.SuperAdmin)]
+    [Authorize(Roles = AuthRoles.Admin + "," + AuthRoles.SuperAdmin)]
     [ProducesResponseType(typeof(PaymentStatistics), StatusCodes.Status200OK)]
     public async Task<ActionResult<PaymentStatistics>> GetPaymentStatistics(
         [FromQuery] DateTime? startDate = null,
@@ -449,7 +449,7 @@ public class PaymentsController : ControllerBase
     /// Create a payout for a driver (Admin)
     /// </summary>
     [HttpPost("payouts")]
-    [Authorize(Roles = Roles.Admin + "," + Roles.SuperAdmin)]
+    [Authorize(Roles = AuthRoles.Admin + "," + AuthRoles.SuperAdmin)]
     [ProducesResponseType(typeof(Payout), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<Payout>> CreatePayout([FromBody] CreatePayoutDto request)
@@ -520,7 +520,7 @@ public class PaymentsController : ControllerBase
     /// Get payout by ID (Admin)
     /// </summary>
     [HttpGet("payouts/{id}")]
-    [Authorize(Roles = Roles.Admin + "," + Roles.SuperAdmin + "," + Roles.Driver)]
+    [Authorize(Roles = AuthRoles.Admin + "," + AuthRoles.SuperAdmin + "," + AuthRoles.Driver)]
     [ProducesResponseType(typeof(Payout), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<Payout>> GetPayout(Guid id)
@@ -539,7 +539,7 @@ public class PaymentsController : ControllerBase
         // Check permissions
         var user = await _userManager.FindByIdAsync(userId);
         var userRoles = await _userManager.GetRolesAsync(user!);
-        var isAdmin = userRoles.Contains(Roles.Admin) || userRoles.Contains(Roles.SuperAdmin);
+        var isAdmin = userRoles.Contains(AuthRoles.Admin) || userRoles.Contains(AuthRoles.SuperAdmin);
         var isDriver = payout.Driver.UserId == userId;
 
         if (!isAdmin && !isDriver)

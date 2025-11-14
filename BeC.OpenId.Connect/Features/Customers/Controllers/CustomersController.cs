@@ -10,7 +10,7 @@ using BeC.OpenId.Connect.Features.Drivers.Dtos;
 using BeC.OpenId.Connect.Features.Users.Dtos;
 using BeC.OpenId.Connect.Features.Reviews.Models;
 using BeC.OpenId.Connect.Features.ActivityLogs.Services.Interfaces;
-using BeC.OpenId.Connect.Infrastructure.Authorization;
+using AuthRoles = BeC.OpenId.Connect.Infrastructure.Authorization.Roles;
 
 namespace BeC.OpenId.Connect.Features.Customers.Controllers;
 
@@ -46,7 +46,7 @@ public class CustomersController : ControllerBase
     /// Create a new job request
     /// </summary>
     [HttpPost("me/jobs")]
-    [Authorize(Roles = Roles.Customer)]
+    [Authorize(Roles = AuthRoles.Customer)]
     [ProducesResponseType(typeof(Job), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<Job>> CreateJob([FromBody] CreateJobRequest request)
@@ -112,7 +112,7 @@ public class CustomersController : ControllerBase
     /// Get my job history
     /// </summary>
     [HttpGet("me/jobs")]
-    [Authorize(Roles = Roles.Customer)]
+    [Authorize(Roles = AuthRoles.Customer)]
     [ProducesResponseType(typeof(List<Job>), StatusCodes.Status200OK)]
     public async Task<ActionResult<List<Job>>> GetMyJobs(
         [FromQuery] string? status = null,
@@ -151,7 +151,7 @@ public class CustomersController : ControllerBase
     /// Get specific job details
     /// </summary>
     [HttpGet("me/jobs/{id}")]
-    [Authorize(Roles = Roles.Customer)]
+    [Authorize(Roles = AuthRoles.Customer)]
     [ProducesResponseType(typeof(Job), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<Job>> GetJob(Guid id)
@@ -174,7 +174,7 @@ public class CustomersController : ControllerBase
     /// Cancel a job
     /// </summary>
     [HttpPatch("me/jobs/{id}/cancel")]
-    [Authorize(Roles = Roles.Customer)]
+    [Authorize(Roles = AuthRoles.Customer)]
     [ProducesResponseType(typeof(Job), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -237,7 +237,7 @@ public class CustomersController : ControllerBase
     /// Review a driver after job completion
     /// </summary>
     [HttpPost("me/jobs/{jobId}/review")]
-    [Authorize(Roles = Roles.Customer)]
+    [Authorize(Roles = AuthRoles.Customer)]
     [ProducesResponseType(typeof(Review), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<Review>> ReviewDriver(Guid jobId, [FromBody] CreateReviewRequest request)
@@ -313,7 +313,7 @@ public class CustomersController : ControllerBase
     /// Get my reviews given
     /// </summary>
     [HttpGet("me/reviews")]
-    [Authorize(Roles = Roles.Customer)]
+    [Authorize(Roles = AuthRoles.Customer)]
     [ProducesResponseType(typeof(List<Review>), StatusCodes.Status200OK)]
     public async Task<ActionResult<List<Review>>> GetMyReviews()
     {
@@ -343,7 +343,7 @@ public class CustomersController : ControllerBase
     /// Get customer statistics
     /// </summary>
     [HttpGet("me/stats")]
-    [Authorize(Roles = Roles.Customer)]
+    [Authorize(Roles = AuthRoles.Customer)]
     [ProducesResponseType(typeof(CustomerStats), StatusCodes.Status200OK)]
     public async Task<ActionResult<CustomerStats>> GetMyStats()
     {
@@ -381,7 +381,7 @@ public class CustomersController : ControllerBase
     /// Get favorite drivers
     /// </summary>
     [HttpGet("me/favorites")]
-    [Authorize(Roles = Roles.Customer)]
+    [Authorize(Roles = AuthRoles.Customer)]
     [ProducesResponseType(typeof(List<Driver>), StatusCodes.Status200OK)]
     public async Task<ActionResult<List<Driver>>> GetFavoriteDrivers()
     {
@@ -393,7 +393,7 @@ public class CustomersController : ControllerBase
     /// Add driver to favorites
     /// </summary>
     [HttpPost("me/favorites/{driverId}")]
-    [Authorize(Roles = Roles.Customer)]
+    [Authorize(Roles = AuthRoles.Customer)]
     [ProducesResponseType(StatusCodes.Status200OK)]
     public async Task<IActionResult> AddFavoriteDriver(Guid driverId)
     {
