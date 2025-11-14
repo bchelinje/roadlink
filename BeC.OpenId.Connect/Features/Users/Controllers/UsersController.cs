@@ -522,9 +522,13 @@ public class UsersController : ControllerBase
         // Send welcome email
         try
         {
+            var roles = await _userManager.GetRolesAsync(user);
+            var primaryRole = roles.FirstOrDefault() ?? "User";
+
             await _emailService.SendWelcomeEmailAsync(
                 user.Email!,
-                user.UserName ?? user.Email!);
+                user.UserName ?? user.Email!,
+                primaryRole);
         }
         catch (Exception ex)
         {
@@ -645,7 +649,7 @@ public class UsersController : ControllerBase
 
         try
         {
-            await _emailService.SendPasswordResetAsync(
+            await _emailService.SendPasswordResetEmailAsync(
                 user.Email!,
                 user.UserName ?? user.Email!,
                 resetLink!);

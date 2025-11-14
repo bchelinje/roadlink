@@ -105,7 +105,8 @@ public class DocumentExpiryReminderJob
                                 </p>
                             </div>
                         </body>
-                        </html>"
+                        </html>",
+                    isHtml: true
                 );
 
                 // Send real-time notification
@@ -215,7 +216,7 @@ public class WeeklyDriverPayoutJob
                 await Task.Delay(100); // Simulate API call
 
                 payout.Status = "completed";
-                payout.ProcessedDate = DateTime.UtcNow;
+                payout.ProcessedAt = DateTime.UtcNow;
                 await _context.SaveChangesAsync();
 
                 // Send notification email
@@ -244,7 +245,7 @@ public class WeeklyDriverPayoutJob
             {
                 _logger.LogError(ex, "Error processing payout {PayoutId}", payout.Id);
                 payout.Status = "failed";
-                payout.ProcessedDate = DateTime.UtcNow;
+                payout.ProcessedAt = DateTime.UtcNow;
                 await _context.SaveChangesAsync();
             }
         }

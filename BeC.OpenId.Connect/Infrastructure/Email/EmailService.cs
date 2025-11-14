@@ -149,7 +149,7 @@ namespace BeC.OpenId.Connect.Infrastructure.Email
                 </body>
                 </html>";
 
-            await SendEmailAsync(to, subject, body);
+            await SendEmailInternalAsync(to, subject, body, isHtml: true);
         }
 
         public async Task SendJobAssignmentEmailAsync(string to, string driverName, string jobNumber, DateTime scheduledDate, string pickupAddress, string deliveryAddress)
@@ -181,7 +181,7 @@ namespace BeC.OpenId.Connect.Infrastructure.Email
                 </body>
                 </html>";
 
-            await SendEmailAsync(to, subject, body);
+            await SendEmailInternalAsync(to, subject, body, isHtml: true);
         }
 
         public async Task SendJobCompletionEmailAsync(string to, string customerName, string jobNumber, decimal totalAmount)
@@ -210,7 +210,7 @@ namespace BeC.OpenId.Connect.Infrastructure.Email
                 </body>
                 </html>";
 
-            await SendEmailAsync(to, subject, body);
+            await SendEmailInternalAsync(to, subject, body, isHtml: true);
         }
 
         public async Task SendPaymentReceiptEmailAsync(string to, string customerName, string jobNumber, decimal amount, string paymentMethod, string transactionId)
@@ -244,7 +244,7 @@ namespace BeC.OpenId.Connect.Infrastructure.Email
                 </body>
                 </html>";
 
-            await SendEmailAsync(to, subject, body);
+            await SendEmailInternalAsync(to, subject, body, isHtml: true);
         }
 
         public async Task SendDocumentStatusEmailAsync(string to, string driverName, string documentType, string status, string? reason = null)
@@ -279,7 +279,7 @@ namespace BeC.OpenId.Connect.Infrastructure.Email
                 </body>
                 </html>";
 
-            await SendEmailAsync(to, subject, body);
+            await SendEmailInternalAsync(to, subject, body, isHtml: true);
         }
 
         public async Task SendPayoutNotificationEmailAsync(string to, string driverName, decimal amount, string period)
@@ -310,7 +310,7 @@ namespace BeC.OpenId.Connect.Infrastructure.Email
                 </body>
                 </html>";
 
-            await SendEmailAsync(to, subject, body);
+            await SendEmailInternalAsync(to, subject, body, isHtml: true);
         }
 
         public async Task SendWelcomeEmailAsync(string to, string userName, string role)
@@ -360,7 +360,7 @@ namespace BeC.OpenId.Connect.Infrastructure.Email
                 </body>
                 </html>";
 
-            await SendEmailAsync(to, subject, body);
+            await SendEmailInternalAsync(to, subject, body, isHtml: true);
         }
 
         public async Task SendPasswordResetEmailAsync(string to, string userName, string resetLink)
@@ -397,7 +397,7 @@ namespace BeC.OpenId.Connect.Infrastructure.Email
                 </body>
                 </html>";
 
-            await SendEmailAsync(to, subject, body);
+            await SendEmailInternalAsync(to, subject, body, isHtml: true);
         }
 
         private async Task SendEmailInternalAsync(string to, string subject, string body, bool isHtml = true, string? cc = null, string? bcc = null)
