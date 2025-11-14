@@ -7,7 +7,6 @@ using BeC.OpenId.Connect.Features.Location.Dtos;
 using BeC.OpenId.Connect.Features.Users.Dtos;
 using BeC.OpenId.Connect.Infrastructure.Authorization;
 using BeC.OpenId.Connect.Infrastructure.Maps;
-using BeC.OpenId.Connect.Features.Notifications.Services.Interfaces;
 
 namespace BeC.OpenId.Connect.Features.Location.Controllers;
 
@@ -22,20 +21,17 @@ public class LocationController : ControllerBase
     private readonly ApplicationDbContext _context;
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly IGoogleMapsService _mapsService;
-    private readonly IRealtimeNotificationService _notificationService;
     private readonly ILogger<LocationController> _logger;
 
     public LocationController(
         ApplicationDbContext context,
         UserManager<ApplicationUser> userManager,
         IGoogleMapsService mapsService,
-        IRealtimeNotificationService notificationService,
         ILogger<LocationController> logger)
     {
         _context = context;
         _userManager = userManager;
         _mapsService = mapsService;
-        _notificationService = notificationService;
         _logger = logger;
     }
 
@@ -103,28 +99,29 @@ public class LocationController : ControllerBase
             _context.DriverLocations.Add(location);
             await _context.SaveChangesAsync();
 
-            // If driver is on a job, notify customer of location update
-            if (request.CurrentJobId.HasValue)
-            {
-                var job = await _context.Jobs
-                    .Include(j => j.Customer)
-                    .FirstOrDefaultAsync(j => j.Id == request.CurrentJobId.Value);
-
-                if (job != null)
-                {
-                    await _notificationService.SendToUserAsync(
-                        job.Customer.UserId,
-                        "driver_location_updated",
-                        new
-                        {
-                            jobId = job.Id,
-                            driverName = $"{driver.FirstName} {driver.LastName}",
-                            latitude = location.Latitude,
-                            longitude = location.Longitude,
-                            timestamp = location.Timestamp
-                        });
-                }
-            }
+            // TODO: If driver is on a job, notify customer of location update via SignalR
+            // This requires implementing IRealtimeNotificationService
+            // if (request.CurrentJobId.HasValue)
+            // {
+            //     var job = await _context.Jobs
+            //         .Include(j => j.Customer)
+            //         .FirstOrDefaultAsync(j => j.Id == request.CurrentJobId.Value);
+            //
+            //     if (job != null)
+            //     {
+            //         await _notificationService.SendToUserAsync(
+            //             job.Customer.UserId,
+            //             "driver_location_updated",
+            //             new
+            //             {
+            //                 jobId = job.Id,
+            //                 driverName = $"{driver.FirstName} {driver.LastName}",
+            //                 latitude = location.Latitude,
+            //                 longitude = location.Longitude,
+            //                 timestamp = location.Timestamp
+            //             });
+            //     }
+            // }
 
             _logger.LogInformation("Updated location for driver {DriverId} at {Lat},{Lng}",
                 driver.Id, request.Latitude, request.Longitude);
