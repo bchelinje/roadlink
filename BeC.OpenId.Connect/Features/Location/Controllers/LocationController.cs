@@ -156,8 +156,7 @@ public class LocationController : ControllerBase
 
             // Get job and verify authorization
             var job = await _context.Jobs
-                .Include(j => j.Customer)
-                .Include(j => j.AssignedDriver)
+                .Include(j => j.Driver)
                 .FirstOrDefaultAsync(j => j.Id == jobId);
 
             if (job == null)
@@ -166,8 +165,8 @@ public class LocationController : ControllerBase
             }
 
             // Check if user is customer or driver or admin
-            var isCustomer = job.Customer.UserId == user.Id;
-            var isDriver = job.AssignedDriver?.UserId == user.Id;
+            var isCustomer = job.CustomerId == user.Id;
+            var isDriver = job.Driver?.UserId == user.Id;
             var isAdmin = User.IsInRole(Infrastructure.Authorization.Roles.Admin) || User.IsInRole(Infrastructure.Authorization.Roles.SuperAdmin);
 
             if (!isCustomer && !isDriver && !isAdmin)
@@ -175,14 +174,14 @@ public class LocationController : ControllerBase
                 return Forbid();
             }
 
-            if (job.AssignedDriverId == null)
+            if (job.DriverId == null)
             {
                 return NotFound(new { message = "No driver assigned to this job" });
             }
 
             // Get most recent location
             var location = await _context.DriverLocations
-                .Where(l => l.DriverId == job.AssignedDriverId.Value)
+                .Where(l => l.DriverId == job.DriverId.Value)
                 .OrderByDescending(l => l.Timestamp)
                 .FirstOrDefaultAsync();
 
@@ -195,8 +194,8 @@ public class LocationController : ControllerBase
 
             var response = new DriverLocationResponse
             {
-                DriverId = job.AssignedDriver!.Id,
-                DriverName = $"{job.AssignedDriver.FirstName} {job.AssignedDriver.LastName}",
+                DriverId = job.Driver!.Id,
+                DriverName = $"{job.Driver.FirstName} {job.Driver.LastName}",
                 Latitude = location.Latitude,
                 Longitude = location.Longitude,
                 Speed = location.Speed,
@@ -236,8 +235,7 @@ public class LocationController : ControllerBase
 
             // Get job and verify authorization
             var job = await _context.Jobs
-                .Include(j => j.Customer)
-                .Include(j => j.AssignedDriver)
+                .Include(j => j.Driver)
                 .FirstOrDefaultAsync(j => j.Id == jobId);
 
             if (job == null)
@@ -246,8 +244,8 @@ public class LocationController : ControllerBase
             }
 
             // Check authorization
-            var isCustomer = job.Customer.UserId == user.Id;
-            var isDriver = job.AssignedDriver?.UserId == user.Id;
+            var isCustomer = job.CustomerId == user.Id;
+            var isDriver = job.Driver?.UserId == user.Id;
             var isAdmin = User.IsInRole(Infrastructure.Authorization.Roles.Admin) || User.IsInRole(Infrastructure.Authorization.Roles.SuperAdmin);
 
             if (!isCustomer && !isDriver && !isAdmin)
@@ -255,14 +253,14 @@ public class LocationController : ControllerBase
                 return Forbid();
             }
 
-            if (job.AssignedDriverId == null)
+            if (job.DriverId == null)
             {
                 return NotFound(new { message = "No driver assigned to this job" });
             }
 
             // Get driver's current location
             var driverLocation = await _context.DriverLocations
-                .Where(l => l.DriverId == job.AssignedDriverId.Value)
+                .Where(l => l.DriverId == job.DriverId.Value)
                 .OrderByDescending(l => l.Timestamp)
                 .FirstOrDefaultAsync();
 
@@ -303,8 +301,8 @@ public class LocationController : ControllerBase
             var result = new EtaCalculationResult
             {
                 JobId = job.Id,
-                DriverId = job.AssignedDriver!.Id,
-                DriverName = $"{job.AssignedDriver.FirstName} {job.AssignedDriver.LastName}",
+                DriverId = job.Driver!.Id,
+                DriverName = $"{job.Driver.FirstName} {job.Driver.LastName}",
                 CurrentLatitude = driverLocation.Latitude,
                 CurrentLongitude = driverLocation.Longitude,
                 DestinationLatitude = destinationGeocode.Latitude,
