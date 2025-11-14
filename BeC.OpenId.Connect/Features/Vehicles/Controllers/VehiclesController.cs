@@ -190,7 +190,7 @@ public class VehiclesController : ControllerBase
         _context.Vehicles.Add(vehicle);
         await _context.SaveChangesAsync();
 
-        await _activityLogService.LogAsync(
+        await _activityLogService.LogActivityAsync(
             userId,
             "vehicle_created",
             "Vehicle",
@@ -278,7 +278,7 @@ public class VehiclesController : ControllerBase
 
         await _context.SaveChangesAsync();
 
-        await _activityLogService.LogAsync(
+        await _activityLogService.LogActivityAsync(
             userId,
             "vehicle_updated",
             "Vehicle",
@@ -325,7 +325,7 @@ public class VehiclesController : ControllerBase
 
         await _context.SaveChangesAsync();
 
-        await _activityLogService.LogAsync(
+        await _activityLogService.LogActivityAsync(
             userId,
             "vehicle_status_changed",
             "Vehicle",
@@ -373,7 +373,7 @@ public class VehiclesController : ControllerBase
 
         await _context.SaveChangesAsync();
 
-        await _activityLogService.LogAsync(
+        await _activityLogService.LogActivityAsync(
             userId,
             "vehicle_maintenance",
             "Vehicle",
@@ -450,7 +450,7 @@ public class VehiclesController : ControllerBase
 
         await _context.SaveChangesAsync();
 
-        await _activityLogService.LogAsync(
+        await _activityLogService.LogActivityAsync(
             userId,
             "vehicle_deleted",
             "Vehicle",

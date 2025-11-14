@@ -125,7 +125,7 @@ public class DocumentsController : ControllerBase
         _context.DriverDocuments.Add(document);
         await _context.SaveChangesAsync();
 
-        await _activityLogService.LogAsync(
+        await _activityLogService.LogActivityAsync(
             userId,
             "document_uploaded",
             "DriverDocument",
@@ -204,7 +204,7 @@ public class DocumentsController : ControllerBase
         _context.DriverDocuments.Remove(document);
         await _context.SaveChangesAsync();
 
-        await _activityLogService.LogAsync(
+        await _activityLogService.LogActivityAsync(
             userId,
             "document_deleted",
             "DriverDocument",
@@ -270,7 +270,7 @@ public class DocumentsController : ControllerBase
 
         await _context.SaveChangesAsync();
 
-        await _activityLogService.LogAsync(
+        await _activityLogService.LogActivityAsync(
             userId,
             "document_verified",
             "DriverDocument",
@@ -310,7 +310,7 @@ public class DocumentsController : ControllerBase
 
         var reason = request?.Reason ?? "Document did not meet verification requirements";
 
-        await _activityLogService.LogAsync(
+        await _activityLogService.LogActivityAsync(
             userId,
             "document_rejected",
             "DriverDocument",
