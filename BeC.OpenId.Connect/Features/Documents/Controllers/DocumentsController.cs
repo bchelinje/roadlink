@@ -68,10 +68,7 @@ public class DocumentsController : ControllerBase
     [ProducesResponseType(typeof(DriverDocument), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [Consumes("multipart/form-data")]
-    public async Task<ActionResult<DriverDocument>> UploadDocument(
-        [FromForm] string type,
-        [FromForm] IFormFile file,
-        [FromForm] DateTime? expiryDate = null)
+    public async Task<ActionResult<DriverDocument>> UploadDocument([FromForm] UploadDocumentRequest request)
     {
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
         if (string.IsNullOrEmpty(userId))
@@ -82,24 +79,24 @@ public class DocumentsController : ControllerBase
             return NotFound("Driver profile not found");
 
         // Validate file
-        if (file == null || file.Length == 0)
+        if (request.File == null || request.File.Length == 0)
             return BadRequest("No file uploaded");
 
         var allowedTypes = new[] { "drivers_license", "insurance", "vehicle_registration", "mot_certificate", "id_proof", "address_proof" };
-        if (!allowedTypes.Contains(type))
+        if (!allowedTypes.Contains(request.Type))
             return BadRequest($"Invalid document type. Allowed types: {string.Join(", ", allowedTypes)}");
 
         var allowedExtensions = new[] { ".pdf", ".jpg", ".jpeg", ".png" };
-        var extension = Path.GetExtension(file.FileName).ToLower();
+        var extension = Path.GetExtension(request.File.FileName).ToLower();
         if (!allowedExtensions.Contains(extension))
             return BadRequest($"Invalid file type. Allowed: {string.Join(", ", allowedExtensions)}");
 
         // Max file size: 5MB
-        if (file.Length > 5 * 1024 * 1024)
+        if (request.File.Length > 5 * 1024 * 1024)
             return BadRequest("File size must be less than 5MB");
 
         // Generate unique filename
-        var fileName = $"{driver.Id}_{type}_{Guid.NewGuid()}{extension}";
+        var fileName = $"{driver.Id}_{request.Type}_{Guid.NewGuid()}{extension}";
         var uploadsFolder = Path.Combine(_environment.WebRootPath, "uploads", "drivers", driver.Id.ToString());
         Directory.CreateDirectory(uploadsFolder);
 
@@ -109,16 +106,16 @@ public class DocumentsController : ControllerBase
         // Save file
         using (var stream = new FileStream(filePath, FileMode.Create))
         {
-            await file.CopyToAsync(stream);
+            await request.File.CopyToAsync(stream);
         }
 
         var document = new DriverDocument
         {
             DriverId = driver.Id,
-            Type = type,
-            FileName = file.FileName,
+            Type = request.Type,
+            FileName = request.File.FileName,
             FileUrl = fileUrl,
-            ExpiryDate = expiryDate,
+            ExpiryDate = request.ExpiryDate,
             Status = "pending"
         };
 
@@ -129,8 +126,8 @@ public class DocumentsController : ControllerBase
             "document_uploaded",
             "DriverDocument",
             document.Id.ToString(),
-            type,
-            $"Driver uploaded {type} document"
+            request.Type,
+            $"Driver uploaded {request.Type} document"
         ,
             userId: userId
         );
@@ -395,6 +392,13 @@ public class DocumentsController : ControllerBase
 }
 
 #region DTOs
+
+public class UploadDocumentRequest
+{
+    public required string Type { get; set; }
+    public required IFormFile File { get; set; }
+    public DateTime? ExpiryDate { get; set; }
+}
 
 public class RejectDocumentDto
 {
