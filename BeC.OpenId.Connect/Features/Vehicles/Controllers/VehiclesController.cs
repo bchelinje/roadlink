@@ -190,13 +190,14 @@ public class VehiclesController : ControllerBase
         _context.Vehicles.Add(vehicle);
         await _context.SaveChangesAsync();
 
-        await _activityLogService.LogAsync(
-            userId,
+        await _activityLogService.LogActivityAsync(
             "vehicle_created",
             "Vehicle",
             vehicle.Id.ToString(),
             $"{vehicle.Make} {vehicle.Model} ({vehicle.RegistrationNumber})",
             $"Created vehicle for driver {targetDriver.FirstName} {targetDriver.LastName}"
+        ,
+            userId: userId
         );
 
         return CreatedAtAction(nameof(GetVehicle), new { id = vehicle.Id }, vehicle);
@@ -278,13 +279,14 @@ public class VehiclesController : ControllerBase
 
         await _context.SaveChangesAsync();
 
-        await _activityLogService.LogAsync(
-            userId,
+        await _activityLogService.LogActivityAsync(
             "vehicle_updated",
             "Vehicle",
             vehicle.Id.ToString(),
             $"{vehicle.Make} {vehicle.Model} ({vehicle.RegistrationNumber})",
             "Vehicle updated"
+        ,
+            userId: userId
         );
 
         return Ok(vehicle);
@@ -325,13 +327,14 @@ public class VehiclesController : ControllerBase
 
         await _context.SaveChangesAsync();
 
-        await _activityLogService.LogAsync(
-            userId,
+        await _activityLogService.LogActivityAsync(
             "vehicle_status_changed",
             "Vehicle",
             vehicle.Id.ToString(),
             $"{vehicle.Make} {vehicle.Model}",
             $"Status changed from {oldStatus} to {request.Status}"
+        ,
+            userId: userId
         );
 
         return Ok(vehicle);
@@ -373,13 +376,14 @@ public class VehiclesController : ControllerBase
 
         await _context.SaveChangesAsync();
 
-        await _activityLogService.LogAsync(
-            userId,
+        await _activityLogService.LogActivityAsync(
             "vehicle_maintenance",
             "Vehicle",
             vehicle.Id.ToString(),
             $"{vehicle.Make} {vehicle.Model}",
             $"Maintenance logged: {request.Description ?? "Routine maintenance"}"
+        ,
+            userId: userId
         );
 
         return Ok(vehicle);
@@ -450,9 +454,8 @@ public class VehiclesController : ControllerBase
 
         await _context.SaveChangesAsync();
 
-        await _activityLogService.LogAsync(
-            userId,
-            "vehicle_deleted",
+        await _activityLogService.LogActivityAsync(
+                        "vehicle_deleted",
             "Vehicle",
             vehicle.Id.ToString(),
             $"{vehicle.Make} {vehicle.Model}",

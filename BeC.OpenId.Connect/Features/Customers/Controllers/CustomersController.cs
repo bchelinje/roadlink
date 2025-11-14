@@ -96,13 +96,13 @@ public class CustomersController : ControllerBase
         _context.Jobs.Add(job);
         await _context.SaveChangesAsync();
 
-        await _activityLogService.LogAsync(
-            userId,
+        await _activityLogService.LogActivityAsync(
             "job_created",
             "Job",
             job.Id.ToString(),
             jobNumber,
-            $"Customer created job {jobNumber}"
+            $"Customer created job {jobNumber}",
+            userId: userId
         );
 
         return CreatedAtAction(nameof(GetJob), new { id = job.Id }, job);
@@ -217,13 +217,13 @@ public class CustomersController : ControllerBase
 
         await _context.SaveChangesAsync();
 
-        await _activityLogService.LogAsync(
-            userId,
+        await _activityLogService.LogActivityAsync(
             "job_cancelled",
             "Job",
             job.Id.ToString(),
             job.JobNumber,
-            $"Customer cancelled job {job.JobNumber} (was {oldStatus})"
+            $"Customer cancelled job {job.JobNumber} (was {oldStatus})",
+            userId: userId
         );
 
         return Ok(job);
@@ -297,13 +297,13 @@ public class CustomersController : ControllerBase
 
         await _context.SaveChangesAsync();
 
-        await _activityLogService.LogAsync(
-            userId,
+        await _activityLogService.LogActivityAsync(
             "review_created",
             "Review",
             review.Id.ToString(),
             $"Review for {job.JobNumber}",
-            $"Customer reviewed driver {job.Driver.FirstName} {job.Driver.LastName} ({review.Rating} stars)"
+            $"Customer reviewed driver {job.Driver.FirstName} {job.Driver.LastName} ({review.Rating} stars)",
+            userId: userId
         );
 
         return CreatedAtAction(nameof(GetMyReviews), new { id = review.Id }, review);

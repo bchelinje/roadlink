@@ -196,13 +196,14 @@ public class NotificationsController : ControllerBase
         // TODO: Implement user notification preferences table
         // For now, just acknowledge the request
 
-        await _activityLogService.LogAsync(
-            userId,
+        await _activityLogService.LogActivityAsync(
             "notification_settings_updated",
             "User",
             userId,
             "Notification Settings",
             "User updated notification preferences"
+        ,
+            userId: userId
         );
 
         return Ok(new { message = "Notification settings updated (feature coming soon)" });
@@ -262,7 +263,7 @@ public class NotificationsController : ControllerBase
             _logger.LogInformation($"Push notification queued for user {request.UserId}");
         }
 
-        await _activityLogService.LogAsync(
+        await _activityLogService.LogActivityAsync(
             adminUserId,
             "notification_sent",
             "Notification",
@@ -320,7 +321,7 @@ public class NotificationsController : ControllerBase
         _context.Notifications.AddRange(notifications);
         await _context.SaveChangesAsync();
 
-        await _activityLogService.LogAsync(
+        await _activityLogService.LogActivityAsync(
             adminUserId,
             "notification_broadcast",
             "Notification",
@@ -408,13 +409,14 @@ public class NotificationsController : ControllerBase
         _context.Notifications.RemoveRange(expiredNotifications);
         await _context.SaveChangesAsync();
 
-        await _activityLogService.LogAsync(
+        await _activityLogService.LogActivityAsync(
             adminUserId,
             "notifications_cleanup",
             "System",
             "notifications",
             "Cleanup",
-            $"Deleted {expiredNotifications.Count} expired notifications"
+            $"Deleted {expiredNotifications.Count} expired notifications",
+            userId: userId
         );
 
         return Ok(new { message = $"Deleted {expiredNotifications.Count} expired notifications" });

@@ -110,13 +110,14 @@ public class PaymentsController : ControllerBase
         _context.Payments.Add(payment);
         await _context.SaveChangesAsync();
 
-        await _activityLogService.LogAsync(
-            userId,
+        await _activityLogService.LogActivityAsync(
             "payment_created",
             "Payment",
             payment.Id.ToString(),
             paymentNumber,
             $"Payment created: {payment.TotalAmount:C} {payment.Currency}"
+        ,
+            userId: userId
         );
 
         return CreatedAtAction(nameof(GetPayment), new { id = payment.Id }, payment);
@@ -366,13 +367,14 @@ public class PaymentsController : ControllerBase
 
         await _context.SaveChangesAsync();
 
-        await _activityLogService.LogAsync(
-            userId,
+        await _activityLogService.LogActivityAsync(
             "payment_refunded",
             "Payment",
             payment.Id.ToString(),
             payment.PaymentNumber,
             $"Refund processed: {request.Amount:C} {payment.Currency}. Reason: {request.Reason}"
+        ,
+            userId: userId
         );
 
         return Ok(payment);
@@ -504,9 +506,8 @@ public class PaymentsController : ControllerBase
 
         await _context.SaveChangesAsync();
 
-        await _activityLogService.LogAsync(
-            userId,
-            "payout_created",
+        await _activityLogService.LogActivityAsync(
+                        "payout_created",
             "Payout",
             payout.Id.ToString(),
             payoutNumber,

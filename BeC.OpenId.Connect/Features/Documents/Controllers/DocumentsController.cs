@@ -125,13 +125,14 @@ public class DocumentsController : ControllerBase
         _context.DriverDocuments.Add(document);
         await _context.SaveChangesAsync();
 
-        await _activityLogService.LogAsync(
-            userId,
+        await _activityLogService.LogActivityAsync(
             "document_uploaded",
             "DriverDocument",
             document.Id.ToString(),
             type,
             $"Driver uploaded {type} document"
+        ,
+            userId: userId
         );
 
         return CreatedAtAction(nameof(GetDocument), new { id = document.Id }, document);
@@ -204,13 +205,14 @@ public class DocumentsController : ControllerBase
         _context.DriverDocuments.Remove(document);
         await _context.SaveChangesAsync();
 
-        await _activityLogService.LogAsync(
-            userId,
+        await _activityLogService.LogActivityAsync(
             "document_deleted",
             "DriverDocument",
             document.Id.ToString(),
             document.Type,
             $"Driver deleted {document.Type} document"
+        ,
+            userId: userId
         );
 
         return NoContent();
@@ -270,13 +272,14 @@ public class DocumentsController : ControllerBase
 
         await _context.SaveChangesAsync();
 
-        await _activityLogService.LogAsync(
-            userId,
+        await _activityLogService.LogActivityAsync(
             "document_verified",
             "DriverDocument",
             document.Id.ToString(),
             document.Type,
             $"Admin verified {document.Type} document for driver {document.Driver.FirstName} {document.Driver.LastName}"
+        ,
+            userId: userId
         );
 
         return Ok(document);
@@ -310,13 +313,14 @@ public class DocumentsController : ControllerBase
 
         var reason = request?.Reason ?? "Document did not meet verification requirements";
 
-        await _activityLogService.LogAsync(
-            userId,
+        await _activityLogService.LogActivityAsync(
             "document_rejected",
             "DriverDocument",
             document.Id.ToString(),
             document.Type,
             $"Admin rejected {document.Type} document for driver {document.Driver.FirstName} {document.Driver.LastName}. Reason: {reason}"
+        ,
+            userId: userId
         );
 
         return Ok(document);
