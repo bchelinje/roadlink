@@ -27,6 +27,8 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     public DbSet<PricingHistory> PricingHistory { get; set; }
     public DbSet<DriverLocation> DriverLocations { get; set; }
 
+    public DbSet<Earning> Earnings { get; set; }
+
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);

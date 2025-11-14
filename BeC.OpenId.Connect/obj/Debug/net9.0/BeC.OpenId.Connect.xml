@@ -59,6 +59,56 @@
             <param name="userEmail">Optional: Override the user email</param>
             <param name="metadata">Optional: Additional structured data</param>
         </member>
+        <member name="T:BeC.OpenId.Connect.Features.Customers.Controllers.CustomersController">
+            <summary>
+            Customer-specific endpoints for job management and profile
+            </summary>
+        </member>
+        <member name="M:BeC.OpenId.Connect.Features.Customers.Controllers.CustomersController.CreateJob(BeC.OpenId.Connect.Features.Customers.Controllers.CreateJobRequest)">
+            <summary>
+            Create a new job request
+            </summary>
+        </member>
+        <member name="M:BeC.OpenId.Connect.Features.Customers.Controllers.CustomersController.GetMyJobs(System.String,System.Int32,System.Int32)">
+            <summary>
+            Get my job history
+            </summary>
+        </member>
+        <member name="M:BeC.OpenId.Connect.Features.Customers.Controllers.CustomersController.GetJob(System.Guid)">
+            <summary>
+            Get specific job details
+            </summary>
+        </member>
+        <member name="M:BeC.OpenId.Connect.Features.Customers.Controllers.CustomersController.CancelJob(System.Guid,BeC.OpenId.Connect.Features.Customers.Controllers.CancelJobRequest)">
+            <summary>
+            Cancel a job
+            </summary>
+        </member>
+        <member name="M:BeC.OpenId.Connect.Features.Customers.Controllers.CustomersController.ReviewDriver(System.Guid,BeC.OpenId.Connect.Features.Customers.Controllers.CreateReviewRequest)">
+            <summary>
+            Review a driver after job completion
+            </summary>
+        </member>
+        <member name="M:BeC.OpenId.Connect.Features.Customers.Controllers.CustomersController.GetMyReviews">
+            <summary>
+            Get my reviews given
+            </summary>
+        </member>
+        <member name="M:BeC.OpenId.Connect.Features.Customers.Controllers.CustomersController.GetMyStats">
+            <summary>
+            Get customer statistics
+            </summary>
+        </member>
+        <member name="M:BeC.OpenId.Connect.Features.Customers.Controllers.CustomersController.GetFavoriteDrivers">
+            <summary>
+            Get favorite drivers
+            </summary>
+        </member>
+        <member name="M:BeC.OpenId.Connect.Features.Customers.Controllers.CustomersController.AddFavoriteDriver(System.Guid)">
+            <summary>
+            Add driver to favorites
+            </summary>
+        </member>
         <member name="T:BeC.OpenId.Connect.Features.Demo.Controllers.DemoController">
             <summary>
             Demo endpoints showing different authorization levels
@@ -97,6 +147,61 @@
         <member name="M:BeC.OpenId.Connect.Features.Demo.Controllers.DemoController.GetClaims">
             <summary>
             Get all claims for the current user
+            </summary>
+        </member>
+        <member name="T:BeC.OpenId.Connect.Features.Documents.Controllers.DocumentsController">
+            <summary>
+            Driver document management and verification endpoints
+            </summary>
+        </member>
+        <member name="M:BeC.OpenId.Connect.Features.Documents.Controllers.DocumentsController.GetMyDocuments">
+            <summary>
+            Get my documents (Driver)
+            </summary>
+        </member>
+        <member name="M:BeC.OpenId.Connect.Features.Documents.Controllers.DocumentsController.UploadDocument(System.String,Microsoft.AspNetCore.Http.IFormFile,System.Nullable{System.DateTime})">
+            <summary>
+            Upload a document (Driver)
+            </summary>
+        </member>
+        <member name="M:BeC.OpenId.Connect.Features.Documents.Controllers.DocumentsController.GetDocument(System.Guid)">
+            <summary>
+            Get document by ID
+            </summary>
+        </member>
+        <member name="M:BeC.OpenId.Connect.Features.Documents.Controllers.DocumentsController.DeleteMyDocument(System.Guid)">
+            <summary>
+            Delete a document (Driver)
+            </summary>
+        </member>
+        <member name="M:BeC.OpenId.Connect.Features.Documents.Controllers.DocumentsController.GetPendingDocuments(System.Int32,System.Int32)">
+            <summary>
+            Get documents pending verification (Admin)
+            </summary>
+        </member>
+        <member name="M:BeC.OpenId.Connect.Features.Documents.Controllers.DocumentsController.VerifyDocument(System.Guid)">
+            <summary>
+            Verify a document (Admin)
+            </summary>
+        </member>
+        <member name="M:BeC.OpenId.Connect.Features.Documents.Controllers.DocumentsController.RejectDocument(System.Guid,BeC.OpenId.Connect.Features.Documents.Controllers.RejectDocumentDto)">
+            <summary>
+            Reject a document (Admin)
+            </summary>
+        </member>
+        <member name="M:BeC.OpenId.Connect.Features.Documents.Controllers.DocumentsController.GetExpiringDocuments(System.Int32)">
+            <summary>
+            Get documents expiring soon (Admin)
+            </summary>
+        </member>
+        <member name="M:BeC.OpenId.Connect.Features.Documents.Controllers.DocumentsController.GetDriverDocuments(System.Guid)">
+            <summary>
+            Get all documents for a specific driver (Admin)
+            </summary>
+        </member>
+        <member name="M:BeC.OpenId.Connect.Features.Documents.Controllers.DocumentsController.GetDocumentStatistics">
+            <summary>
+            Get document statistics (Admin)
             </summary>
         </member>
         <member name="M:BeC.OpenId.Connect.Features.Drivers.Controllers.DriversController.GetCurrentDriver">
@@ -247,6 +352,187 @@
             Delete job (Admin only)
             </summary>
         </member>
+        <member name="T:BeC.OpenId.Connect.Features.Location.Controllers.LocationController">
+            <summary>
+            API endpoints for driver location tracking and ETA calculations
+            </summary>
+        </member>
+        <member name="M:BeC.OpenId.Connect.Features.Location.Controllers.LocationController.UpdateDriverLocation(BeC.OpenId.Connect.Features.Location.Dtos.UpdateLocationRequest)">
+            <summary>
+            Update driver's current location (Driver only)
+            </summary>
+            <param name="request">Location update request</param>
+            <returns>Updated location</returns>
+        </member>
+        <member name="M:BeC.OpenId.Connect.Features.Location.Controllers.LocationController.GetDriverLocationForJob(System.Guid)">
+            <summary>
+            Get driver's current location for a specific job (Customer only)
+            </summary>
+            <param name="jobId">Job ID</param>
+            <returns>Driver's current location</returns>
+        </member>
+        <member name="M:BeC.OpenId.Connect.Features.Location.Controllers.LocationController.CalculateEta(System.Guid)">
+            <summary>
+            Calculate ETA for driver to reach job location
+            </summary>
+            <param name="jobId">Job ID</param>
+            <returns>ETA calculation with estimated arrival time</returns>
+        </member>
+        <member name="M:BeC.OpenId.Connect.Features.Location.Controllers.LocationController.GetDriverLocationHistory(System.Guid,System.Nullable{System.DateTime},System.Nullable{System.DateTime})">
+            <summary>
+            Get driver's location history (Admin only)
+            </summary>
+            <param name="driverId">Driver ID</param>
+            <param name="startDate">Start date for history</param>
+            <param name="endDate">End date for history</param>
+            <returns>List of driver locations</returns>
+        </member>
+        <member name="M:BeC.OpenId.Connect.Features.Location.Controllers.LocationController.GetActiveDriverLocations">
+            <summary>
+            Get all active drivers with their last known locations (Admin only)
+            </summary>
+            <returns>List of active drivers with locations</returns>
+        </member>
+        <member name="T:BeC.OpenId.Connect.Features.Location.Dtos.DriverLocation">
+            <summary>
+            Real-time driver location tracking
+            </summary>
+        </member>
+        <member name="T:BeC.OpenId.Connect.Features.Location.Dtos.UpdateLocationRequest">
+            <summary>
+            Request to update driver location
+            </summary>
+        </member>
+        <member name="T:BeC.OpenId.Connect.Features.Location.Dtos.DriverLocationResponse">
+            <summary>
+            Driver location response with additional info
+            </summary>
+        </member>
+        <member name="T:BeC.OpenId.Connect.Features.Location.Dtos.EtaCalculationResult">
+            <summary>
+            ETA calculation result
+            </summary>
+        </member>
+        <member name="T:BeC.OpenId.Connect.Features.Notifications.Controllers.NotificationsController">
+            <summary>
+            Notification management endpoints
+            </summary>
+        </member>
+        <member name="M:BeC.OpenId.Connect.Features.Notifications.Controllers.NotificationsController.GetMyNotifications(System.Nullable{System.Boolean},System.String,System.Int32,System.Int32)">
+            <summary>
+            Get my notifications
+            </summary>
+        </member>
+        <member name="M:BeC.OpenId.Connect.Features.Notifications.Controllers.NotificationsController.GetUnreadCount">
+            <summary>
+            Get unread notification count
+            </summary>
+        </member>
+        <member name="M:BeC.OpenId.Connect.Features.Notifications.Controllers.NotificationsController.MarkAsRead(System.Guid)">
+            <summary>
+            Mark notification as read
+            </summary>
+        </member>
+        <member name="M:BeC.OpenId.Connect.Features.Notifications.Controllers.NotificationsController.MarkAllAsRead">
+            <summary>
+            Mark all notifications as read
+            </summary>
+        </member>
+        <member name="M:BeC.OpenId.Connect.Features.Notifications.Controllers.NotificationsController.DeleteNotification(System.Guid)">
+            <summary>
+            Delete a notification
+            </summary>
+        </member>
+        <member name="M:BeC.OpenId.Connect.Features.Notifications.Controllers.NotificationsController.UpdateNotificationSettings(BeC.OpenId.Connect.Features.Notifications.Controllers.NotificationSettingsDto)">
+            <summary>
+            Update notification preferences (placeholder for future implementation)
+            </summary>
+        </member>
+        <member name="M:BeC.OpenId.Connect.Features.Notifications.Controllers.NotificationsController.SendNotification(BeC.OpenId.Connect.Features.Notifications.Controllers.SendNotificationDto)">
+            <summary>
+            Send notification to a specific user (Admin)
+            </summary>
+        </member>
+        <member name="M:BeC.OpenId.Connect.Features.Notifications.Controllers.NotificationsController.BroadcastNotification(BeC.OpenId.Connect.Features.Notifications.Controllers.BroadcastNotificationDto)">
+            <summary>
+            Broadcast notification to a role or all users (Admin)
+            </summary>
+        </member>
+        <member name="M:BeC.OpenId.Connect.Features.Notifications.Controllers.NotificationsController.GetNotification(System.Guid)">
+            <summary>
+            Get notification by ID (Admin can see all, users can see their own)
+            </summary>
+        </member>
+        <member name="M:BeC.OpenId.Connect.Features.Notifications.Controllers.NotificationsController.GetNotificationStatistics">
+            <summary>
+            Get notification statistics (Admin)
+            </summary>
+        </member>
+        <member name="M:BeC.OpenId.Connect.Features.Notifications.Controllers.NotificationsController.CleanupExpiredNotifications">
+            <summary>
+            Cleanup expired notifications (Admin)
+            </summary>
+        </member>
+        <member name="T:BeC.OpenId.Connect.Features.Payments.Controllers.PaymentsController">
+            <summary>
+            Payment and payout management endpoints
+            </summary>
+        </member>
+        <member name="M:BeC.OpenId.Connect.Features.Payments.Controllers.PaymentsController.CreatePayment(BeC.OpenId.Connect.Features.Payments.Controllers.CreatePaymentDto)">
+            <summary>
+            Create a payment
+            </summary>
+        </member>
+        <member name="M:BeC.OpenId.Connect.Features.Payments.Controllers.PaymentsController.GetPayment(System.Guid)">
+            <summary>
+            Get payment by ID
+            </summary>
+        </member>
+        <member name="M:BeC.OpenId.Connect.Features.Payments.Controllers.PaymentsController.GetJobPayments(System.Guid)">
+            <summary>
+            Get payments for a specific job
+            </summary>
+        </member>
+        <member name="M:BeC.OpenId.Connect.Features.Payments.Controllers.PaymentsController.GetMyPayments(System.String,System.Int32,System.Int32)">
+            <summary>
+            Get my payment history (Customer)
+            </summary>
+        </member>
+        <member name="M:BeC.OpenId.Connect.Features.Payments.Controllers.PaymentsController.GetMyEarnings(System.Nullable{System.DateTime},System.Nullable{System.DateTime})">
+            <summary>
+            Get my earnings (Driver)
+            </summary>
+        </member>
+        <member name="M:BeC.OpenId.Connect.Features.Payments.Controllers.PaymentsController.GetMyPayouts(System.Int32,System.Int32)">
+            <summary>
+            Get my payout history (Driver)
+            </summary>
+        </member>
+        <member name="M:BeC.OpenId.Connect.Features.Payments.Controllers.PaymentsController.ProcessRefund(System.Guid,BeC.OpenId.Connect.Features.Payments.Controllers.RefundPaymentDto)">
+            <summary>
+            Process a refund (Admin)
+            </summary>
+        </member>
+        <member name="M:BeC.OpenId.Connect.Features.Payments.Controllers.PaymentsController.GetPaymentStatistics(System.Nullable{System.DateTime},System.Nullable{System.DateTime})">
+            <summary>
+            Get payment statistics (Admin)
+            </summary>
+        </member>
+        <member name="M:BeC.OpenId.Connect.Features.Payments.Controllers.PaymentsController.StripeWebhook">
+            <summary>
+            Stripe webhook handler (placeholder for Stripe integration)
+            </summary>
+        </member>
+        <member name="M:BeC.OpenId.Connect.Features.Payments.Controllers.PaymentsController.CreatePayout(BeC.OpenId.Connect.Features.Payments.Controllers.CreatePayoutDto)">
+            <summary>
+            Create a payout for a driver (Admin)
+            </summary>
+        </member>
+        <member name="M:BeC.OpenId.Connect.Features.Payments.Controllers.PaymentsController.GetPayout(System.Guid)">
+            <summary>
+            Get payout by ID (Admin)
+            </summary>
+        </member>
         <member name="T:BeC.OpenId.Connect.Features.Ping.Controllers.PingController">
             <summary>
             Health check and API testing endpoint
@@ -292,29 +578,186 @@
             Authenticated user (if applicable)
             </summary>
         </member>
-        <member name="M:BeC.OpenId.Connect.Features.Reviews.Controllers.ReviewsController.CreateReview(BeC.OpenId.Connect.Features.Reviews.Dtos.CreateReviewDto)">
+        <member name="T:BeC.OpenId.Connect.Features.Pricing.Controllers.PricingController">
             <summary>
-            Create a new review for a completed job
+            API endpoints for dynamic pricing and calculations
+            </summary>
+        </member>
+        <member name="M:BeC.OpenId.Connect.Features.Pricing.Controllers.PricingController.CalculatePrice(BeC.OpenId.Connect.Features.Pricing.Dtos.PricingCalculationRequest)">
+            <summary>
+            Calculate full pricing for a job with detailed breakdown
+            </summary>
+            <param name="request">Pricing calculation request with pickup/delivery addresses</param>
+            <returns>Detailed pricing calculation with breakdown</returns>
+        </member>
+        <member name="M:BeC.OpenId.Connect.Features.Pricing.Controllers.PricingController.GetQuickEstimate(System.Double,System.String)">
+            <summary>
+            Get a quick price estimate based on distance and vehicle type
+            </summary>
+            <param name="distanceInMiles">Distance in miles</param>
+            <param name="vehicleType">Vehicle type (van, cargo_van, small_truck, etc.)</param>
+            <returns>Quick estimated price</returns>
+        </member>
+        <member name="M:BeC.OpenId.Connect.Features.Pricing.Controllers.PricingController.GetSurgeMultiplier(System.DateTime,System.String)">
+            <summary>
+            Calculate surge multiplier for a specific date and location
+            </summary>
+            <param name="scheduledDate">Scheduled date for the job</param>
+            <param name="pickupAddress">Pickup address</param>
+            <returns>Surge multiplier (1.0 = no surge, 1.5 = 50% surge)</returns>
+        </member>
+        <member name="M:BeC.OpenId.Connect.Features.Pricing.Controllers.PricingController.GetPricingHistory(System.Guid)">
+            <summary>
+            Get pricing history for a specific job (Admin only)
+            </summary>
+            <param name="jobId">Job ID</param>
+            <returns>Pricing history for the job</returns>
+        </member>
+        <member name="M:BeC.OpenId.Connect.Features.Pricing.Controllers.PricingController.GetPricingRules(System.Nullable{System.Boolean})">
+            <summary>
+            Get all active pricing rules (Admin only)
+            </summary>
+            <returns>List of active pricing rules</returns>
+        </member>
+        <member name="M:BeC.OpenId.Connect.Features.Pricing.Controllers.PricingController.GetPricingRule(System.Guid)">
+            <summary>
+            Get a specific pricing rule by ID (Admin only)
+            </summary>
+            <param name="id">Rule ID</param>
+            <returns>Pricing rule</returns>
+        </member>
+        <member name="M:BeC.OpenId.Connect.Features.Pricing.Controllers.PricingController.CreatePricingRule(BeC.OpenId.Connect.Features.Pricing.Dtos.PricingRule)">
+            <summary>
+            Create a new pricing rule (Admin only)
+            </summary>
+            <param name="rule">Pricing rule to create</param>
+            <returns>Created pricing rule</returns>
+        </member>
+        <member name="M:BeC.OpenId.Connect.Features.Pricing.Controllers.PricingController.UpdatePricingRule(System.Guid,BeC.OpenId.Connect.Features.Pricing.Dtos.PricingRule)">
+            <summary>
+            Update an existing pricing rule (Admin only)
+            </summary>
+            <param name="id">Rule ID</param>
+            <param name="updatedRule">Updated rule data</param>
+            <returns>Updated pricing rule</returns>
+        </member>
+        <member name="M:BeC.OpenId.Connect.Features.Pricing.Controllers.PricingController.DeletePricingRule(System.Guid)">
+            <summary>
+            Delete a pricing rule (Admin only)
+            </summary>
+            <param name="id">Rule ID</param>
+            <returns>No content</returns>
+        </member>
+        <member name="M:BeC.OpenId.Connect.Features.Pricing.Controllers.PricingController.TogglePricingRule(System.Guid)">
+            <summary>
+            Toggle a pricing rule's active status (Admin only)
+            </summary>
+            <param name="id">Rule ID</param>
+            <returns>Updated pricing rule</returns>
+        </member>
+        <member name="T:BeC.OpenId.Connect.Features.Pricing.Dtos.PricingRule">
+            <summary>
+            Pricing rule entity for configurable pricing
+            </summary>
+        </member>
+        <member name="T:BeC.OpenId.Connect.Features.Pricing.Dtos.PricingCalculationRequest">
+            <summary>
+            Request to calculate pricing for a job
+            </summary>
+        </member>
+        <member name="T:BeC.OpenId.Connect.Features.Pricing.Dtos.PricingCalculationResult">
+            <summary>
+            Result of pricing calculation
+            </summary>
+        </member>
+        <member name="T:BeC.OpenId.Connect.Features.Pricing.Dtos.PriceBreakdownItem">
+            <summary>
+            Individual item in price breakdown
+            </summary>
+        </member>
+        <member name="T:BeC.OpenId.Connect.Features.Pricing.Dtos.PricingHistory">
+            <summary>
+            Pricing history for auditing
+            </summary>
+        </member>
+        <member name="T:BeC.OpenId.Connect.Features.Pricing.Services.Interfaces.IPricingCalculatorService">
+            <summary>
+            Service for calculating dynamic pricing
+            </summary>
+        </member>
+        <member name="M:BeC.OpenId.Connect.Features.Pricing.Services.Interfaces.IPricingCalculatorService.CalculatePriceAsync(BeC.OpenId.Connect.Features.Pricing.Dtos.PricingCalculationRequest)">
+            <summary>
+            Calculate price for a job based on all pricing rules
+            </summary>
+        </member>
+        <member name="M:BeC.OpenId.Connect.Features.Pricing.Services.Interfaces.IPricingCalculatorService.GetQuickEstimateAsync(System.Double,System.String)">
+            <summary>
+            Get quick price estimate (less accurate, faster)
+            </summary>
+        </member>
+        <member name="M:BeC.OpenId.Connect.Features.Pricing.Services.Interfaces.IPricingCalculatorService.CalculateSurgeMultiplierAsync(System.DateTime,System.String)">
+            <summary>
+            Calculate surge multiplier based on demand
+            </summary>
+        </member>
+        <member name="M:BeC.OpenId.Connect.Features.Pricing.Services.Interfaces.IPricingCalculatorService.SavePricingHistoryAsync(BeC.OpenId.Connect.Features.Pricing.Dtos.PricingCalculationRequest,BeC.OpenId.Connect.Features.Pricing.Dtos.PricingCalculationResult,System.Nullable{System.Guid},System.String)">
+            <summary>
+            Save pricing calculation to history
+            </summary>
+        </member>
+        <member name="T:BeC.OpenId.Connect.Features.Pricing.Services.PricingCalculatorService">
+            <summary>
+            Implementation of dynamic pricing calculator
+            </summary>
+        </member>
+        <member name="T:BeC.OpenId.Connect.Features.Reviews.Controllers.ReviewsController">
+            <summary>
+            Review and rating management endpoints
+            </summary>
+        </member>
+        <member name="M:BeC.OpenId.Connect.Features.Reviews.Controllers.ReviewsController.CreateReview(BeC.OpenId.Connect.Features.Reviews.Controllers.CreateReviewDto)">
+            <summary>
+            Create a review (customer reviews driver or driver reviews customer)
             </summary>
         </member>
         <member name="M:BeC.OpenId.Connect.Features.Reviews.Controllers.ReviewsController.GetReview(System.Guid)">
             <summary>
-            Get a specific review by ID
+            Get review by ID
             </summary>
         </member>
-        <member name="M:BeC.OpenId.Connect.Features.Reviews.Controllers.ReviewsController.GetDriverReviews(System.Guid,System.String,System.Int32,System.Int32)">
+        <member name="M:BeC.OpenId.Connect.Features.Reviews.Controllers.ReviewsController.GetDriverReviews(System.String,System.Int32,System.Int32)">
             <summary>
-            Get all reviews for a specific driver
+            Get all reviews for a driver
             </summary>
         </member>
-        <member name="M:BeC.OpenId.Connect.Features.Reviews.Controllers.ReviewsController.GetDriverRatingSummary(System.Guid)">
+        <member name="M:BeC.OpenId.Connect.Features.Reviews.Controllers.ReviewsController.GetCustomerReviews(System.String,System.Int32,System.Int32)">
             <summary>
-            Get driver rating summary with statistics
+            Get all reviews for a customer (Admin only)
             </summary>
         </member>
-        <member name="M:BeC.OpenId.Connect.Features.Reviews.Controllers.ReviewsController.AddDriverResponse(System.Guid,BeC.OpenId.Connect.Features.Reviews.Dtos.AddDriverResponseDto)">
+        <member name="M:BeC.OpenId.Connect.Features.Reviews.Controllers.ReviewsController.UpdateReview(System.Guid,BeC.OpenId.Connect.Features.Reviews.Controllers.UpdateReviewDto)">
             <summary>
-            Add driver response to a review (drivers only)
+            Update a review (only by the review creator)
+            </summary>
+        </member>
+        <member name="M:BeC.OpenId.Connect.Features.Reviews.Controllers.ReviewsController.DeleteReview(System.Guid)">
+            <summary>
+            Delete a review (owner or admin)
+            </summary>
+        </member>
+        <member name="M:BeC.OpenId.Connect.Features.Reviews.Controllers.ReviewsController.ReportReview(System.Guid,BeC.OpenId.Connect.Features.Reviews.Controllers.ReportReviewDto)">
+            <summary>
+            Report a review as inappropriate
+            </summary>
+        </member>
+        <member name="M:BeC.OpenId.Connect.Features.Reviews.Controllers.ReviewsController.RespondToReview(System.Guid,BeC.OpenId.Connect.Features.Reviews.Controllers.RespondToReviewDto)">
+            <summary>
+            Respond to a review (reviewee only)
+            </summary>
+        </member>
+        <member name="M:BeC.OpenId.Connect.Features.Reviews.Controllers.ReviewsController.GetPendingReviews">
+            <summary>
+            Get reviews pending moderation (Admin only)
             </summary>
         </member>
         <member name="T:BeC.OpenId.Connect.Features.Roles.Controllers.RolesController">
@@ -503,6 +946,61 @@
             File name of the uploaded picture
             </summary>
         </member>
+        <member name="T:BeC.OpenId.Connect.Features.Vehicles.Controllers.VehiclesController">
+            <summary>
+            Vehicle management endpoints
+            </summary>
+        </member>
+        <member name="M:BeC.OpenId.Connect.Features.Vehicles.Controllers.VehiclesController.GetAllVehicles(System.String,System.Nullable{System.Guid},System.Int32,System.Int32)">
+            <summary>
+            Get all vehicles (Admin only)
+            </summary>
+        </member>
+        <member name="M:BeC.OpenId.Connect.Features.Vehicles.Controllers.VehiclesController.GetVehicle(System.Guid)">
+            <summary>
+            Get vehicle by ID
+            </summary>
+        </member>
+        <member name="M:BeC.OpenId.Connect.Features.Vehicles.Controllers.VehiclesController.GetMyVehicles">
+            <summary>
+            Get my vehicles (Driver)
+            </summary>
+        </member>
+        <member name="M:BeC.OpenId.Connect.Features.Vehicles.Controllers.VehiclesController.CreateVehicle(BeC.OpenId.Connect.Features.Vehicles.Controllers.CreateVehicleDto)">
+            <summary>
+            Create a new vehicle
+            </summary>
+        </member>
+        <member name="M:BeC.OpenId.Connect.Features.Vehicles.Controllers.VehiclesController.AddMyVehicle(BeC.OpenId.Connect.Features.Vehicles.Controllers.CreateVehicleDto)">
+            <summary>
+            Add my vehicle (Driver shorthand endpoint)
+            </summary>
+        </member>
+        <member name="M:BeC.OpenId.Connect.Features.Vehicles.Controllers.VehiclesController.UpdateVehicle(System.Guid,BeC.OpenId.Connect.Features.Vehicles.Controllers.UpdateVehicleDto)">
+            <summary>
+            Update a vehicle
+            </summary>
+        </member>
+        <member name="M:BeC.OpenId.Connect.Features.Vehicles.Controllers.VehiclesController.UpdateVehicleStatus(System.Guid,BeC.OpenId.Connect.Features.Vehicles.Controllers.UpdateVehicleStatusDto)">
+            <summary>
+            Update vehicle status
+            </summary>
+        </member>
+        <member name="M:BeC.OpenId.Connect.Features.Vehicles.Controllers.VehiclesController.LogMaintenance(System.Guid,BeC.OpenId.Connect.Features.Vehicles.Controllers.LogMaintenanceDto)">
+            <summary>
+            Log vehicle maintenance
+            </summary>
+        </member>
+        <member name="M:BeC.OpenId.Connect.Features.Vehicles.Controllers.VehiclesController.GetMaintenanceHistory(System.Guid)">
+            <summary>
+            Get vehicle maintenance history
+            </summary>
+        </member>
+        <member name="M:BeC.OpenId.Connect.Features.Vehicles.Controllers.VehiclesController.DeleteVehicle(System.Guid)">
+            <summary>
+            Delete a vehicle
+            </summary>
+        </member>
         <member name="T:BeC.OpenId.Connect.Infrastructure.Authorization.Policies">
             <summary>
             Defines authorization policy names used throughout the application
@@ -579,6 +1077,66 @@
         <member name="T:BeC.OpenId.Connect.Infrastructure.Hosting.RoleSeedWorker">
             <summary>
             Seeds default roles and admin user on application startup
+            </summary>
+        </member>
+        <member name="T:BeC.OpenId.Connect.Infrastructure.Maps.GoogleMapsService">
+            <summary>
+            Implementation of Google Maps service
+            </summary>
+        </member>
+        <member name="T:BeC.OpenId.Connect.Infrastructure.Maps.IGoogleMapsService">
+            <summary>
+            Service for Google Maps API operations
+            </summary>
+        </member>
+        <member name="M:BeC.OpenId.Connect.Infrastructure.Maps.IGoogleMapsService.GeocodeAddressAsync(System.String)">
+            <summary>
+            Geocode an address to get latitude and longitude
+            </summary>
+        </member>
+        <member name="M:BeC.OpenId.Connect.Infrastructure.Maps.IGoogleMapsService.ReverseGeocodeAsync(System.Double,System.Double)">
+            <summary>
+            Reverse geocode coordinates to get an address
+            </summary>
+        </member>
+        <member name="M:BeC.OpenId.Connect.Infrastructure.Maps.IGoogleMapsService.CalculateDistanceAsync(System.String,System.String)">
+            <summary>
+            Calculate distance and duration between two addresses
+            </summary>
+        </member>
+        <member name="M:BeC.OpenId.Connect.Infrastructure.Maps.IGoogleMapsService.CalculateDistanceAsync(System.Double,System.Double,System.Double,System.Double)">
+            <summary>
+            Calculate distance and duration between coordinates
+            </summary>
+        </member>
+        <member name="M:BeC.OpenId.Connect.Infrastructure.Maps.IGoogleMapsService.GetOptimizedRouteAsync(System.String,System.String,System.Collections.Generic.List{System.String})">
+            <summary>
+            Get optimized route for multiple waypoints
+            </summary>
+        </member>
+        <member name="M:BeC.OpenId.Connect.Infrastructure.Maps.IGoogleMapsService.AutocompleteAddressAsync(System.String,System.String)">
+            <summary>
+            Autocomplete address suggestions
+            </summary>
+        </member>
+        <member name="T:BeC.OpenId.Connect.Infrastructure.Maps.GeocodeResult">
+            <summary>
+            Result of geocoding operation
+            </summary>
+        </member>
+        <member name="T:BeC.OpenId.Connect.Infrastructure.Maps.DistanceResult">
+            <summary>
+            Distance calculation result
+            </summary>
+        </member>
+        <member name="T:BeC.OpenId.Connect.Infrastructure.Maps.RouteResult">
+            <summary>
+            Route calculation result
+            </summary>
+        </member>
+        <member name="T:BeC.OpenId.Connect.Infrastructure.Maps.RouteStep">
+            <summary>
+            Individual step in a route
             </summary>
         </member>
         <member name="T:BeC.OpenId.Connect.Migrations.InitialCreate">
