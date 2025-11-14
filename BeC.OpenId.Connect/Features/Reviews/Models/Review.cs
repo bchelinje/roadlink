@@ -59,6 +59,19 @@ public class Review
     // Helpful votes
     public int HelpfulVotes { get; set; } = 0;
 
+    // Photos (JSON array)
+    [Column(TypeName = "nvarchar(max)")]
+    public string? Photos { get; set; }
+
+    // Flagging/Moderation
+    public bool IsFlagged { get; set; } = false;
+
+    [MaxLength(500)]
+    public string? FlagReason { get; set; }
+
+    public string? FlaggedBy { get; set; }
+    public DateTime? FlaggedDate { get; set; }
+
     // Audit
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
