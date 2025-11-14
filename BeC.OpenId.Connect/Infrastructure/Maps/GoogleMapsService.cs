@@ -1,7 +1,7 @@
 using GoogleApi;
 using GoogleApi.Entities.Common;
 using GoogleApi.Entities.Common.Enums;
-using GoogleApi.Entities.Maps.Common.Enums;
+using GoogleApi.Entities.Maps.Common;
 using GoogleApi.Entities.Maps.Directions.Request;
 using GoogleApi.Entities.Maps.DistanceMatrix.Request;
 using GoogleApi.Entities.Maps.Geocoding;
@@ -38,7 +38,7 @@ public class GoogleMapsService : IGoogleMapsService
 
             var response = await GoogleMaps.AddressGeocode.QueryAsync(request);
 
-            if (response.Status != GoogleApi.Entities.Common.Enums.Status.Ok || !response.Results.Any())
+            if (response.Status != Status.Ok || !response.Results.Any())
             {
                 _logger.LogWarning("Geocoding failed for address: {Address}. Status: {Status}",
                     address, response.Status);
@@ -73,7 +73,7 @@ public class GoogleMapsService : IGoogleMapsService
 
             var response = await GoogleMaps.LocationGeocode.QueryAsync(request);
 
-            if (response.Status != GoogleApi.Entities.Common.Enums.Status.Ok || !response.Results.Any())
+            if (response.Status != Status.Ok || !response.Results.Any())
             {
                 _logger.LogWarning("Reverse geocoding failed for coordinates: {Lat}, {Lng}. Status: {Status}",
                     latitude, longitude, response.Status);
@@ -96,14 +96,14 @@ public class GoogleMapsService : IGoogleMapsService
             var request = new DistanceMatrixRequest
             {
                 Key = _apiKey,
-                Origins = new[] { origin },
-                Destinations = new[] { destination },
-                TravelMode = GoogleApi.Entities.Maps.Common.Enums.TravelMode.Driving
+                Origins = new[] { new LocationEx(origin) },
+                Destinations = new[] { new LocationEx(destination) },
+                TravelMode = Enums.TravelMode.Driving
             };
 
             var response = await GoogleMaps.DistanceMatrix.QueryAsync(request);
 
-            if (response.Status != GoogleApi.Entities.Common.Enums.Status.Ok || !response.Rows.Any())
+            if (response.Status != Status.Ok || !response.Rows.Any())
             {
                 _logger.LogWarning("Distance calculation failed. Origin: {Origin}, Destination: {Destination}. Status: {Status}",
                     origin, destination, response.Status);
@@ -111,7 +111,7 @@ public class GoogleMapsService : IGoogleMapsService
             }
 
             var element = response.Rows.First().Elements.First();
-            if (element.Status != GoogleApi.Entities.Maps.Common.Enums.Status.Ok)
+            if (element.Status != Status.Ok)
             {
                 _logger.LogWarning("Distance element status not OK: {Status}", element.Status);
                 return null;
@@ -145,21 +145,21 @@ public class GoogleMapsService : IGoogleMapsService
             var request = new DistanceMatrixRequest
             {
                 Key = _apiKey,
-                Origins = new[] { $"{originLat},{originLng}" },
-                Destinations = new[] { $"{destLat},{destLng}" },
-                TravelMode = GoogleApi.Entities.Maps.Common.Enums.TravelMode.Driving
+                Origins = new[] { new LocationEx(new Coordinate(originLat, originLng)) },
+                Destinations = new[] { new LocationEx(new Coordinate(destLat, destLng)) },
+                TravelMode = Enums.TravelMode.Driving
             };
 
             var response = await GoogleMaps.DistanceMatrix.QueryAsync(request);
 
-            if (response.Status != GoogleApi.Entities.Common.Enums.Status.Ok || !response.Rows.Any())
+            if (response.Status != Status.Ok || !response.Rows.Any())
             {
                 _logger.LogWarning("Distance calculation failed for coordinates. Status: {Status}", response.Status);
                 return null;
             }
 
             var element = response.Rows.First().Elements.First();
-            if (element.Status != GoogleApi.Entities.Maps.Common.Enums.Status.Ok)
+            if (element.Status != Status.Ok)
             {
                 return null;
             }
@@ -192,20 +192,20 @@ public class GoogleMapsService : IGoogleMapsService
             var request = new DirectionsRequest
             {
                 Key = _apiKey,
-                Origin = origin,
-                Destination = destination,
-                TravelMode = GoogleApi.Entities.Maps.Common.Enums.TravelMode.Driving,
+                Origin = new LocationEx(origin),
+                Destination = new LocationEx(destination),
+                TravelMode = Enums.TravelMode.Driving,
                 OptimizeWaypoints = true
             };
 
             if (waypoints?.Any() == true)
             {
-                request.WayPoints = waypoints.Select(w => new WayPoint(w)).ToArray();
+                request.WayPoints = waypoints.Select(w => new WayPoint(new LocationEx(w))).ToArray();
             }
 
             var response = await GoogleMaps.Directions.QueryAsync(request);
 
-            if (response.Status != GoogleApi.Entities.Common.Enums.Status.Ok || !response.Routes.Any())
+            if (response.Status != Status.Ok || !response.Routes.Any())
             {
                 _logger.LogWarning("Route calculation failed. Status: {Status}", response.Status);
                 return null;
@@ -243,7 +243,7 @@ public class GoogleMapsService : IGoogleMapsService
                 TotalDurationInSeconds = totalDuration,
                 TotalDurationInMinutes = totalDuration / 60,
                 Steps = steps,
-                OverviewPolyline = route.OverviewPolyLine?.Points ?? string.Empty
+                OverviewPolyline = route.OverviewPath?.Points ?? string.Empty
             };
         }
         catch (Exception ex)
@@ -266,7 +266,7 @@ public class GoogleMapsService : IGoogleMapsService
 
             var response = await GooglePlaces.AutoComplete.QueryAsync(request);
 
-            if (response.Status != GoogleApi.Entities.Common.Enums.Status.Ok)
+            if (response.Status != Status.Ok)
             {
                 _logger.LogWarning("Autocomplete failed for input: {Input}. Status: {Status}",
                     input, response.Status);
