@@ -14,14 +14,14 @@
         "outputPath": "/Users/bless/Projects/BeC.OpenId.Connect/BeC.OpenId.Connect/obj/",
         "projectStyle": "PackageReference",
         "configFilePaths": [
+          "/Users/bless/Projects/BeC.OpenId.Connect/NuGet.Config",
           "/Users/bless/.nuget/NuGet/NuGet.Config"
         ],
         "originalTargetFrameworks": [
           "net9.0"
         ],
         "sources": {
-          "https://api.nuget.org/v3/index.json": {},
-          "https://pkgs.dev.azure.com/becsoft/_packaging/becsoft/nuget/v3/index.json": {}
+          "https://api.nuget.org/v3/index.json": {}
         },
         "frameworks": {
           "net9.0": {
@@ -52,6 +52,22 @@
             "BeC.Common.Events": {
               "target": "Package",
               "version": "[1.0.37, )"
+            },
+            "GoogleApi": {
+              "target": "Package",
+              "version": "[4.0.1, )"
+            },
+            "Hangfire.AspNetCore": {
+              "target": "Package",
+              "version": "[1.8.18, )"
+            },
+            "Hangfire.SqlServer": {
+              "target": "Package",
+              "version": "[1.8.18, )"
+            },
+            "MailKit": {
+              "target": "Package",
+              "version": "[4.9.0, )"
             },
             "Microsoft.AspNetCore.Authorization": {
               "target": "Package",

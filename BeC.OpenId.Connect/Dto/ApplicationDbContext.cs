@@ -1,7 +1,11 @@
 ﻿using BeC.OpenId.Connect.Features.ActivityLogs;
 using BeC.OpenId.Connect.Features.Drivers.Dtos;
-using BeC.OpenId.Connect.Features.Reviews.Models;
 using BeC.OpenId.Connect.Features.Users.Dtos;
+using BeC.OpenId.Connect.Features.Reviews.Dtos;
+using BeC.OpenId.Connect.Features.Notifications.Dtos;
+using BeC.OpenId.Connect.Features.Payments.Dtos;
+using BeC.OpenId.Connect.Features.Pricing.Dtos;
+using BeC.OpenId.Connect.Features.Location.Dtos;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 
@@ -15,8 +19,14 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     public DbSet<Job> Jobs { get; set; }
     public DbSet<DriverDocument> DriverDocuments { get; set; }
     public DbSet<Vehicle> Vehicles { get; set; }
-    public DbSet<Earning> Earnings { get; set; }
     public DbSet<Review> Reviews { get; set; }
+    public DbSet<Notification> Notifications { get; set; }
+    public DbSet<Payment> Payments { get; set; }
+    public DbSet<Payout> Payouts { get; set; }
+    public DbSet<PricingRule> PricingRules { get; set; }
+    public DbSet<PricingHistory> PricingHistory { get; set; }
+    public DbSet<DriverLocation> DriverLocations { get; set; }
+
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);
@@ -95,62 +105,135 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
                 .HasPrecision(10, 2);
         });
 
-        // Earning configuration
-        builder.Entity<Earning>(entity =>
+        // Review configuration
+        builder.Entity<Review>(entity =>
         {
             entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.ReviewerId);
+            entity.HasIndex(e => e.RevieweeId);
+            entity.HasIndex(e => e.JobId);
+            entity.HasIndex(e => e.Status);
+            entity.HasIndex(e => e.CreatedAt);
+        });
+
+        // Notification configuration
+        builder.Entity<Notification>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.UserId);
+            entity.HasIndex(e => e.IsRead);
+            entity.HasIndex(e => e.Type);
+            entity.HasIndex(e => e.CreatedAt);
+        });
+
+        // Payment configuration
+        builder.Entity<Payment>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.PaymentNumber).IsUnique();
+            entity.HasIndex(e => e.CustomerId);
             entity.HasIndex(e => e.DriverId);
             entity.HasIndex(e => e.JobId);
-            entity.HasIndex(e => e.PaymentStatus);
-            entity.HasIndex(e => e.JobCompletedDate);
+            entity.HasIndex(e => e.Status);
+            entity.HasIndex(e => e.CreatedAt);
 
-            entity.Property(e => e.BaseAmount)
-                .HasPrecision(10, 2);
-
-            entity.Property(e => e.BonusAmount)
+            entity.Property(e => e.Amount)
                 .HasPrecision(10, 2);
 
             entity.Property(e => e.TipAmount)
                 .HasPrecision(10, 2);
 
-            entity.Property(e => e.DeductionAmount)
+            entity.Property(e => e.PlatformFee)
                 .HasPrecision(10, 2);
 
-            entity.Property(e => e.NetAmount)
+            entity.Property(e => e.DriverEarnings)
                 .HasPrecision(10, 2);
 
-            entity.Property(e => e.JobDistance)
+            entity.Property(e => e.RefundAmount)
                 .HasPrecision(10, 2);
 
-            entity.HasOne(e => e.Driver)
-                .WithMany()
-                .HasForeignKey(e => e.DriverId)
-                .OnDelete(DeleteBehavior.Cascade);
-
-            entity.HasOne(e => e.Job)
-                .WithMany()
-                .HasForeignKey(e => e.JobId)
-                .OnDelete(DeleteBehavior.Cascade);
+            entity.Property(e => e.TotalAmount)
+                .HasPrecision(10, 2);
         });
 
-        // Review configuration
-        builder.Entity<Review>(entity =>
+        // Payout configuration
+        builder.Entity<Payout>(entity =>
         {
             entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.PayoutNumber).IsUnique();
             entity.HasIndex(e => e.DriverId);
-            entity.HasIndex(e => e.JobId).IsUnique(); // One review per job
             entity.HasIndex(e => e.Status);
             entity.HasIndex(e => e.CreatedAt);
 
+            entity.Property(e => e.Amount)
+                .HasPrecision(10, 2);
+
             entity.HasOne(e => e.Driver)
                 .WithMany()
                 .HasForeignKey(e => e.DriverId)
-                .OnDelete(DeleteBehavior.Cascade);
+                .OnDelete(DeleteBehavior.Restrict);
+        });
 
-            entity.HasOne(e => e.Job)
-                .WithMany()
-                .HasForeignKey(e => e.JobId)
-                .OnDelete(DeleteBehavior.Cascade);
+        // PricingRule configuration
+        builder.Entity<PricingRule>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.Type);
+            entity.HasIndex(e => e.IsActive);
+            entity.HasIndex(e => e.Priority);
+            entity.HasIndex(e => e.VehicleType);
+
+            entity.Property(e => e.FixedAmount)
+                .HasPrecision(10, 2);
+
+            entity.Property(e => e.PerMileRate)
+                .HasPrecision(10, 4);
+
+            entity.Property(e => e.PerMinuteRate)
+                .HasPrecision(10, 4);
+
+            entity.Property(e => e.MultiplierPercentage)
+                .HasPrecision(5, 2);
+        });
+
+        // PricingHistory configuration
+        builder.Entity<PricingHistory>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.JobId);
+            entity.HasIndex(e => e.CustomerId);
+            entity.HasIndex(e => e.CreatedAt);
+
+            entity.Property(e => e.BaseFare)
+                .HasPrecision(10, 2);
+
+            entity.Property(e => e.DistanceCharge)
+                .HasPrecision(10, 2);
+
+            entity.Property(e => e.TimeCharge)
+                .HasPrecision(10, 2);
+
+            entity.Property(e => e.VehicleTypeCharge)
+                .HasPrecision(10, 2);
+
+            entity.Property(e => e.ServiceAddonsCharge)
+                .HasPrecision(10, 2);
+
+            entity.Property(e => e.SurgeMultiplier)
+                .HasPrecision(5, 2);
+
+            entity.Property(e => e.TotalPrice)
+                .HasPrecision(10, 2);
+        });
+
+        // DriverLocation configuration
+        builder.Entity<DriverLocation>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.DriverId);
+            entity.HasIndex(e => e.CurrentJobId);
+            entity.HasIndex(e => e.Timestamp);
+            entity.HasIndex(e => new { e.DriverId, e.Timestamp }); // Composite index for location history queries
         });
     }
 }

@@ -7,6 +7,9 @@ using BeC.OpenId.Connect.Features.Users.Dtos;
 using BeC.OpenId.Connect.Infrastructure.Authorization;
 using BeC.OpenId.Connect.Infrastructure.Email;
 using BeC.OpenId.Connect.Infrastructure.Hosting;
+using BeC.OpenId.Connect.Infrastructure.Maps;
+using BeC.OpenId.Connect.Features.Pricing.Services;
+using BeC.OpenId.Connect.Features.Pricing.Services.Interfaces;
 using BeC.OpenId.Connect.Shared.Interfaces;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.OpenApi.Models;
@@ -35,6 +38,9 @@ builder.Services.Scan(s => s.FromAssemblyOf<IScoped>()
     .WithScopedLifetime());
 
 builder.Services.AddScoped<IActivityLogService, ActivityLogService>();
+builder.Services.AddScoped<IGoogleMapsService, GoogleMapsService>();
+builder.Services.AddScoped<IPricingCalculatorService, PricingCalculatorService>();
+
 builder.Services.Configure<FormOptions>(options =>
 {
     options.MultipartBodyLengthLimit = 10 * 1024 * 1024; // 10MB
