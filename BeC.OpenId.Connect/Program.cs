@@ -4,12 +4,18 @@ using BeC.OpenId.Connect.Dto;
 using BeC.OpenId.Connect.Features.ActivityLogs.Services;
 using BeC.OpenId.Connect.Features.ActivityLogs.Services.Interfaces;
 using BeC.OpenId.Connect.Features.Users.Dtos;
+using BeC.OpenId.Connect.Features.Notifications.Hubs;
+using BeC.OpenId.Connect.Features.Notifications.Services;
+using BeC.OpenId.Connect.Features.Notifications.Services.Interfaces;
 using BeC.OpenId.Connect.Infrastructure.Authorization;
+using BeC.OpenId.Connect.Infrastructure.BackgroundJobs;
 using BeC.OpenId.Connect.Infrastructure.Email;
 using BeC.OpenId.Connect.Infrastructure.Hosting;
 using BeC.OpenId.Connect.Shared.Interfaces;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.OpenApi.Models;
+using Hangfire;
+using Hangfire.SqlServer;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -116,6 +122,29 @@ builder.Services.AddAuthorization(options =>
 
 builder.Services.AddRazorPages();
 builder.Services.AddControllers();
+
+// Add SignalR
+builder.Services.AddSignalR();
+
+// Add Realtime Notification Service
+builder.Services.AddScoped<IRealtimeNotificationService, RealtimeNotificationService>();
+
+// Add Hangfire services
+builder.Services.AddHangfire(configuration => configuration
+    .SetDataCompatibilityLevel(CompatibilityLevel.Version_180)
+    .UseSimpleAssemblyNameTypeSerializer()
+    .UseRecommendedSerializerSettings()
+    .UseSqlServerStorage(connectionString, new SqlServerStorageOptions
+    {
+        CommandBatchMaxTimeout = TimeSpan.FromMinutes(5),
+        SlidingInvisibilityTimeout = TimeSpan.FromMinutes(5),
+        QueuePollInterval = TimeSpan.Zero,
+        UseRecommendedIsolationLevel = true,
+        DisableGlobalLocks = true
+    }));
+
+// Add the processing server as IHostedService
+builder.Services.AddHangfireServer();
 
 // Add hosted services
 builder.Services.AddHostedService<OpenIddictSeedWorker>();
@@ -246,11 +275,14 @@ builder.Services.AddCors(options =>
             )
             .AllowAnyHeader()
             .AllowAnyMethod()
-            .AllowCredentials();
+            .AllowCredentials();  // Required for SignalR
     });
 });
 
 var app = builder.Build();
+
+// Register recurring background jobs
+RecurringJobs.RegisterRecurringJobs();
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
@@ -293,6 +325,17 @@ app.MapStaticAssets();
 app.MapControllers();
 app.MapRazorPages()
     .WithStaticAssets();
+
+// Map SignalR hubs
+app.MapHub<NotificationHub>("/hubs/notifications");
+
+// Map Hangfire dashboard (only in development or with authorization)
+app.MapHangfireDashboard("/hangfire", new DashboardOptions
+{
+    Authorization = new[] { new HangfireAuthorizationFilter() },
+    DashboardTitle = "BeC Background Jobs"
+});
+
 app.MapGet("/", context =>
 {
     context.Response.Redirect("/swagger");
