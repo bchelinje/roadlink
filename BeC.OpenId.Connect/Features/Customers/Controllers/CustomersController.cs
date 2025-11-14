@@ -383,10 +383,10 @@ public class CustomersController : ControllerBase
     [HttpGet("me/favorites")]
     [Authorize(Roles = AuthRoles.Customer)]
     [ProducesResponseType(typeof(List<Driver>), StatusCodes.Status200OK)]
-    public async Task<ActionResult<List<Driver>>> GetFavoriteDrivers()
+    public Task<ActionResult<List<Driver>>> GetFavoriteDrivers()
     {
         // TODO: Implement favorites table and logic
-        return Ok(new List<Driver>());
+        return Task.FromResult<ActionResult<List<Driver>>>(Ok(new List<Driver>()));
     }
 
     /// <summary>
@@ -395,10 +395,10 @@ public class CustomersController : ControllerBase
     [HttpPost("me/favorites/{driverId}")]
     [Authorize(Roles = AuthRoles.Customer)]
     [ProducesResponseType(StatusCodes.Status200OK)]
-    public async Task<IActionResult> AddFavoriteDriver(Guid driverId)
+    public Task<IActionResult> AddFavoriteDriver(Guid driverId)
     {
         // TODO: Implement favorites table and logic
-        return Ok(new { message = "Favorites feature coming soon" });
+        return Task.FromResult<IActionResult>(Ok(new { message = "Favorites feature coming soon" }));
     }
 
     #endregion

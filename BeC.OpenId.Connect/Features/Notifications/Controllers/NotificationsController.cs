@@ -410,13 +410,12 @@ public class NotificationsController : ControllerBase
         await _context.SaveChangesAsync();
 
         await _activityLogService.LogActivityAsync(
-            adminUserId,
             "notifications_cleanup",
             "System",
             "notifications",
             "Cleanup",
             $"Deleted {expiredNotifications.Count} expired notifications",
-            userId: userId
+            userId: adminUserId
         );
 
         return Ok(new { message = $"Deleted {expiredNotifications.Count} expired notifications" });

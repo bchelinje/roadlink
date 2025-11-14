@@ -434,7 +434,7 @@ public class PaymentsController : ControllerBase
     [AllowAnonymous]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    public async Task<IActionResult> StripeWebhook()
+    public Task<IActionResult> StripeWebhook()
     {
         // TODO: Implement Stripe webhook handling
         // 1. Verify webhook signature
@@ -444,7 +444,7 @@ public class PaymentsController : ControllerBase
 
         _logger.LogInformation("Stripe webhook received");
 
-        return Ok();
+        return Task.FromResult<IActionResult>(Ok());
     }
 
     /// <summary>
