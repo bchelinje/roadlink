@@ -4,6 +4,8 @@ using BeC.OpenId.Connect.Features.Users.Dtos;
 using BeC.OpenId.Connect.Features.Reviews.Dtos;
 using BeC.OpenId.Connect.Features.Notifications.Dtos;
 using BeC.OpenId.Connect.Features.Payments.Dtos;
+using BeC.OpenId.Connect.Features.Pricing.Dtos;
+using BeC.OpenId.Connect.Features.Location.Dtos;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 
@@ -21,6 +23,10 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     public DbSet<Notification> Notifications { get; set; }
     public DbSet<Payment> Payments { get; set; }
     public DbSet<Payout> Payouts { get; set; }
+    public DbSet<PricingRule> PricingRules { get; set; }
+    public DbSet<PricingHistory> PricingHistory { get; set; }
+    public DbSet<DriverLocation> DriverLocations { get; set; }
+
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);
@@ -166,6 +172,68 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
                 .WithMany()
                 .HasForeignKey(e => e.DriverId)
                 .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // PricingRule configuration
+        builder.Entity<PricingRule>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.Type);
+            entity.HasIndex(e => e.IsActive);
+            entity.HasIndex(e => e.Priority);
+            entity.HasIndex(e => e.VehicleType);
+
+            entity.Property(e => e.FixedAmount)
+                .HasPrecision(10, 2);
+
+            entity.Property(e => e.PerMileRate)
+                .HasPrecision(10, 4);
+
+            entity.Property(e => e.PerMinuteRate)
+                .HasPrecision(10, 4);
+
+            entity.Property(e => e.MultiplierPercentage)
+                .HasPrecision(5, 2);
+        });
+
+        // PricingHistory configuration
+        builder.Entity<PricingHistory>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.JobId);
+            entity.HasIndex(e => e.CustomerId);
+            entity.HasIndex(e => e.CreatedAt);
+
+            entity.Property(e => e.BaseFare)
+                .HasPrecision(10, 2);
+
+            entity.Property(e => e.DistanceCharge)
+                .HasPrecision(10, 2);
+
+            entity.Property(e => e.TimeCharge)
+                .HasPrecision(10, 2);
+
+            entity.Property(e => e.VehicleTypeCharge)
+                .HasPrecision(10, 2);
+
+            entity.Property(e => e.ServiceAddonsCharge)
+                .HasPrecision(10, 2);
+
+            entity.Property(e => e.SurgeMultiplier)
+                .HasPrecision(5, 2);
+
+            entity.Property(e => e.TotalPrice)
+                .HasPrecision(10, 2);
+        });
+
+        // DriverLocation configuration
+        builder.Entity<DriverLocation>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.DriverId);
+            entity.HasIndex(e => e.CurrentJobId);
+            entity.HasIndex(e => e.Timestamp);
+            entity.HasIndex(e => new { e.DriverId, e.Timestamp }); // Composite index for location history queries
         });
     }
 }
