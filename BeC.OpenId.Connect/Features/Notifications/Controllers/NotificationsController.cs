@@ -214,7 +214,7 @@ public class NotificationsController : ControllerBase
     /// Send notification to a specific user (Admin)
     /// </summary>
     [HttpPost("send")]
-    [Authorize(Roles = Roles.Admin + "," + Roles.SuperAdmin)]
+    [Authorize(Roles = Infrastructure.Authorization.Roles.Admin + "," + Infrastructure.Authorization.Roles.SuperAdmin)]
     [ProducesResponseType(typeof(Notification), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<Notification>> SendNotification([FromBody] SendNotificationDto request)
@@ -278,7 +278,7 @@ public class NotificationsController : ControllerBase
     /// Broadcast notification to a role or all users (Admin)
     /// </summary>
     [HttpPost("broadcast")]
-    [Authorize(Roles = Roles.Admin + "," + Roles.SuperAdmin)]
+    [Authorize(Roles = Infrastructure.Authorization.Roles.Admin + "," + Infrastructure.Authorization.Roles.SuperAdmin)]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> BroadcastNotification([FromBody] BroadcastNotificationDto request)
@@ -351,7 +351,7 @@ public class NotificationsController : ControllerBase
         // Check permissions
         var user = await _userManager.FindByIdAsync(userId);
         var userRoles = await _userManager.GetRolesAsync(user!);
-        var isAdmin = userRoles.Contains(Roles.Admin) || userRoles.Contains(Roles.SuperAdmin);
+        var isAdmin = userRoles.Contains(Infrastructure.Authorization.Roles.Admin) || userRoles.Contains(Infrastructure.Authorization.Roles.SuperAdmin);
 
         if (!isAdmin && notification.UserId != userId)
             return Forbid("You can only view your own notifications");
@@ -363,7 +363,7 @@ public class NotificationsController : ControllerBase
     /// Get notification statistics (Admin)
     /// </summary>
     [HttpGet("~/api/admin/notifications/statistics")]
-    [Authorize(Roles = Roles.Admin + "," + Roles.SuperAdmin)]
+    [Authorize(Roles = Infrastructure.Authorization.Roles.Admin + "," + Infrastructure.Authorization.Roles.SuperAdmin)]
     [ProducesResponseType(typeof(NotificationStatistics), StatusCodes.Status200OK)]
     public async Task<ActionResult<NotificationStatistics>> GetNotificationStatistics()
     {
@@ -393,7 +393,7 @@ public class NotificationsController : ControllerBase
     /// Cleanup expired notifications (Admin)
     /// </summary>
     [HttpDelete("~/api/admin/notifications/cleanup")]
-    [Authorize(Roles = Roles.SuperAdmin)]
+    [Authorize(Roles = Infrastructure.Authorization.Roles.SuperAdmin)]
     [ProducesResponseType(StatusCodes.Status200OK)]
     public async Task<IActionResult> CleanupExpiredNotifications()
     {

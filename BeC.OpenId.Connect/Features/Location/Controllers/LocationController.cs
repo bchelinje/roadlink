@@ -171,7 +171,7 @@ public class LocationController : ControllerBase
             // Check if user is customer or driver or admin
             var isCustomer = job.Customer.UserId == user.Id;
             var isDriver = job.AssignedDriver?.UserId == user.Id;
-            var isAdmin = User.IsInRole(Roles.Admin) || User.IsInRole(Roles.SuperAdmin);
+            var isAdmin = User.IsInRole(Infrastructure.Authorization.Roles.Admin) || User.IsInRole(Infrastructure.Authorization.Roles.SuperAdmin);
 
             if (!isCustomer && !isDriver && !isAdmin)
             {
@@ -251,7 +251,7 @@ public class LocationController : ControllerBase
             // Check authorization
             var isCustomer = job.Customer.UserId == user.Id;
             var isDriver = job.AssignedDriver?.UserId == user.Id;
-            var isAdmin = User.IsInRole(Roles.Admin) || User.IsInRole(Roles.SuperAdmin);
+            var isAdmin = User.IsInRole(Infrastructure.Authorization.Roles.Admin) || User.IsInRole(Infrastructure.Authorization.Roles.SuperAdmin);
 
             if (!isCustomer && !isDriver && !isAdmin)
             {
