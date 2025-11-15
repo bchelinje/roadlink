@@ -13,6 +13,8 @@ using BeC.OpenId.Connect.Features.Pricing.Services.Interfaces;
 using BeC.OpenId.Connect.Shared.Interfaces;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.OpenApi.Models;
+using BeC.Common.Data.Repositories;
+using BeC.Common.Data.Repositories.Interfaces;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -20,7 +22,7 @@ var builder = WebApplication.CreateBuilder(args);
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") ??
                        throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
 
-builder.Services.AddAutoMapper(typeof(Program).Assembly);
+builder.Services.AddAutoMapper(config => { }, typeof(Program).Assembly);
 builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 builder.Services.AddHttpContextAccessor();
 
@@ -40,6 +42,15 @@ builder.Services.Scan(s => s.FromAssemblyOf<IScoped>()
 builder.Services.AddScoped<IActivityLogService, ActivityLogService>();
 builder.Services.AddScoped<IGoogleMapsService, GoogleMapsService>();
 builder.Services.AddScoped<IPricingCalculatorService, PricingCalculatorService>();
+
+// Feature services
+builder.Services.AddScoped<BeC.OpenId.Connect.Features.Vehicles.Services.Interfaces.IVehicleService, BeC.OpenId.Connect.Features.Vehicles.Services.VehicleService>();
+builder.Services.AddScoped<BeC.OpenId.Connect.Features.Documents.Services.Interfaces.IDocumentService, BeC.OpenId.Connect.Features.Documents.Services.DocumentService>();
+builder.Services.AddScoped<BeC.OpenId.Connect.Features.Location.Services.Interfaces.ILocationService, BeC.OpenId.Connect.Features.Location.Services.LocationService>();
+builder.Services.AddScoped<BeC.OpenId.Connect.Features.Users.Services.Interfaces.IUserService, BeC.OpenId.Connect.Features.Users.Services.UserService>();
+
+// Register BeC.Common.Data Repository
+builder.Services.AddScoped<IRepository, Repository>();
 
 builder.Services.Configure<FormOptions>(options =>
 {

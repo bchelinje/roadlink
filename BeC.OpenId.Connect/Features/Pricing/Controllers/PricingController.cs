@@ -1,10 +1,12 @@
 using Microsoft.AspNetCore.Authorization;
+using BeC.Common.Data.Repositories.Interfaces;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using BeC.OpenId.Connect.Dto;
 using BeC.OpenId.Connect.Features.Pricing.Dtos;
 using BeC.OpenId.Connect.Features.Pricing.Services.Interfaces;
 using BeC.OpenId.Connect.Infrastructure.Authorization;
+using BeC.Common.Data.Repositories.Interfaces;
 
 namespace BeC.OpenId.Connect.Features.Pricing.Controllers;
 
@@ -18,15 +20,18 @@ public class PricingController : ControllerBase
 {
     private readonly IPricingCalculatorService _pricingService;
     private readonly ApplicationDbContext _context;
+    private readonly IRepository _repository;
     private readonly ILogger<PricingController> _logger;
 
     public PricingController(
         IPricingCalculatorService pricingService,
         ApplicationDbContext context,
+        IRepository repository,
         ILogger<PricingController> logger)
     {
         _pricingService = pricingService;
         _context = context;
+        _repository = repository;
         _logger = logger;
     }
 
@@ -146,10 +151,12 @@ public class PricingController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<List<PricingHistory>>> GetPricingHistory(Guid jobId)
     {
-        var history = await _context.PricingHistory
-            .Where(h => h.JobId == jobId)
-            .OrderByDescending(h => h.CreatedAt)
-            .ToListAsync();
+        // Get pricing history with ordering
+        var history = await _repository.GetEntities<PricingHistory, DateTime>(
+            h => h.JobId == jobId,
+            h => h.CreatedAt,
+            isDescending: true
+        );
 
         if (!history.Any())
         {
@@ -168,6 +175,7 @@ public class PricingController : ControllerBase
     [ProducesResponseType(typeof(List<PricingRule>), StatusCodes.Status200OK)]
     public async Task<ActionResult<List<PricingRule>>> GetPricingRules([FromQuery] bool? isActive = null)
     {
+        // Get pricing rules (using DbContext for ThenBy support)
         var query = _context.PricingRules.AsQueryable();
 
         if (isActive.HasValue)
@@ -194,7 +202,8 @@ public class PricingController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<PricingRule>> GetPricingRule(Guid id)
     {
-        var rule = await _context.PricingRules.FindAsync(id);
+        // Using Repository: GetEntity
+        var rule = await _repository.GetEntity<PricingRule>(r => r.Id == id);
 
         if (rule == null)
         {
@@ -228,8 +237,8 @@ public class PricingController : ControllerBase
             rule.CreatedAt = DateTime.UtcNow;
             rule.UpdatedAt = DateTime.UtcNow;
 
-            _context.PricingRules.Add(rule);
-            await _context.SaveChangesAsync();
+            // Using Repository: InsertEntity
+            await _repository.InsertEntity(rule);
 
             _logger.LogInformation("Created pricing rule {RuleId} - {RuleName}", rule.Id, rule.Name);
 
@@ -257,7 +266,8 @@ public class PricingController : ControllerBase
     {
         try
         {
-            var existingRule = await _context.PricingRules.FindAsync(id);
+            // Using Repository: GetEntity
+            var existingRule = await _repository.GetEntity<PricingRule>(r => r.Id == id);
 
             if (existingRule == null)
             {
@@ -284,7 +294,8 @@ public class PricingController : ControllerBase
             existingRule.IsActive = updatedRule.IsActive;
             existingRule.UpdatedAt = DateTime.UtcNow;
 
-            await _context.SaveChangesAsync();
+            // Using Repository: UpdateEntity
+            await _repository.UpdateEntity(existingRule);
 
             _logger.LogInformation("Updated pricing rule {RuleId} - {RuleName}", id, existingRule.Name);
 
@@ -310,15 +321,16 @@ public class PricingController : ControllerBase
     {
         try
         {
-            var rule = await _context.PricingRules.FindAsync(id);
+            // Using Repository: GetEntity
+            var rule = await _repository.GetEntity<PricingRule>(r => r.Id == id);
 
             if (rule == null)
             {
                 return NotFound(new { message = "Pricing rule not found" });
             }
 
-            _context.PricingRules.Remove(rule);
-            await _context.SaveChangesAsync();
+            // Using Repository: RemoveEntity
+            await _repository.RemoveEntity(rule);
 
             _logger.LogInformation("Deleted pricing rule {RuleId} - {RuleName}", id, rule.Name);
 
@@ -344,7 +356,8 @@ public class PricingController : ControllerBase
     {
         try
         {
-            var rule = await _context.PricingRules.FindAsync(id);
+            // Using Repository: GetEntity
+            var rule = await _repository.GetEntity<PricingRule>(r => r.Id == id);
 
             if (rule == null)
             {
@@ -354,7 +367,8 @@ public class PricingController : ControllerBase
             rule.IsActive = !rule.IsActive;
             rule.UpdatedAt = DateTime.UtcNow;
 
-            await _context.SaveChangesAsync();
+            // Using Repository: UpdateEntity
+            await _repository.UpdateEntity(rule);
 
             _logger.LogInformation("Toggled pricing rule {RuleId} - Active: {IsActive}", id, rule.IsActive);
 
