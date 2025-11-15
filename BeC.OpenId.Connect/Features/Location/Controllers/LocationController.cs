@@ -5,6 +5,7 @@ using BeC.OpenId.Connect.Features.Location.Models;
 using BeC.OpenId.Connect.Features.Location.Services.Interfaces;
 using BeC.OpenId.Connect.Features.Location.ViewModels;
 using BeC.OpenId.Connect.Infrastructure.Authorization;
+using AuthRoles = BeC.OpenId.Connect.Infrastructure.Authorization.Roles;
 
 namespace BeC.OpenId.Connect.Features.Location.Controllers;
 

@@ -9,6 +9,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using OpenIddict.Validation.AspNetCore;
+using AuthRoles = BeC.OpenId.Connect.Infrastructure.Authorization.Roles;
 
 namespace BeC.OpenId.Connect.Features.Users.Controllers;
 
@@ -44,7 +45,7 @@ public class UsersController : ControllerBase
     /// Get all users (Admin only)
     /// </summary>
     [HttpGet]
-    [Authorize(Roles = Roles.SuperAdmin + "," + Roles.Admin)]
+    [Authorize(Roles = AuthAuthRoles.SuperAdmin + "," + AuthAuthRoles.Admin)]
     [ProducesResponseType(typeof(UserListViewModel), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task<ActionResult<UserListViewModel>> GetUsers(
@@ -73,7 +74,7 @@ public class UsersController : ControllerBase
     /// Get user by ID (Admin only)
     /// </summary>
     [HttpGet("{id}")]
-    [Authorize(Roles = Roles.SuperAdmin + "," + Roles.Admin)]
+    [Authorize(Roles = AuthRoles.SuperAdmin + "," + AuthRoles.Admin)]
     [ProducesResponseType(typeof(UserViewModel), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
@@ -123,7 +124,7 @@ public class UsersController : ControllerBase
     /// Create new user (SuperAdmin only)
     /// </summary>
     [HttpPost]
-    [Authorize(Roles = Roles.SuperAdmin)]
+    [Authorize(Roles = AuthRoles.SuperAdmin)]
     [ProducesResponseType(typeof(UserViewModel), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
@@ -160,7 +161,7 @@ public class UsersController : ControllerBase
     /// Update user (Admin only)
     /// </summary>
     [HttpPut("{id}")]
-    [Authorize(Roles = Roles.SuperAdmin + "," + Roles.Admin)]
+    [Authorize(Roles = AuthRoles.SuperAdmin + "," + AuthRoles.Admin)]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -232,7 +233,7 @@ public class UsersController : ControllerBase
     /// Assign role to user (SuperAdmin only)
     /// </summary>
     [HttpPost("{id}/roles")]
-    [Authorize(Roles = Roles.SuperAdmin)]
+    [Authorize(Roles = AuthRoles.SuperAdmin)]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -268,7 +269,7 @@ public class UsersController : ControllerBase
     /// Remove role from user (SuperAdmin only)
     /// </summary>
     [HttpDelete("{id}/roles/{roleName}")]
-    [Authorize(Roles = Roles.SuperAdmin)]
+    [Authorize(Roles = AuthRoles.SuperAdmin)]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -308,7 +309,7 @@ public class UsersController : ControllerBase
     /// Lock/Suspend user account (Admin only)
     /// </summary>
     [HttpPost("{id}/lock")]
-    [Authorize(Roles = Roles.SuperAdmin + "," + Roles.Admin)]
+    [Authorize(Roles = AuthRoles.SuperAdmin + "," + AuthRoles.Admin)]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -344,7 +345,7 @@ public class UsersController : ControllerBase
     /// Unlock/Unsuspend user account (Admin only)
     /// </summary>
     [HttpPost("{id}/unlock")]
-    [Authorize(Roles = Roles.SuperAdmin + "," + Roles.Admin)]
+    [Authorize(Roles = AuthRoles.SuperAdmin + "," + AuthRoles.Admin)]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
@@ -428,7 +429,7 @@ public class UsersController : ControllerBase
         try
         {
             var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            var isAdmin = User.IsInRole(Roles.Admin) || User.IsInRole(Roles.SuperAdmin);
+            var isAdmin = User.IsInRole(AuthRoles.Admin) || User.IsInRole(AuthRoles.SuperAdmin);
 
             if (currentUserId != id && !isAdmin)
                 return this.Forbid();
@@ -675,7 +676,7 @@ public class UsersController : ControllerBase
                 return this.NotFound(new { message = "User not found" });
 
             var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            var isAdmin = User.IsInRole(Roles.Admin) || User.IsInRole(Roles.SuperAdmin);
+            var isAdmin = User.IsInRole(AuthRoles.Admin) || User.IsInRole(AuthRoles.SuperAdmin);
 
             if (currentUserId != id && !isAdmin)
                 return this.Forbid();
@@ -765,7 +766,7 @@ public class UsersController : ControllerBase
                 return this.NotFound(new { message = "User not found" });
 
             var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            var isAdmin = User.IsInRole(Roles.Admin) || User.IsInRole(Roles.SuperAdmin);
+            var isAdmin = User.IsInRole(AuthRoles.Admin) || User.IsInRole(AuthRoles.SuperAdmin);
 
             if (currentUserId != id && !isAdmin)
                 return this.Forbid();
