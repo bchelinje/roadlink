@@ -64,23 +64,13 @@ public class DocumentsController : ControllerBase
     [ProducesResponseType(typeof(DocumentViewModel), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [Consumes("multipart/form-data")]
-    public async Task<ActionResult<DocumentViewModel>> UploadDocument(
-        [FromForm] string type,
-        [FromForm] IFormFile file,
-        [FromForm] DateTime? expiryDate = null)
+    public async Task<ActionResult<DocumentViewModel>> UploadDocument([FromForm] UploadDocumentModel model)
     {
         try
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
             if (string.IsNullOrEmpty(userId))
                 return this.Unauthorized();
-
-            var model = new UploadDocumentModel
-            {
-                Type = type,
-                File = file,
-                ExpiryDate = expiryDate
-            };
 
             var result = await _documentService.UploadDocumentAsync(model, userId);
 
