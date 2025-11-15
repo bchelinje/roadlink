@@ -9,6 +9,7 @@ using BeC.OpenId.Connect.Features.Location.ViewModels;
 using BeC.OpenId.Connect.Infrastructure.Authorization;
 using BeC.OpenId.Connect.Infrastructure.Maps;
 using Microsoft.EntityFrameworkCore;
+using AuthRoles = BeC.OpenId.Connect.Infrastructure.Authorization.Roles;
 
 namespace BeC.OpenId.Connect.Features.Location.Services;
 
@@ -101,7 +102,7 @@ public class LocationService : ILocationService
         // Check if user is customer or driver or admin
         var isCustomer = job.CustomerId == userId;
         var isDriver = job.Driver?.UserId == userId;
-        var isAdmin = userRoles.Contains(Roles.Admin) || userRoles.Contains(Roles.SuperAdmin);
+        var isAdmin = userRoles.Contains(AuthRoles.Admin) || userRoles.Contains(AuthRoles.SuperAdmin);
 
         if (!isCustomer && !isDriver && !isAdmin)
         {
@@ -158,7 +159,7 @@ public class LocationService : ILocationService
         // Check authorization
         var isCustomer = job.CustomerId == userId;
         var isDriver = job.Driver?.UserId == userId;
-        var isAdmin = userRoles.Contains(Roles.Admin) || userRoles.Contains(Roles.SuperAdmin);
+        var isAdmin = userRoles.Contains(AuthRoles.Admin) || userRoles.Contains(AuthRoles.SuperAdmin);
 
         if (!isCustomer && !isDriver && !isAdmin)
         {

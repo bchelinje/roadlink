@@ -9,6 +9,7 @@ using BeC.OpenId.Connect.Features.Vehicles.Services.Interfaces;
 using BeC.OpenId.Connect.Features.Vehicles.ViewModels;
 using BeC.OpenId.Connect.Infrastructure.Authorization;
 using Microsoft.EntityFrameworkCore;
+using AuthRoles = BeC.OpenId.Connect.Infrastructure.Authorization.Roles;
 
 namespace BeC.OpenId.Connect.Features.Vehicles.Services;
 
@@ -113,7 +114,7 @@ public class VehicleService : IVehicleService
         if (model.DriverId.HasValue)
         {
             // Admin creating vehicle for a specific driver
-            if (!userRoles.Contains(Roles.Admin) && !userRoles.Contains(Roles.SuperAdmin))
+            if (!userRoles.Contains(AuthRoles.Admin) && !userRoles.Contains(AuthRoles.SuperAdmin))
             {
                 throw new UnauthorizedAccessException("Only admins can create vehicles for other drivers");
             }
@@ -202,7 +203,7 @@ public class VehicleService : IVehicleService
         }
 
         // Check permissions
-        var isAdmin = userRoles.Contains(Roles.Admin) || userRoles.Contains(Roles.SuperAdmin);
+        var isAdmin = userRoles.Contains(AuthRoles.Admin) || userRoles.Contains(AuthRoles.SuperAdmin);
         var isOwner = vehicle.Driver.UserId == userId;
 
         if (!isAdmin && !isOwner)
@@ -268,7 +269,7 @@ public class VehicleService : IVehicleService
         }
 
         // Check permissions
-        var isAdmin = userRoles.Contains(Roles.Admin) || userRoles.Contains(Roles.SuperAdmin);
+        var isAdmin = userRoles.Contains(AuthRoles.Admin) || userRoles.Contains(AuthRoles.SuperAdmin);
         var isOwner = vehicle.Driver.UserId == userId;
 
         if (!isAdmin && !isOwner)
@@ -307,7 +308,7 @@ public class VehicleService : IVehicleService
         }
 
         // Check permissions
-        var isAdmin = userRoles.Contains(Roles.Admin) || userRoles.Contains(Roles.SuperAdmin);
+        var isAdmin = userRoles.Contains(AuthRoles.Admin) || userRoles.Contains(AuthRoles.SuperAdmin);
         var isOwner = vehicle.Driver.UserId == userId;
 
         if (!isAdmin && !isOwner)
@@ -359,7 +360,7 @@ public class VehicleService : IVehicleService
         }
 
         // Check permissions
-        var isAdmin = userRoles.Contains(Roles.Admin) || userRoles.Contains(Roles.SuperAdmin);
+        var isAdmin = userRoles.Contains(AuthRoles.Admin) || userRoles.Contains(AuthRoles.SuperAdmin);
         var isOwner = vehicle.Driver.UserId == userId;
 
         if (!isAdmin && !isOwner)
@@ -397,7 +398,7 @@ public class VehicleService : IVehicleService
             return false;
         }
 
-        var isAdmin = userRoles.Contains(Roles.Admin) || userRoles.Contains(Roles.SuperAdmin);
+        var isAdmin = userRoles.Contains(AuthRoles.Admin) || userRoles.Contains(AuthRoles.SuperAdmin);
         var isOwner = vehicle.Driver.UserId == userId;
 
         return isAdmin || isOwner;
