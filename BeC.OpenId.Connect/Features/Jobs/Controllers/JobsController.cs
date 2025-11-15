@@ -1032,7 +1032,7 @@ public class JobsController : ControllerBase
                     EstimatedDuration = jobRequest.EstimatedDuration ?? 0,
                     PickupLocation = jobRequest.PickupLocation,
                     DeliveryLocation = jobRequest.DeliveryLocation,
-                    Distance = jobRequest.Distance,
+                    Distance = (decimal?)jobRequest.Distance,
                     Items = jobRequest.Items != null ? System.Text.Json.JsonSerializer.Serialize(jobRequest.Items) : null,
                     SpecialInstructions = jobRequest.SpecialInstructions,
                     CustomerNotes = jobRequest.CustomerNotes,
