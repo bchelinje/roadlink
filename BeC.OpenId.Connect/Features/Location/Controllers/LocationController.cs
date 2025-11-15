@@ -21,17 +21,20 @@ namespace BeC.OpenId.Connect.Features.Location.Controllers;
 public class LocationController : ControllerBase
 {
     private readonly ApplicationDbContext _context;
+    private readonly IRepository _repository;
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly IGoogleMapsService _mapsService;
     private readonly ILogger<LocationController> _logger;
 
     public LocationController(
         ApplicationDbContext context,
+        IRepository repository,
         UserManager<ApplicationUser> userManager,
         IGoogleMapsService mapsService,
         ILogger<LocationController> logger)
     {
         _context = context;
+        _repository = repository;
         _userManager = userManager;
         _mapsService = mapsService;
         _logger = logger;
@@ -58,8 +61,8 @@ public class LocationController : ControllerBase
             }
 
             // Get driver profile
-            var driver = await _context.Drivers
-                .FirstOrDefaultAsync(d => d.UserId == user.Id);
+            // Using Repository: GetEntity
+            var driver = await _repository.GetEntity<Driver>(d => d.UserId == user.Id);
 
             if (driver == null)
             {
@@ -98,8 +101,8 @@ public class LocationController : ControllerBase
                 Timestamp = DateTime.UtcNow
             };
 
-            _context.DriverLocations.Add(location);
-            await _context.SaveChangesAsync();
+            // Using Repository: InsertEntity
+            await _repository.InsertEntity(location);
 
             // TODO: If driver is on a job, notify customer of location update via SignalR
             // This requires implementing IRealtimeNotificationService
@@ -157,9 +160,11 @@ public class LocationController : ControllerBase
             }
 
             // Get job and verify authorization
-            var job = await _context.Jobs
-                .Include(j => j.Driver)
-                .FirstOrDefaultAsync(j => j.Id == jobId);
+            // Using Repository: GetEntity with include
+            var job = await _repository.GetEntity<Job>(
+                predicate: j => j.Id == jobId,
+                includeProperties: "Driver"
+            );
 
             if (job == null)
             {
@@ -182,10 +187,12 @@ public class LocationController : ControllerBase
             }
 
             // Get most recent location
-            var location = await _context.DriverLocations
-                .Where(l => l.DriverId == job.DriverId.Value)
-                .OrderByDescending(l => l.Timestamp)
-                .FirstOrDefaultAsync();
+            // Using Repository: GetEntities with ordering and take first
+            var locations = await _repository.GetEntities<DriverLocation>(
+                predicate: l => l.DriverId == job.DriverId.Value,
+                orderBy: q => q.OrderByDescending(l => l.Timestamp)
+            );
+            var location = locations.FirstOrDefault();
 
             if (location == null)
             {
@@ -236,9 +243,11 @@ public class LocationController : ControllerBase
             }
 
             // Get job and verify authorization
-            var job = await _context.Jobs
-                .Include(j => j.Driver)
-                .FirstOrDefaultAsync(j => j.Id == jobId);
+            // Using Repository: GetEntity with include
+            var job = await _repository.GetEntity<Job>(
+                predicate: j => j.Id == jobId,
+                includeProperties: "Driver"
+            );
 
             if (job == null)
             {
@@ -261,10 +270,12 @@ public class LocationController : ControllerBase
             }
 
             // Get driver's current location
-            var driverLocation = await _context.DriverLocations
-                .Where(l => l.DriverId == job.DriverId.Value)
-                .OrderByDescending(l => l.Timestamp)
-                .FirstOrDefaultAsync();
+            // Using Repository: GetEntities with ordering and take first
+            var driverLocations = await _repository.GetEntities<DriverLocation>(
+                predicate: l => l.DriverId == job.DriverId.Value,
+                orderBy: q => q.OrderByDescending(l => l.Timestamp)
+            );
+            var driverLocation = driverLocations.FirstOrDefault();
 
             if (driverLocation == null)
             {
@@ -347,28 +358,41 @@ public class LocationController : ControllerBase
     {
         try
         {
-            var driver = await _context.Drivers.FindAsync(driverId);
+            // Using Repository: GetEntity
+            var driver = await _repository.GetEntity<Driver>(d => d.Id == driverId);
             if (driver == null)
             {
                 return NotFound(new { message = "Driver not found" });
             }
 
-            var query = _context.DriverLocations.Where(l => l.DriverId == driverId);
+            // Build predicate based on date filters
+            System.Linq.Expressions.Expression<Func<DriverLocation, bool>> predicate = l => l.DriverId == driverId;
 
-            if (startDate.HasValue)
+            if (startDate.HasValue && endDate.HasValue)
             {
-                query = query.Where(l => l.Timestamp >= startDate.Value);
+                var start = startDate.Value;
+                var end = endDate.Value;
+                predicate = l => l.DriverId == driverId && l.Timestamp >= start && l.Timestamp <= end;
+            }
+            else if (startDate.HasValue)
+            {
+                var start = startDate.Value;
+                predicate = l => l.DriverId == driverId && l.Timestamp >= start;
+            }
+            else if (endDate.HasValue)
+            {
+                var end = endDate.Value;
+                predicate = l => l.DriverId == driverId && l.Timestamp <= end;
             }
 
-            if (endDate.HasValue)
-            {
-                query = query.Where(l => l.Timestamp <= endDate.Value);
-            }
+            // Using Repository: GetEntities with ordering
+            var allHistory = await _repository.GetEntities<DriverLocation>(
+                predicate: predicate,
+                orderBy: q => q.OrderByDescending(l => l.Timestamp)
+            );
 
-            var history = await query
-                .OrderByDescending(l => l.Timestamp)
-                .Take(1000) // Limit to prevent excessive data
-                .ToListAsync();
+            // Limit to prevent excessive data
+            var history = allHistory.Take(1000).ToList();
 
             return Ok(history);
         }
