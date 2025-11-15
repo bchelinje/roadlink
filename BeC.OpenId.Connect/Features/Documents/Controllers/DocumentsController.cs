@@ -64,42 +64,24 @@ public class DocumentsController : ControllerBase
     [ProducesResponseType(typeof(DocumentViewModel), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [Consumes("multipart/form-data")]
-    public async Task<ActionResult<DocumentViewModel>> UploadDocument(
-        [FromForm] string type,
-        [FromForm] IFormFile file,
-        [FromForm] DateTime? expiryDate = null)
+    public async Task<ActionResult<DocumentViewModel>> UploadDocument([FromForm] UploadDocumentRequest request)
     {
-        try
-        {
-            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            if (string.IsNullOrEmpty(userId))
-                return this.Unauthorized();
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrEmpty(userId))
+            return Unauthorized();
 
-            var model = new UploadDocumentModel
-            {
-                Type = type,
-                File = file,
-                ExpiryDate = expiryDate
-            };
+        var model = new UploadDocumentModel
+        {
+            Type = request.Type,
+            File = request.File,
+            ExpiryDate = request.ExpiryDate
+        };
 
-            var result = await _documentService.UploadDocumentAsync(model, userId);
+        var result = await _documentService.UploadDocumentAsync(model, userId);
 
-            return this.CreatedAtAction(nameof(GetDocument), new { id = result.Id }, result);
-        }
-        catch (InvalidOperationException ex)
-        {
-            return this.NotFound(ex.Message);
-        }
-        catch (ArgumentException ex)
-        {
-            return this.BadRequest(ex.Message);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error uploading document");
-            return this.StatusCode(StatusCodes.Status500InternalServerError, ex.Message);
-        }
+        return CreatedAtAction(nameof(GetDocument), new { id = result.Id }, result);
     }
+
 
     /// <summary>
     /// Get document by ID
