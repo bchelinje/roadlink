@@ -13,6 +13,7 @@ using BeC.OpenId.Connect.Features.ActivityLogs.Services.Interfaces;
 using BeC.OpenId.Connect.Features.Drivers.Dtos;
 using BeC.OpenId.Connect.Features.Users.Dtos;
 using OpenIddict.Validation.AspNetCore;
+using BeC.Common.Data.Repositories.Interfaces;
 
 namespace BeC.OpenId.Connect.Features.Drivers.Controllers;
 
@@ -22,17 +23,20 @@ namespace BeC.OpenId.Connect.Features.Drivers.Controllers;
 public class DriversController : ControllerBase
 {
     private readonly ApplicationDbContext _context;
+    private readonly IRepository _repository;
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly ILogger<DriversController> _logger;
     private readonly IActivityLogService _activityLogService;
 
     public DriversController(
         ApplicationDbContext context,
+        IRepository repository,
         UserManager<ApplicationUser> userManager,
         ILogger<DriversController> logger,
         IActivityLogService activityLogService)
     {
         _context = context;
+        _repository = repository;
         _userManager = userManager;
         _logger = logger;
         _activityLogService = activityLogService;
@@ -53,10 +57,11 @@ public class DriversController : ControllerBase
         if (string.IsNullOrEmpty(userId))
             return Unauthorized("User ID not found in token");
 
-        var driver = await _context.Drivers
-            .Include(d => d.Vehicles)
-            .Include(d => d.Documents)
-            .FirstOrDefaultAsync(d => d.UserId == userId);
+        // Using Repository: GetEntity with filter and includes
+        var driver = await _repository.GetEntity<Driver>(
+            predicate: d => d.UserId == userId,
+            includeProperties: "Vehicles,Documents"
+        );
 
         if (driver == null)
             return NotFound("Driver profile not found");
@@ -81,10 +86,11 @@ public class DriversController : ControllerBase
     [ProducesResponseType(typeof(DriverDto), StatusCodes.Status200OK)]
     public async Task<ActionResult<DriverDto>> GetDriver(Guid id)
     {
-        var driver = await _context.Drivers
-            .Include(d => d.Vehicles)
-            .Include(d => d.Documents)
-            .FirstOrDefaultAsync(d => d.Id == id);
+        // Using Repository: GetEntity by ID with includes
+        var driver = await _repository.GetEntity<Driver>(
+            predicate: d => d.Id == id,
+            includeProperties: "Vehicles,Documents"
+        );
 
         if (driver == null)
             return NotFound();
@@ -108,55 +114,78 @@ public class DriversController : ControllerBase
         [FromQuery] int pageNumber = 1,
         [FromQuery] int pageSize = 10)
     {
-        var query = _context.Drivers.AsQueryable();
+        // Build filter predicate
+        System.Linq.Expressions.Expression<Func<Driver, bool>>? predicate = null;
 
-        // Apply filters
         if (!string.IsNullOrEmpty(status))
-        {
-            query = query.Where(d => d.Status == status);
-        }
+            predicate = d => d.Status == status;
 
         if (!string.IsNullOrEmpty(search))
         {
-            query = query.Where(d =>
-                (d.FirstName != null && d.FirstName.Contains(search)) ||
-                (d.LastName != null && d.LastName.Contains(search)) ||
-                (d.Email != null && d.Email.Contains(search)) ||
-                (d.Phone != null && d.Phone.Contains(search)));
+            if (predicate == null)
+                predicate = d => (d.FirstName != null && d.FirstName.Contains(search)) ||
+                               (d.LastName != null && d.LastName.Contains(search)) ||
+                               (d.Email != null && d.Email.Contains(search)) ||
+                               (d.Phone != null && d.Phone.Contains(search));
+            else
+            {
+                var searchPredicate = predicate;
+                predicate = d => searchPredicate.Compile()(d) &&
+                               ((d.FirstName != null && d.FirstName.Contains(search)) ||
+                                (d.LastName != null && d.LastName.Contains(search)) ||
+                                (d.Email != null && d.Email.Contains(search)) ||
+                                (d.Phone != null && d.Phone.Contains(search)));
+            }
         }
 
         if (!string.IsNullOrEmpty(vehicleType))
         {
-            query = query.Where(d => d.VehicleType == vehicleType);
+            if (predicate == null)
+                predicate = d => d.VehicleType == vehicleType;
+            else
+            {
+                var vtPredicate = predicate;
+                predicate = d => vtPredicate.Compile()(d) && d.VehicleType == vehicleType;
+            }
         }
 
         if (!string.IsNullOrEmpty(location))
         {
-            query = query.Where(d => d.Address != null && d.Address.Contains(location));
+            if (predicate == null)
+                predicate = d => d.Address != null && d.Address.Contains(location);
+            else
+            {
+                var locPredicate = predicate;
+                predicate = d => locPredicate.Compile()(d) && d.Address != null && d.Address.Contains(location);
+            }
         }
 
         if (minRating.HasValue)
         {
-            query = query.Where(d => d.Rating >= (decimal)minRating.Value);
+            if (predicate == null)
+                predicate = d => d.Rating >= (decimal)minRating.Value;
+            else
+            {
+                var ratingPredicate = predicate;
+                predicate = d => ratingPredicate.Compile()(d) && d.Rating >= (decimal)minRating.Value;
+            }
         }
 
-        // Total count before pagination
-        var total = await query.CountAsync();
+        // Using Repository: GetEntitiesPaged with filtering and includes
+        var result = await _repository.GetEntitiesPaged<Driver>(
+            pageNumber: pageNumber,
+            pageSize: pageSize,
+            predicate: predicate,
+            orderBy: d => d.OrderByDescending(x => x.CreatedAt),
+            includeProperties: "Vehicles"
+        );
 
-        // Apply pagination
-        var drivers = await query
-            .OrderByDescending(d => d.CreatedAt)
-            .Skip((pageNumber - 1) * pageSize)
-            .Take(pageSize)
-            .Include(d => d.Vehicles)
-            .ToListAsync();
-
-        var driverDtos = drivers.Select(MapToDto).ToList();
+        var driverDtos = result.Items.Select(MapToDto).ToList();
 
         return Ok(new DriverDtoPaginatedResult
         {
             Items = driverDtos,
-            Total = total,
+            Total = result.TotalCount,
             PageNumber = pageNumber,
             PageSize = pageSize
         });
@@ -176,13 +205,13 @@ public class DriversController : ControllerBase
         if (user == null)
             return BadRequest("User not found");
 
-        // Check if driver profile already exists for this user
-        var existingDriver = await _context.Drivers.FirstOrDefaultAsync(d => d.UserId == dto.UserId);
-        if (existingDriver != null)
+        // Using Repository: Check if driver profile already exists
+        var existingDriver = await _repository.Exists<Driver>(d => d.UserId == dto.UserId);
+        if (existingDriver)
             return BadRequest("Driver profile already exists for this user");
 
-        // Check if email is already used by another driver
-        if (await _context.Drivers.AnyAsync(d => d.Email == dto.Email))
+        // Using Repository: Check if email is already used
+        if (await _repository.Exists<Driver>(d => d.Email == dto.Email))
             return BadRequest("Email is already in use by another driver");
 
         var driver = new Driver
@@ -204,8 +233,8 @@ public class DriversController : ControllerBase
             UpdatedAt = DateTime.UtcNow
         };
 
-        _context.Drivers.Add(driver);
-        await _context.SaveChangesAsync();
+        // Using Repository: InsertEntity
+        await _repository.InsertEntity(driver);
 
         await _activityLogService.LogActivityAsync(
             action: "driver.created",
@@ -234,7 +263,9 @@ public class DriversController : ControllerBase
     public async Task<ActionResult<DriverDto>> UpdateDriver(Guid id, [FromBody] UpdateDriverDto dto)
     {
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        var driver = await _context.Drivers.FindAsync(id);
+
+        // Using Repository: GetEntity by ID
+        var driver = await _repository.GetEntity<Driver>(d => d.Id == id);
 
         if (driver == null)
             return NotFound();
@@ -249,16 +280,17 @@ public class DriversController : ControllerBase
         driver.LicenseExpiry = dto.LicenseExpiry ?? driver.LicenseExpiry;
         driver.VehicleType = dto.VehicleType ?? driver.VehicleType;
         driver.VehicleRegistration = dto.VehicleRegistration ?? driver.VehicleRegistration;
-        
+
         if (dto.Address != null)
             driver.Address = dto.Address;
-        
+
         if (dto.EmergencyContact != null)
             driver.EmergencyContact = dto.EmergencyContact;
 
         driver.UpdatedAt = DateTime.UtcNow;
 
-        await _context.SaveChangesAsync();
+        // Using Repository: UpdateEntity
+        await _repository.UpdateEntity(driver);
 
         await _activityLogService.LogActivityAsync(
             action: "driver.profile_updated",
