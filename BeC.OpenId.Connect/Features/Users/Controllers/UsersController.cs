@@ -45,7 +45,7 @@ public class UsersController : ControllerBase
     /// Get all users (Admin only)
     /// </summary>
     [HttpGet]
-    [Authorize(Roles = AuthAuthRoles.SuperAdmin + "," + AuthAuthRoles.Admin)]
+    [Authorize(Roles = AuthRoles.SuperAdmin + "," + AuthRoles.Admin)]
     [ProducesResponseType(typeof(UserListViewModel), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task<ActionResult<UserListViewModel>> GetUsers(
