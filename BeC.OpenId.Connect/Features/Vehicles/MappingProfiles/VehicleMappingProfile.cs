@@ -1,6 +1,7 @@
 using System.Text.Json;
 using AutoMapper;
 using BeC.OpenId.Connect.Dto;
+using BeC.OpenId.Connect.Features.ActivityLogs;
 using BeC.OpenId.Connect.Features.Drivers.Dtos;
 using BeC.OpenId.Connect.Features.Vehicles.ViewModels;
 

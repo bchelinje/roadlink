@@ -61,7 +61,7 @@ public class DemoController : ControllerBase
     /// Driver-only endpoint - accessible to drivers
     /// </summary>
     [HttpGet("driver")]
-    [Authorize(Roles = Infrastructure.Authorization.AuthRoles.Driver)]
+    [Authorize(Roles = Infrastructure.Authorization.Roles.Driver)]
     [ProducesResponseType(typeof(DemoResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
@@ -83,7 +83,7 @@ public class DemoController : ControllerBase
     /// Admin-only endpoint - accessible to admins and super admins
     /// </summary>
     [HttpGet("admin")]
-    [Authorize(Roles = Infrastructure.Authorization.AuthRoles.Admin + "," + Infrastructure.Authorization.AuthRoles.SuperAdmin)]
+    [Authorize(Roles = Infrastructure.Authorization.Roles.Admin + "," + Infrastructure.Authorization.Roles.SuperAdmin)]
     [ProducesResponseType(typeof(DemoResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
@@ -105,7 +105,7 @@ public class DemoController : ControllerBase
     /// SuperAdmin-only endpoint - accessible only to super admins
     /// </summary>
     [HttpGet("superadmin")]
-    [Authorize(Roles = Infrastructure.Authorization.AuthRoles.SuperAdmin)]
+    [Authorize(Roles = Infrastructure.Authorization.Roles.SuperAdmin)]
     [ProducesResponseType(typeof(DemoResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
