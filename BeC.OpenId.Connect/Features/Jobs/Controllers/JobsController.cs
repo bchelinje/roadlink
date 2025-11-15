@@ -495,7 +495,7 @@ public class JobsController : ControllerBase
                 new Dictionary<string, object>
                 {
                     { "driverName", $"{driver.FirstName} {driver.LastName}" },
-                    { "driverPhone", driver.PhoneNumber ?? "" }
+                    { "driverPhone", driver.Phone ?? "" }
                 }
             );
         }
