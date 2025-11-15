@@ -64,7 +64,7 @@ public class DocumentsController : ControllerBase
     [ProducesResponseType(typeof(DocumentViewModel), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [Consumes("multipart/form-data")]
-    public async Task<ActionResult<DocumentViewModel>> UploadDocument([FromForm] UploadDocumentModel model)
+    public async Task<ActionResult<DocumentViewModel>> UploadDocument(UploadDocumentModel model)
     {
         try
         {

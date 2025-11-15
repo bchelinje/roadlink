@@ -5,7 +5,7 @@ namespace BeC.OpenId.Connect.Features.Documents.Models;
 /// </summary>
 public class UploadDocumentModel
 {
-    public required string Type { get; set; }
-    public required IFormFile File { get; set; }
+    public string Type { get; set; } = string.Empty;
+    public IFormFile? File { get; set; }
     public DateTime? ExpiryDate { get; set; }
 }
