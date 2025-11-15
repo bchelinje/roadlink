@@ -197,6 +197,13 @@ builder.Services.AddOpenIddict()
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
 {
+    // Map IFormFile to string with binary format for file uploads
+    options.MapType<IFormFile>(() => new OpenApiSchema
+    {
+        Type = "string",
+        Format = "binary"
+    });
+
     options.SwaggerDoc("v1", new OpenApiInfo
     {
         Title = "BeC API",
