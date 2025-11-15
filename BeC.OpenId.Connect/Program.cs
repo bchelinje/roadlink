@@ -17,6 +17,7 @@ using BeC.Common.Data.Repositories;
 using BeC.Common.Data.Repositories.Interfaces;
 using BeC.Common.Events.Services;
 using BeC.Common.Events.Services.Interfaces;
+using BeC.OpenId.Connect.Infrastructure.Swagger;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -250,6 +251,9 @@ builder.Services.AddSwaggerGen(options =>
             Array.Empty<string>()
         }
     });
+
+    // Add operation filter for file uploads
+    options.OperationFilter<FileUploadOperationFilter>();
 
     // Use XML comments if available
     var xmlFile = $"{System.Reflection.Assembly.GetExecutingAssembly().GetName().Name}.xml";
