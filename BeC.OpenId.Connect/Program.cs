@@ -15,6 +15,8 @@ using Microsoft.AspNetCore.Http.Features;
 using Microsoft.OpenApi.Models;
 using BeC.Common.Data.Repositories;
 using BeC.Common.Data.Repositories.Interfaces;
+using BeC.Common.Events.Services;
+using BeC.Common.Events.Services.Interfaces;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -51,6 +53,9 @@ builder.Services.AddScoped<BeC.OpenId.Connect.Features.Users.Services.Interfaces
 
 // Register BeC.Common.Data Repository
 builder.Services.AddScoped<IRepository, Repository>();
+
+// Register BeC.Common.Events EventEmitter (required by Repository)
+builder.Services.AddScoped<IEventEmitter, EventEmitter>();
 
 builder.Services.Configure<FormOptions>(options =>
 {
