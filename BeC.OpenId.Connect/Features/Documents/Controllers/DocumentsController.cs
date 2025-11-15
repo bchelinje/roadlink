@@ -53,14 +53,16 @@ public class DocumentsController : ControllerBase
         if (string.IsNullOrEmpty(userId))
             return Unauthorized();
 
-        var driver = await _context.Drivers.FirstOrDefaultAsync(d => d.UserId == userId);
+        // Using Repository: GetEntity
+        var driver = await _repository.GetEntity<Driver>(d => d.UserId == userId);
         if (driver == null)
             return NotFound("Driver profile not found");
 
-        var documents = await _context.DriverDocuments
-            .Where(d => d.DriverId == driver.Id)
-            .OrderByDescending(d => d.UploadedDate)
-            .ToListAsync();
+        // Using Repository: GetEntities with ordering
+        var documents = await _repository.GetEntities<DriverDocument>(
+            predicate: d => d.DriverId == driver.Id,
+            orderBy: q => q.OrderByDescending(d => d.UploadedDate)
+        );
 
         return Ok(documents);
     }
@@ -82,7 +84,8 @@ public class DocumentsController : ControllerBase
         if (string.IsNullOrEmpty(userId))
             return Unauthorized();
 
-        var driver = await _context.Drivers.FirstOrDefaultAsync(d => d.UserId == userId);
+        // Using Repository: GetEntity
+        var driver = await _repository.GetEntity<Driver>(d => d.UserId == userId);
         if (driver == null)
             return NotFound("Driver profile not found");
 
@@ -127,8 +130,8 @@ public class DocumentsController : ControllerBase
             Status = "pending"
         };
 
-        _context.DriverDocuments.Add(document);
-        await _context.SaveChangesAsync();
+        // Using Repository: InsertEntity
+        await _repository.InsertEntity(document);
 
         await _activityLogService.LogActivityAsync(
             userId,
@@ -154,9 +157,11 @@ public class DocumentsController : ControllerBase
         if (string.IsNullOrEmpty(userId))
             return Unauthorized();
 
-        var document = await _context.DriverDocuments
-            .Include(d => d.Driver)
-            .FirstOrDefaultAsync(d => d.Id == id);
+        // Using Repository: GetEntity with include
+        var document = await _repository.GetEntity<DriverDocument>(
+            predicate: d => d.Id == id,
+            includeProperties: "Driver"
+        );
 
         if (document == null)
             return NotFound();
@@ -185,12 +190,15 @@ public class DocumentsController : ControllerBase
         if (string.IsNullOrEmpty(userId))
             return Unauthorized();
 
-        var driver = await _context.Drivers.FirstOrDefaultAsync(d => d.UserId == userId);
+        // Using Repository: GetEntity
+        var driver = await _repository.GetEntity<Driver>(d => d.UserId == userId);
         if (driver == null)
             return NotFound("Driver profile not found");
 
-        var document = await _context.DriverDocuments
-            .FirstOrDefaultAsync(d => d.Id == id && d.DriverId == driver.Id);
+        // Using Repository: GetEntity with filter
+        var document = await _repository.GetEntity<DriverDocument>(
+            d => d.Id == id && d.DriverId == driver.Id
+        );
 
         if (document == null)
             return NotFound();
@@ -206,8 +214,8 @@ public class DocumentsController : ControllerBase
             System.IO.File.Delete(filePath);
         }
 
-        _context.DriverDocuments.Remove(document);
-        await _context.SaveChangesAsync();
+        // Using Repository: RemoveEntity
+        await _repository.RemoveEntity(document);
 
         await _activityLogService.LogActivityAsync(
             userId,
@@ -231,22 +239,20 @@ public class DocumentsController : ControllerBase
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 50)
     {
-        var query = _context.DriverDocuments
-            .Include(d => d.Driver)
-            .Where(d => d.Status == "pending")
-            .OrderBy(d => d.UploadedDate);
+        // Using Repository: GetEntitiesPaged with filter and include
+        var result = await _repository.GetEntitiesPaged<DriverDocument>(
+            pageNumber: page,
+            pageSize: pageSize,
+            predicate: d => d.Status == "pending",
+            orderBy: q => q.OrderBy(d => d.UploadedDate),
+            includeProperties: "Driver"
+        );
 
-        var totalCount = await query.CountAsync();
-        var documents = await query
-            .Skip((page - 1) * pageSize)
-            .Take(pageSize)
-            .ToListAsync();
-
-        Response.Headers.Append("X-Total-Count", totalCount.ToString());
+        Response.Headers.Append("X-Total-Count", result.TotalCount.ToString());
         Response.Headers.Append("X-Page", page.ToString());
         Response.Headers.Append("X-Page-Size", pageSize.ToString());
 
-        return Ok(documents);
+        return Ok(result.Items);
     }
 
     /// <summary>
@@ -262,9 +268,11 @@ public class DocumentsController : ControllerBase
         if (string.IsNullOrEmpty(userId))
             return Unauthorized();
 
-        var document = await _context.DriverDocuments
-            .Include(d => d.Driver)
-            .FirstOrDefaultAsync(d => d.Id == id);
+        // Using Repository: GetEntity with include
+        var document = await _repository.GetEntity<DriverDocument>(
+            predicate: d => d.Id == id,
+            includeProperties: "Driver"
+        );
 
         if (document == null)
             return NotFound();
@@ -273,7 +281,8 @@ public class DocumentsController : ControllerBase
         document.VerifiedBy = userId;
         document.VerifiedDate = DateTime.UtcNow;
 
-        await _context.SaveChangesAsync();
+        // Using Repository: UpdateEntity
+        await _repository.UpdateEntity(document);
 
         await _activityLogService.LogActivityAsync(
             userId,
@@ -300,9 +309,11 @@ public class DocumentsController : ControllerBase
         if (string.IsNullOrEmpty(userId))
             return Unauthorized();
 
-        var document = await _context.DriverDocuments
-            .Include(d => d.Driver)
-            .FirstOrDefaultAsync(d => d.Id == id);
+        // Using Repository: GetEntity with include
+        var document = await _repository.GetEntity<DriverDocument>(
+            predicate: d => d.Id == id,
+            includeProperties: "Driver"
+        );
 
         if (document == null)
             return NotFound();
@@ -311,7 +322,8 @@ public class DocumentsController : ControllerBase
         document.VerifiedBy = userId;
         document.VerifiedDate = DateTime.UtcNow;
 
-        await _context.SaveChangesAsync();
+        // Using Repository: UpdateEntity
+        await _repository.UpdateEntity(document);
 
         var reason = request?.Reason ?? "Document did not meet verification requirements";
 
@@ -358,10 +370,11 @@ public class DocumentsController : ControllerBase
     [ProducesResponseType(typeof(List<DriverDocument>), StatusCodes.Status200OK)]
     public async Task<ActionResult<List<DriverDocument>>> GetDriverDocuments(Guid driverId)
     {
-        var documents = await _context.DriverDocuments
-            .Where(d => d.DriverId == driverId)
-            .OrderByDescending(d => d.UploadedDate)
-            .ToListAsync();
+        // Using Repository: GetEntities with filter and ordering
+        var documents = await _repository.GetEntities<DriverDocument>(
+            predicate: d => d.DriverId == driverId,
+            orderBy: q => q.OrderByDescending(d => d.UploadedDate)
+        );
 
         return Ok(documents);
     }

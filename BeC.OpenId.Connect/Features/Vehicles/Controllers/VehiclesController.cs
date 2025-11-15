@@ -23,15 +23,18 @@ namespace BeC.OpenId.Connect.Features.Vehicles.Controllers;
 public class VehiclesController : ControllerBase
 {
     private readonly ApplicationDbContext _context;
+    private readonly IRepository _repository;
     private readonly IActivityLogService _activityLogService;
     private readonly ILogger<VehiclesController> _logger;
 
     public VehiclesController(
         ApplicationDbContext context,
+        IRepository repository,
         IActivityLogService activityLogService,
         ILogger<VehiclesController> logger)
     {
         _context = context;
+        _repository = repository;
         _activityLogService = activityLogService;
         _logger = logger;
     }
@@ -48,30 +51,36 @@ public class VehiclesController : ControllerBase
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 20)
     {
-        var query = _context.Vehicles.Include(v => v.Driver).AsQueryable();
+        // Build predicate based on filters
+        System.Linq.Expressions.Expression<Func<Vehicle, bool>>? predicate = null;
 
-        if (!string.IsNullOrWhiteSpace(status))
+        if (!string.IsNullOrWhiteSpace(status) && driverId.HasValue)
         {
-            query = query.Where(v => v.Status == status);
+            predicate = v => v.Status == status && v.DriverId == driverId.Value;
+        }
+        else if (!string.IsNullOrWhiteSpace(status))
+        {
+            predicate = v => v.Status == status;
+        }
+        else if (driverId.HasValue)
+        {
+            predicate = v => v.DriverId == driverId.Value;
         }
 
-        if (driverId.HasValue)
-        {
-            query = query.Where(v => v.DriverId == driverId.Value);
-        }
+        // Using Repository: GetEntitiesPaged with filter
+        var result = await _repository.GetEntitiesPaged<Vehicle>(
+            pageNumber: page,
+            pageSize: pageSize,
+            predicate: predicate,
+            orderBy: q => q.OrderByDescending(v => v.CreatedAt),
+            includeProperties: "Driver"
+        );
 
-        var totalCount = await query.CountAsync();
-        var vehicles = await query
-            .OrderByDescending(v => v.CreatedAt)
-            .Skip((page - 1) * pageSize)
-            .Take(pageSize)
-            .ToListAsync();
-
-        Response.Headers.Append("X-Total-Count", totalCount.ToString());
+        Response.Headers.Append("X-Total-Count", result.TotalCount.ToString());
         Response.Headers.Append("X-Page", page.ToString());
         Response.Headers.Append("X-Page-Size", pageSize.ToString());
 
-        return Ok(vehicles);
+        return Ok(result.Items);
     }
 
     /// <summary>
@@ -82,9 +91,11 @@ public class VehiclesController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<Vehicle>> GetVehicle(Guid id)
     {
-        var vehicle = await _context.Vehicles
-            .Include(v => v.Driver)
-            .FirstOrDefaultAsync(v => v.Id == id);
+        // Using Repository: GetEntity with include
+        var vehicle = await _repository.GetEntity<Vehicle>(
+            predicate: v => v.Id == id,
+            includeProperties: "Driver"
+        );
 
         if (vehicle == null)
             return NotFound();
@@ -104,14 +115,16 @@ public class VehiclesController : ControllerBase
         if (string.IsNullOrEmpty(userId))
             return Unauthorized();
 
-        var driver = await _context.Drivers.FirstOrDefaultAsync(d => d.UserId == userId);
+        // Using Repository: GetEntity
+        var driver = await _repository.GetEntity<Driver>(d => d.UserId == userId);
         if (driver == null)
             return NotFound("Driver profile not found");
 
-        var vehicles = await _context.Vehicles
-            .Where(v => v.DriverId == driver.Id)
-            .OrderByDescending(v => v.CreatedAt)
-            .ToListAsync();
+        // Using Repository: GetEntities with filter and ordering
+        var vehicles = await _repository.GetEntities<Vehicle>(
+            predicate: v => v.DriverId == driver.Id,
+            orderBy: q => q.OrderByDescending(v => v.CreatedAt)
+        );
 
         return Ok(vehicles);
     }
@@ -144,7 +157,8 @@ public class VehiclesController : ControllerBase
         else
         {
             // Driver creating their own vehicle
-            var driver = await _context.Drivers.FirstOrDefaultAsync(d => d.UserId == userId);
+            // Using Repository: GetEntity
+            var driver = await _repository.GetEntity<Driver>(d => d.UserId == userId);
             if (driver == null)
                 return NotFound("Driver profile not found");
 
@@ -152,15 +166,15 @@ public class VehiclesController : ControllerBase
         }
 
         // Verify driver exists
-        var targetDriver = await _context.Drivers.FindAsync(targetDriverId);
+        // Using Repository: GetEntity
+        var targetDriver = await _repository.GetEntity<Driver>(d => d.Id == targetDriverId);
         if (targetDriver == null)
             return NotFound("Driver not found");
 
         // Check for duplicate registration number
-        var existingVehicle = await _context.Vehicles
-            .FirstOrDefaultAsync(v => v.RegistrationNumber == request.RegistrationNumber);
-
-        if (existingVehicle != null)
+        // Using Repository: Exists
+        var exists = await _repository.Exists<Vehicle>(v => v.RegistrationNumber == request.RegistrationNumber);
+        if (exists)
             return BadRequest("A vehicle with this registration number already exists");
 
         var vehicle = new Vehicle
@@ -189,8 +203,8 @@ public class VehiclesController : ControllerBase
             IsActive = true
         };
 
-        _context.Vehicles.Add(vehicle);
-        await _context.SaveChangesAsync();
+        // Using Repository: InsertEntity
+        await _repository.InsertEntity(vehicle);
 
         await _activityLogService.LogActivityAsync(
             userId,
@@ -232,9 +246,11 @@ public class VehiclesController : ControllerBase
         if (string.IsNullOrEmpty(userId))
             return Unauthorized();
 
-        var vehicle = await _context.Vehicles
-            .Include(v => v.Driver)
-            .FirstOrDefaultAsync(v => v.Id == id);
+        // Using Repository: GetEntity with include
+        var vehicle = await _repository.GetEntity<Vehicle>(
+            predicate: v => v.Id == id,
+            includeProperties: "Driver"
+        );
 
         if (vehicle == null)
             return NotFound();
@@ -278,7 +294,8 @@ public class VehiclesController : ControllerBase
 
         vehicle.UpdatedAt = DateTime.UtcNow;
 
-        await _context.SaveChangesAsync();
+        // Using Repository: UpdateEntity
+        await _repository.UpdateEntity(vehicle);
 
         await _activityLogService.LogActivityAsync(
             userId,
@@ -306,9 +323,11 @@ public class VehiclesController : ControllerBase
         if (string.IsNullOrEmpty(userId))
             return Unauthorized();
 
-        var vehicle = await _context.Vehicles
-            .Include(v => v.Driver)
-            .FirstOrDefaultAsync(v => v.Id == id);
+        // Using Repository: GetEntity with include
+        var vehicle = await _repository.GetEntity<Vehicle>(
+            predicate: v => v.Id == id,
+            includeProperties: "Driver"
+        );
 
         if (vehicle == null)
             return NotFound();
@@ -325,7 +344,8 @@ public class VehiclesController : ControllerBase
         vehicle.Status = request.Status;
         vehicle.UpdatedAt = DateTime.UtcNow;
 
-        await _context.SaveChangesAsync();
+        // Using Repository: UpdateEntity
+        await _repository.UpdateEntity(vehicle);
 
         await _activityLogService.LogActivityAsync(
             userId,
@@ -353,9 +373,11 @@ public class VehiclesController : ControllerBase
         if (string.IsNullOrEmpty(userId))
             return Unauthorized();
 
-        var vehicle = await _context.Vehicles
-            .Include(v => v.Driver)
-            .FirstOrDefaultAsync(v => v.Id == id);
+        // Using Repository: GetEntity with include
+        var vehicle = await _repository.GetEntity<Vehicle>(
+            predicate: v => v.Id == id,
+            includeProperties: "Driver"
+        );
 
         if (vehicle == null)
             return NotFound();
@@ -373,7 +395,8 @@ public class VehiclesController : ControllerBase
         vehicle.Mileage = request.Mileage ?? vehicle.Mileage;
         vehicle.UpdatedAt = DateTime.UtcNow;
 
-        await _context.SaveChangesAsync();
+        // Using Repository: UpdateEntity
+        await _repository.UpdateEntity(vehicle);
 
         await _activityLogService.LogActivityAsync(
             userId,
@@ -430,9 +453,11 @@ public class VehiclesController : ControllerBase
         if (string.IsNullOrEmpty(userId))
             return Unauthorized();
 
-        var vehicle = await _context.Vehicles
-            .Include(v => v.Driver)
-            .FirstOrDefaultAsync(v => v.Id == id);
+        // Using Repository: GetEntity with include
+        var vehicle = await _repository.GetEntity<Vehicle>(
+            predicate: v => v.Id == id,
+            includeProperties: "Driver"
+        );
 
         if (vehicle == null)
             return NotFound();
@@ -450,7 +475,8 @@ public class VehiclesController : ControllerBase
         vehicle.Status = "retired";
         vehicle.UpdatedAt = DateTime.UtcNow;
 
-        await _context.SaveChangesAsync();
+        // Using Repository: UpdateEntity
+        await _repository.UpdateEntity(vehicle);
 
         await _activityLogService.LogActivityAsync(
             userId,
