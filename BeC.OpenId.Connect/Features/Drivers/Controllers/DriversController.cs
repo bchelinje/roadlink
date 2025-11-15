@@ -57,11 +57,11 @@ public class DriversController : ControllerBase
         if (string.IsNullOrEmpty(userId))
             return Unauthorized("User ID not found in token");
 
-        // Using Repository: GetEntity with filter and includes
-        var driver = await _repository.GetEntity<Driver>(
-            predicate: d => d.UserId == userId,
-            includeProperties: "Vehicles,Documents"
-        );
+        // Get driver with vehicles and documents (using DbContext for Include support)
+        var driver = await _context.Drivers
+            .Include(d => d.Vehicles)
+            .Include(d => d.Documents)
+            .FirstOrDefaultAsync(d => d.UserId == userId);
 
         if (driver == null)
             return NotFound("Driver profile not found");
@@ -86,11 +86,11 @@ public class DriversController : ControllerBase
     [ProducesResponseType(typeof(DriverDto), StatusCodes.Status200OK)]
     public async Task<ActionResult<DriverDto>> GetDriver(Guid id)
     {
-        // Using Repository: GetEntity by ID with includes
-        var driver = await _repository.GetEntity<Driver>(
-            predicate: d => d.Id == id,
-            includeProperties: "Vehicles,Documents"
-        );
+        // Get driver with vehicles and documents (using DbContext for Include support)
+        var driver = await _context.Drivers
+            .Include(d => d.Vehicles)
+            .Include(d => d.Documents)
+            .FirstOrDefaultAsync(d => d.Id == id);
 
         if (driver == null)
             return NotFound();
