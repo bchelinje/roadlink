@@ -333,55 +333,6 @@ public class PaymentsController : ControllerBase
     #region Admin Endpoints
 
     /// <summary>
-    /// Process a refund (Admin)
-    /// </summary>
-    [HttpPost("{id}/refund")]
-    [Authorize(Roles = Infrastructure.Authorization.Roles.Admin + "," + Infrastructure.Authorization.Roles.SuperAdmin)]
-    [ProducesResponseType(typeof(Payment), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<Payment>> ProcessRefund(Guid id, [FromBody] RefundPaymentDto request)
-    {
-        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        if (string.IsNullOrEmpty(userId))
-            return Unauthorized();
-
-        var payment = await _context.Payments.FindAsync(id);
-        if (payment == null)
-            return NotFound();
-
-        if (payment.Status != "completed")
-            return BadRequest("Can only refund completed payments");
-
-        if (request.Amount > payment.TotalAmount)
-            return BadRequest("Refund amount cannot exceed payment amount");
-
-        var isFullRefund = request.Amount == payment.TotalAmount;
-
-        payment.RefundAmount = (payment.RefundAmount ?? 0) + request.Amount;
-        payment.Status = isFullRefund ? "refunded" : "partially_refunded";
-        payment.RefundedAt = DateTime.UtcNow;
-        payment.UpdatedAt = DateTime.UtcNow;
-        payment.Notes = (payment.Notes ?? "") + $"\n[REFUND] {DateTime.UtcNow:yyyy-MM-dd HH:mm}: {request.Amount:C} - {request.Reason}";
-
-        // TODO: Implement actual Stripe refund
-        // payment.StripeRefundId = stripeRefundId;
-
-        await _context.SaveChangesAsync();
-
-        await _activityLogService.LogActivityAsync(
-            userId,
-            "payment_refunded",
-            "Payment",
-            payment.Id.ToString(),
-            payment.PaymentNumber,
-            $"Refund processed: {request.Amount:C} {payment.Currency}. Reason: {request.Reason}"
-        );
-
-        return Ok(payment);
-    }
-
-    /// <summary>
     /// Get payment statistics (Admin)
     /// </summary>
     [HttpGet("statistics")]

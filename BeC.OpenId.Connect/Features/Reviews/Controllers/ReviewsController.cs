@@ -576,14 +576,11 @@ public class UpdateReviewDto
     public List<string>? Photos { get; set; }
 }
 
-public class ReportReviewDto
-{
-    public required string Reason { get; set; }
-}
-
 public class RespondToReviewDto
 {
     public required string Response { get; set; }
 }
+
+// Note: ReportReviewDto, ModerateReviewDto, and CreateReviewResponseDto are defined in Features/Reviews/Dtos/ReviewResponseDtos.cs
 
 #endregion
