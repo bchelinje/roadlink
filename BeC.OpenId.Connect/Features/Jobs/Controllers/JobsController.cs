@@ -8,7 +8,9 @@ using BeC.OpenId.Connect.Features.Jobs.Dtos;
 using BeC.OpenId.Connect.Features.ActivityLogs.Services.Interfaces;
 using BeC.OpenId.Connect.Infrastructure.Authorization;
 using OpenIddict.Validation.AspNetCore;
+using OpenIddict.Abstractions;
 using System.Security.Claims;
+using static OpenIddict.Abstractions.OpenIddictConstants;
 
 namespace BeC.OpenId.Connect.Features.Jobs.Controllers;
 
@@ -27,11 +29,12 @@ public class JobsController : ControllerBase
     }
 
     /// <summary>
-    /// Get all jobs with filtering and pagination (Admin only)
+    /// Get all jobs with filtering and pagination
+    /// Admins see all jobs, Customers see only their jobs, Drivers see their assigned jobs
     /// </summary>
     [HttpGet]
     [Authorize(AuthenticationSchemes = OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme,
-        Roles = "Admin,SuperAdmin")]
+        Roles = "Admin,SuperAdmin,Customer,Driver")]
     [ProducesResponseType(typeof(PaginatedResult<JobDto>), StatusCodes.Status200OK)]
     public async Task<ActionResult<PaginatedResult<JobDto>>> GetJobs(
         [FromQuery] string? status,
@@ -47,6 +50,27 @@ public class JobsController : ControllerBase
         [FromQuery] int limit = 10)
     {
         var query = _context.Jobs.AsQueryable();
+
+        // Get current user's role and email
+        var userRole = User.FindFirst(Claims.Role)?.Value;
+        var userEmail = User.FindFirst(Claims.Email)?.Value;
+        var userId = User.FindFirst(Claims.Subject)?.Value;
+
+        // Filter based on user role
+        if (userRole == "Customer" && !string.IsNullOrEmpty(userEmail))
+        {
+            // Customers only see their own jobs
+            query = query.Where(j => j.CustomerEmail == userEmail);
+        }
+        else if (userRole == "Driver" && !string.IsNullOrEmpty(userId))
+        {
+            // Drivers only see jobs assigned to them
+            if (Guid.TryParse(userId, out var driverGuid))
+            {
+                query = query.Where(j => j.DriverId == driverGuid);
+            }
+        }
+        // Admins and SuperAdmins see all jobs (no filter needed)
 
         // Apply filters
         if (!string.IsNullOrEmpty(status))
@@ -100,11 +124,12 @@ public class JobsController : ControllerBase
     }
 
     /// <summary>
-    /// Get job by ID (Admin only)
+    /// Get job by ID
+    /// Admins see any job, Customers see only their jobs, Drivers see their assigned jobs
     /// </summary>
     [HttpGet("{id}")]
     [Authorize(AuthenticationSchemes = OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme,
-        Roles = "Admin,SuperAdmin")]
+        Roles = "Admin,SuperAdmin,Customer,Driver")]
     [ProducesResponseType(typeof(JobDto), StatusCodes.Status200OK)]
     public async Task<ActionResult<JobDto>> GetJob(Guid id)
     {
@@ -113,15 +138,42 @@ public class JobsController : ControllerBase
         if (job == null)
             return NotFound("Job not found");
 
+        // Get current user's role and email
+        var userRole = User.FindFirst(Claims.Role)?.Value;
+        var userEmail = User.FindFirst(Claims.Email)?.Value;
+        var userId = User.FindFirst(Claims.Subject)?.Value;
+
+        // Validate access based on role
+        if (userRole == "Customer")
+        {
+            // Customers can only view their own jobs
+            if (job.CustomerEmail != userEmail)
+                return Forbid("You can only view your own jobs");
+        }
+        else if (userRole == "Driver")
+        {
+            // Drivers can only view jobs assigned to them
+            if (Guid.TryParse(userId, out var driverGuid))
+            {
+                if (job.DriverId != driverGuid)
+                    return Forbid("You can only view jobs assigned to you");
+            }
+            else
+            {
+                return Forbid("Invalid driver ID");
+            }
+        }
+        // Admins and SuperAdmins can view any job
+
         return Ok(MapJobToDto(job));
     }
 
     /// <summary>
-    /// Create new job (Admin only)
+    /// Create new job
+    /// Public endpoint - allows anyone to create a job request
     /// </summary>
     [HttpPost]
-    [Authorize(AuthenticationSchemes = OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme,
-        Roles = "Admin,SuperAdmin")]
+    [AllowAnonymous]
     [ProducesResponseType(typeof(JobDto), StatusCodes.Status201Created)]
     public async Task<ActionResult<JobDto>> CreateJob(CreateJobDto dto)
     {

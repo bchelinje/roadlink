@@ -1,10 +1,12 @@
 using Microsoft.AspNetCore.Authorization;
+using BeC.Common.Data.Repositories.Interfaces;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using BeC.OpenId.Connect.Dto;
 using BeC.OpenId.Connect.Features.Pricing.Dtos;
 using BeC.OpenId.Connect.Features.Pricing.Services.Interfaces;
 using BeC.OpenId.Connect.Infrastructure.Authorization;
+using BeC.Common.Data.Repositories.Interfaces;
 
 namespace BeC.OpenId.Connect.Features.Pricing.Controllers;
 

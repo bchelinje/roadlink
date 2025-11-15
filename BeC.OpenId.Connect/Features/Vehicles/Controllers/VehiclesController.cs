@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using System.Text.Json;
 using Microsoft.AspNetCore.Authorization;
+using BeC.Common.Data.Repositories.Interfaces;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using OpenIddict.Validation.AspNetCore;
@@ -8,6 +9,7 @@ using BeC.OpenId.Connect.Dto;
 using BeC.OpenId.Connect.Features.Drivers.Dtos;
 using BeC.OpenId.Connect.Features.ActivityLogs.Services.Interfaces;
 using BeC.OpenId.Connect.Infrastructure.Authorization;
+using BeC.Common.Data.Repositories.Interfaces;
 
 namespace BeC.OpenId.Connect.Features.Vehicles.Controllers;
 

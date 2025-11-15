@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Authorization;
+using BeC.Common.Data.Repositories.Interfaces;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -6,6 +7,7 @@ using BeC.OpenId.Connect.Dto;
 using BeC.OpenId.Connect.Features.Location.Dtos;
 using BeC.OpenId.Connect.Features.Users.Dtos;
 using BeC.OpenId.Connect.Infrastructure.Authorization;
+using BeC.Common.Data.Repositories.Interfaces;
 using BeC.OpenId.Connect.Infrastructure.Maps;
 
 namespace BeC.OpenId.Connect.Features.Location.Controllers;

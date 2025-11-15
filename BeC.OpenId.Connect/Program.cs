@@ -13,6 +13,8 @@ using BeC.OpenId.Connect.Features.Pricing.Services.Interfaces;
 using BeC.OpenId.Connect.Shared.Interfaces;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.OpenApi.Models;
+using BeC.Common.Data.Repositories;
+using BeC.Common.Data.Repositories.Interfaces;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -20,7 +22,7 @@ var builder = WebApplication.CreateBuilder(args);
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") ??
                        throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
 
-builder.Services.AddAutoMapper(typeof(Program));
+builder.Services.AddAutoMapper(typeof(Program).Assembly);
 builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 builder.Services.AddHttpContextAccessor();
 
@@ -40,6 +42,9 @@ builder.Services.Scan(s => s.FromAssemblyOf<IScoped>()
 builder.Services.AddScoped<IActivityLogService, ActivityLogService>();
 builder.Services.AddScoped<IGoogleMapsService, GoogleMapsService>();
 builder.Services.AddScoped<IPricingCalculatorService, PricingCalculatorService>();
+
+// Register BeC.Common.Data Repository
+builder.Services.AddScoped<IRepository, Repository>();
 
 builder.Services.Configure<FormOptions>(options =>
 {
