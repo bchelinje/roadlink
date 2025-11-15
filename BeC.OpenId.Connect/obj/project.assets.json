@@ -2,18 +2,20 @@
   "version": 3,
   "targets": {
     "net9.0": {
-      "AutoMapper/13.0.1": {
+      "AutoMapper/15.1.0": {
         "type": "package",
         "dependencies": {
-          "Microsoft.Extensions.Options": "6.0.0"
+          "Microsoft.Extensions.Logging.Abstractions": "8.0.0",
+          "Microsoft.Extensions.Options": "8.0.0",
+          "Microsoft.IdentityModel.JsonWebTokens": "8.14.0"
         },
         "compile": {
-          "lib/net6.0/AutoMapper.dll": {
+          "lib/net9.0/AutoMapper.dll": {
             "related": ".xml"
           }
         },
         "runtime": {
-          "lib/net6.0/AutoMapper.dll": {
+          "lib/net9.0/AutoMapper.dll": {
             "related": ".xml"
           }
         }
@@ -99,24 +101,28 @@
           }
         }
       },
-      "BeC.Common.Data/1.0.49": {
+      "BeC.Common.Data/1.0.50": {
         "type": "package",
         "dependencies": {
-          "AutoMapper": "13.0.1",
+          "AutoMapper": "15.1.0",
           "BeC.Common.Events": "1.0.37",
           "Microsoft.AspNetCore.Http.Abstractions": "2.3.0",
           "Microsoft.AspNetCore.Http.Extensions": "2.3.0",
-          "Microsoft.AspNetCore.JsonPatch": "9.0.7",
-          "Microsoft.EntityFrameworkCore": "9.0.7",
-          "Microsoft.EntityFrameworkCore.SqlServer": "9.0.7",
+          "Microsoft.AspNetCore.JsonPatch": "9.0.10",
+          "Microsoft.EntityFrameworkCore": "9.0.10",
+          "Microsoft.EntityFrameworkCore.SqlServer": "9.0.10",
           "Newtonsoft.Json": "13.0.3",
           "Serilog": "4.2.0"
         },
         "compile": {
-          "lib/net9.0/BeC.Common.Data.dll": {}
+          "lib/net9.0/BeC.Common.Data.dll": {
+            "related": ".xml"
+          }
         },
         "runtime": {
-          "lib/net9.0/BeC.Common.Data.dll": {}
+          "lib/net9.0/BeC.Common.Data.dll": {
+            "related": ".xml"
+          }
         }
       },
       "BeC.Common.Events/1.0.37": {
@@ -686,7 +692,7 @@
           "buildMultiTargeting/Microsoft.AspNetCore.Identity.UI.targets": {}
         }
       },
-      "Microsoft.AspNetCore.JsonPatch/9.0.7": {
+      "Microsoft.AspNetCore.JsonPatch/9.0.10": {
         "type": "package",
         "dependencies": {
           "Microsoft.CSharp": "4.7.0",
@@ -4876,19 +4882,24 @@
     }
   },
   "libraries": {
-    "AutoMapper/13.0.1": {
-      "sha512": "/Fx1SbJ16qS7dU4i604Sle+U9VLX+WSNVJggk6MupKVkYvvBm4XqYaeFuf67diHefHKHs50uQIS2YEDFhPCakQ==",
+    "AutoMapper/15.1.0": {
+      "sha512": "uJXRC0ysO+i3fuW1onh0cUmaLbEwfMWwAZ5nw2eKhYccHwDgRhSC4Qj3rNdBy4vdhnC3r4NinhhldANKNWpH1Q==",
       "type": "package",
-      "path": "automapper/13.0.1",
+      "path": "automapper/15.1.0",
       "files": [
         ".nupkg.metadata",
         ".signature.p7s",
+        "LICENSE.md",
         "README.md",
-        "automapper.13.0.1.nupkg.sha512",
+        "automapper.15.1.0.nupkg.sha512",
         "automapper.nuspec",
         "icon.png",
-        "lib/net6.0/AutoMapper.dll",
-        "lib/net6.0/AutoMapper.xml"
+        "lib/net8.0/AutoMapper.dll",
+        "lib/net8.0/AutoMapper.xml",
+        "lib/net9.0/AutoMapper.dll",
+        "lib/net9.0/AutoMapper.xml",
+        "lib/netstandard2.0/AutoMapper.dll",
+        "lib/netstandard2.0/AutoMapper.xml"
       ]
     },
     "Azure.Core/1.44.1": {
@@ -4963,15 +4974,16 @@
         "lib/netstandard2.0/Azure.Messaging.ServiceBus.xml"
       ]
     },
-    "BeC.Common.Data/1.0.49": {
-      "sha512": "EckhJOSARhl8xRysjvayrxEKcZ0Lj5L+3O8rZ/FpnMHIq3lCyAK93Usp8aaPDuT9EH9NihlystzVakp4PIVBtg==",
+    "BeC.Common.Data/1.0.50": {
+      "sha512": "Fwi2GHe0/Y6oBFtuVjTprbDxH9Nk7+HcBj6rrDbPtvDzph19Y8Vos1HjiAFlFK9Z1CZJvNw9+a9PEJKdllLJrQ==",
       "type": "package",
-      "path": "bec.common.data/1.0.49",
+      "path": "bec.common.data/1.0.50",
       "files": [
         ".nupkg.metadata",
-        "bec.common.data.1.0.49.nupkg.sha512",
+        "bec.common.data.1.0.50.nupkg.sha512",
         "bec.common.data.nuspec",
-        "lib/net9.0/BeC.Common.Data.dll"
+        "lib/net9.0/BeC.Common.Data.dll",
+        "lib/net9.0/BeC.Common.Data.xml"
       ]
     },
     "BeC.Common.Events/1.0.37": {
@@ -5658,10 +5670,10 @@
         "staticwebassets/V5/lib/jquery/dist/jquery.slim.min.map"
       ]
     },
-    "Microsoft.AspNetCore.JsonPatch/9.0.7": {
-      "sha512": "PuLs0aRd1nongsGB4sDcG1bz3H5L6UM2fpXh3mKqkaKF0NStcetA3iC5Ru4CPn7TJGfgBTQsVTHZo9CgDaCkVw==",
+    "Microsoft.AspNetCore.JsonPatch/9.0.10": {
+      "sha512": "4KK/qmGXL/QGnJlKViqd37XR+39c4k6wn1BvEZlppFY6TZN78dgFk3Eh/hWKy3G3Ai27L5e+g/pddutzUitpVA==",
       "type": "package",
-      "path": "microsoft.aspnetcore.jsonpatch/9.0.7",
+      "path": "microsoft.aspnetcore.jsonpatch/9.0.10",
       "files": [
         ".nupkg.metadata",
         ".signature.p7s",
@@ -5673,7 +5685,7 @@
         "lib/net9.0/Microsoft.AspNetCore.JsonPatch.xml",
         "lib/netstandard2.0/Microsoft.AspNetCore.JsonPatch.dll",
         "lib/netstandard2.0/Microsoft.AspNetCore.JsonPatch.xml",
-        "microsoft.aspnetcore.jsonpatch.9.0.7.nupkg.sha512",
+        "microsoft.aspnetcore.jsonpatch.9.0.10.nupkg.sha512",
         "microsoft.aspnetcore.jsonpatch.nuspec"
       ]
     },
@@ -13132,7 +13144,7 @@
   },
   "projectFileDependencyGroups": {
     "net9.0": [
-      "BeC.Common.Data >= 1.0.49",
+      "BeC.Common.Data >= 1.0.50",
       "BeC.Common.Events >= 1.0.37",
       "GoogleApi >= 4.0.1",
       "Hangfire.AspNetCore >= 1.8.18",
@@ -13176,7 +13188,8 @@
         "net9.0"
       ],
       "sources": {
-        "https://api.nuget.org/v3/index.json": {}
+        "https://api.nuget.org/v3/index.json": {},
+        "https://pkgs.dev.azure.com/becsoft/_packaging/becsoft/nuget/v3/index.json": {}
       },
       "frameworks": {
         "net9.0": {
@@ -13202,7 +13215,7 @@
         "dependencies": {
           "BeC.Common.Data": {
             "target": "Package",
-            "version": "[1.0.49, )"
+            "version": "[1.0.50, )"
           },
           "BeC.Common.Events": {
             "target": "Package",
