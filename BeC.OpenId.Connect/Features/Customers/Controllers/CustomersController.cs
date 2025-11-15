@@ -11,6 +11,7 @@ using BeC.OpenId.Connect.Features.Users.Dtos;
 using BeC.OpenId.Connect.Features.Reviews.Dtos;
 using BeC.OpenId.Connect.Features.ActivityLogs.Services.Interfaces;
 using BeC.OpenId.Connect.Infrastructure.Authorization;
+using BeC.Common.Data.Repositories.Interfaces;
 
 namespace BeC.OpenId.Connect.Features.Customers.Controllers;
 
@@ -24,17 +25,20 @@ namespace BeC.OpenId.Connect.Features.Customers.Controllers;
 public class CustomersController : ControllerBase
 {
     private readonly ApplicationDbContext _context;
+    private readonly IRepository _repository;
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly IActivityLogService _activityLogService;
     private readonly ILogger<CustomersController> _logger;
 
     public CustomersController(
         ApplicationDbContext context,
+        IRepository repository,
         UserManager<ApplicationUser> userManager,
         IActivityLogService activityLogService,
         ILogger<CustomersController> logger)
     {
         _context = context;
+        _repository = repository;
         _userManager = userManager;
         _activityLogService = activityLogService;
         _logger = logger;
@@ -93,8 +97,8 @@ public class CustomersController : ControllerBase
             })
         };
 
-        _context.Jobs.Add(job);
-        await _context.SaveChangesAsync();
+        // Using Repository: InsertEntity
+        await _repository.InsertEntity(job);
 
         await _activityLogService.LogActivityAsync(
             userId,
@@ -123,28 +127,29 @@ public class CustomersController : ControllerBase
         if (string.IsNullOrEmpty(userId))
             return Unauthorized();
 
-        var query = _context.Jobs
-            .Where(j => j.CustomerId == userId)
-            .Include(j => j.Driver)
-            .AsQueryable();
+        // Build predicate based on filters
+        System.Linq.Expressions.Expression<Func<Job, bool>> predicate = j => j.CustomerId == userId;
 
         if (!string.IsNullOrWhiteSpace(status))
         {
-            query = query.Where(j => j.Status == status);
+            var statusFilter = predicate;
+            predicate = j => statusFilter.Compile()(j) && j.Status == status;
         }
 
-        var totalCount = await query.CountAsync();
-        var jobs = await query
-            .OrderByDescending(j => j.CreatedAt)
-            .Skip((page - 1) * pageSize)
-            .Take(pageSize)
-            .ToListAsync();
+        // Using Repository: GetEntitiesPaged
+        var result = await _repository.GetEntitiesPaged<Job>(
+            pageNumber: page,
+            pageSize: pageSize,
+            predicate: predicate,
+            orderBy: q => q.OrderByDescending(j => j.CreatedAt),
+            includeProperties: "Driver"
+        );
 
-        Response.Headers.Append("X-Total-Count", totalCount.ToString());
+        Response.Headers.Append("X-Total-Count", result.TotalCount.ToString());
         Response.Headers.Append("X-Page", page.ToString());
         Response.Headers.Append("X-Page-Size", pageSize.ToString());
 
-        return Ok(jobs);
+        return Ok(result.Items);
     }
 
     /// <summary>
@@ -160,9 +165,11 @@ public class CustomersController : ControllerBase
         if (string.IsNullOrEmpty(userId))
             return Unauthorized();
 
-        var job = await _context.Jobs
-            .Include(j => j.Driver)
-            .FirstOrDefaultAsync(j => j.Id == id && j.CustomerId == userId);
+        // Using Repository: GetEntity with filter and include
+        var job = await _repository.GetEntity<Job>(
+            predicate: j => j.Id == id && j.CustomerId == userId,
+            includeProperties: "Driver"
+        );
 
         if (job == null)
             return NotFound();
@@ -184,7 +191,8 @@ public class CustomersController : ControllerBase
         if (string.IsNullOrEmpty(userId))
             return Unauthorized();
 
-        var job = await _context.Jobs.FirstOrDefaultAsync(j => j.Id == id && j.CustomerId == userId);
+        // Using Repository: GetEntity
+        var job = await _repository.GetEntity<Job>(j => j.Id == id && j.CustomerId == userId);
         if (job == null)
             return NotFound();
 
@@ -215,7 +223,8 @@ public class CustomersController : ControllerBase
             job.CustomerNotes = (job.CustomerNotes ?? "") + $"\n[CANCELLATION] {request.CancellationReason}";
         }
 
-        await _context.SaveChangesAsync();
+        // Using Repository: UpdateEntity
+        await _repository.UpdateEntity(job);
 
         await _activityLogService.LogActivityAsync(
             userId,
@@ -250,9 +259,11 @@ public class CustomersController : ControllerBase
         if (user == null)
             return NotFound("User not found");
 
-        var job = await _context.Jobs
-            .Include(j => j.Driver)
-            .FirstOrDefaultAsync(j => j.Id == jobId && j.CustomerId == userId);
+        // Using Repository: GetEntity with include
+        var job = await _repository.GetEntity<Job>(
+            predicate: j => j.Id == jobId && j.CustomerId == userId,
+            includeProperties: "Driver"
+        );
 
         if (job == null)
             return NotFound("Job not found");
@@ -263,11 +274,9 @@ public class CustomersController : ControllerBase
         if (job.DriverId == null || job.Driver == null)
             return BadRequest("Job has no assigned driver");
 
-        // Check if already reviewed
-        var existingReview = await _context.Reviews
-            .FirstOrDefaultAsync(r => r.JobId == jobId && r.ReviewerId == userId);
-
-        if (existingReview != null)
+        // Using Repository: Check if already reviewed
+        var alreadyReviewed = await _repository.Exists<Review>(r => r.JobId == jobId && r.ReviewerId == userId);
+        if (alreadyReviewed)
             return BadRequest("You have already reviewed this job");
 
         var review = new Review
@@ -284,18 +293,20 @@ public class CustomersController : ControllerBase
             Photos = request.Photos != null ? JsonSerializer.Serialize(request.Photos) : null
         };
 
-        _context.Reviews.Add(review);
+        // Using Repository: InsertEntity for review
+        await _repository.InsertEntity(review);
 
-        // Update driver rating
-        var driverReviews = await _context.Reviews
-            .Where(r => r.RevieweeId == job.DriverId.ToString() && r.RevieweeType == "driver")
-            .ToListAsync();
+        // Update driver rating - using Repository for GetEntities
+        var driverReviews = await _repository.GetEntities<Review>(
+            predicate: r => r.RevieweeId == job.DriverId.ToString() && r.RevieweeType == "driver"
+        );
 
         var totalRating = driverReviews.Sum(r => r.Rating) + review.Rating;
-        var reviewCount = driverReviews.Count + 1;
+        var reviewCount = driverReviews.Count() + 1;
         job.Driver.Rating = Math.Round((decimal)totalRating / reviewCount, 2);
 
-        await _context.SaveChangesAsync();
+        // Using Repository: UpdateEntity for driver rating
+        await _repository.UpdateEntity(job.Driver);
 
         await _activityLogService.LogActivityAsync(
             userId,
@@ -321,10 +332,11 @@ public class CustomersController : ControllerBase
         if (string.IsNullOrEmpty(userId))
             return Unauthorized();
 
-        var reviews = await _context.Reviews
-            .Where(r => r.ReviewerId == userId)
-            .OrderByDescending(r => r.CreatedAt)
-            .ToListAsync();
+        // Using Repository: GetEntities
+        var reviews = await _repository.GetEntities<Review>(
+            predicate: r => r.ReviewerId == userId,
+            orderBy: q => q.OrderByDescending(r => r.CreatedAt)
+        );
 
         return Ok(reviews);
     }

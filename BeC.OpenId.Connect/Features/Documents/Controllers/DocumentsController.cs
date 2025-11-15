@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
+using BeC.Common.Data.Repositories.Interfaces;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using OpenIddict.Validation.AspNetCore;
@@ -7,6 +8,7 @@ using BeC.OpenId.Connect.Dto;
 using BeC.OpenId.Connect.Features.Drivers.Dtos;
 using BeC.OpenId.Connect.Features.ActivityLogs.Services.Interfaces;
 using BeC.OpenId.Connect.Infrastructure.Authorization;
+using BeC.Common.Data.Repositories.Interfaces;
 
 namespace BeC.OpenId.Connect.Features.Documents.Controllers;
 
@@ -20,17 +22,20 @@ namespace BeC.OpenId.Connect.Features.Documents.Controllers;
 public class DocumentsController : ControllerBase
 {
     private readonly ApplicationDbContext _context;
+    private readonly IRepository _repository;
     private readonly IActivityLogService _activityLogService;
     private readonly IWebHostEnvironment _environment;
     private readonly ILogger<DocumentsController> _logger;
 
     public DocumentsController(
         ApplicationDbContext context,
+        IRepository repository,
         IActivityLogService activityLogService,
         IWebHostEnvironment environment,
         ILogger<DocumentsController> logger)
     {
         _context = context;
+        _repository = repository;
         _activityLogService = activityLogService;
         _environment = environment;
         _logger = logger;
