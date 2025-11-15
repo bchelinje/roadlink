@@ -4,10 +4,10 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using BeC.OpenId.Connect.Dto;
+using BeC.OpenId.Connect.Features.Drivers.Dtos;
 using BeC.OpenId.Connect.Features.Location.Dtos;
 using BeC.OpenId.Connect.Features.Users.Dtos;
 using BeC.OpenId.Connect.Infrastructure.Authorization;
-using BeC.Common.Data.Repositories.Interfaces;
 using BeC.OpenId.Connect.Infrastructure.Maps;
 
 namespace BeC.OpenId.Connect.Features.Location.Controllers;
@@ -159,12 +159,10 @@ public class LocationController : ControllerBase
                 return Unauthorized(new { message = "User not found" });
             }
 
-            // Get job and verify authorization
-            // Using Repository: GetEntity with include
-            var job = await _repository.GetEntity<Job>(
-                predicate: j => j.Id == jobId,
-                includeProperties: "Driver"
-            );
+            // Get job and verify authorization (needs Include, so using DbContext)
+            var job = await _context.Jobs
+                .Include(j => j.Driver)
+                .FirstOrDefaultAsync(j => j.Id == jobId);
 
             if (job == null)
             {
@@ -187,12 +185,10 @@ public class LocationController : ControllerBase
             }
 
             // Get most recent location
-            // Using Repository: GetEntities with ordering and take first
-            var locations = await _repository.GetEntities<DriverLocation>(
-                predicate: l => l.DriverId == job.DriverId.Value,
-                orderBy: q => q.OrderByDescending(l => l.Timestamp)
-            );
-            var location = locations.FirstOrDefault();
+            var location = await _context.DriverLocations
+                .Where(l => l.DriverId == job.DriverId.Value)
+                .OrderByDescending(l => l.Timestamp)
+                .FirstOrDefaultAsync();
 
             if (location == null)
             {
@@ -242,12 +238,10 @@ public class LocationController : ControllerBase
                 return Unauthorized(new { message = "User not found" });
             }
 
-            // Get job and verify authorization
-            // Using Repository: GetEntity with include
-            var job = await _repository.GetEntity<Job>(
-                predicate: j => j.Id == jobId,
-                includeProperties: "Driver"
-            );
+            // Get job and verify authorization (needs Include, so using DbContext)
+            var job = await _context.Jobs
+                .Include(j => j.Driver)
+                .FirstOrDefaultAsync(j => j.Id == jobId);
 
             if (job == null)
             {
@@ -270,12 +264,10 @@ public class LocationController : ControllerBase
             }
 
             // Get driver's current location
-            // Using Repository: GetEntities with ordering and take first
-            var driverLocations = await _repository.GetEntities<DriverLocation>(
-                predicate: l => l.DriverId == job.DriverId.Value,
-                orderBy: q => q.OrderByDescending(l => l.Timestamp)
-            );
-            var driverLocation = driverLocations.FirstOrDefault();
+            var driverLocation = await _context.DriverLocations
+                .Where(l => l.DriverId == job.DriverId.Value)
+                .OrderByDescending(l => l.Timestamp)
+                .FirstOrDefaultAsync();
 
             if (driverLocation == null)
             {
@@ -365,34 +357,23 @@ public class LocationController : ControllerBase
                 return NotFound(new { message = "Driver not found" });
             }
 
-            // Build predicate based on date filters
-            System.Linq.Expressions.Expression<Func<DriverLocation, bool>> predicate = l => l.DriverId == driverId;
+            // Build query with date filters
+            var query = _context.DriverLocations.Where(l => l.DriverId == driverId);
 
-            if (startDate.HasValue && endDate.HasValue)
+            if (startDate.HasValue)
             {
-                var start = startDate.Value;
-                var end = endDate.Value;
-                predicate = l => l.DriverId == driverId && l.Timestamp >= start && l.Timestamp <= end;
-            }
-            else if (startDate.HasValue)
-            {
-                var start = startDate.Value;
-                predicate = l => l.DriverId == driverId && l.Timestamp >= start;
-            }
-            else if (endDate.HasValue)
-            {
-                var end = endDate.Value;
-                predicate = l => l.DriverId == driverId && l.Timestamp <= end;
+                query = query.Where(l => l.Timestamp >= startDate.Value);
             }
 
-            // Using Repository: GetEntities with ordering
-            var allHistory = await _repository.GetEntities<DriverLocation>(
-                predicate: predicate,
-                orderBy: q => q.OrderByDescending(l => l.Timestamp)
-            );
+            if (endDate.HasValue)
+            {
+                query = query.Where(l => l.Timestamp <= endDate.Value);
+            }
 
-            // Limit to prevent excessive data
-            var history = allHistory.Take(1000).ToList();
+            var history = await query
+                .OrderByDescending(l => l.Timestamp)
+                .Take(1000) // Limit to prevent excessive data
+                .ToListAsync();
 
             return Ok(history);
         }

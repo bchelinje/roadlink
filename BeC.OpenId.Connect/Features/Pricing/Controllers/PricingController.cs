@@ -151,10 +151,11 @@ public class PricingController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<List<PricingHistory>>> GetPricingHistory(Guid jobId)
     {
-        // Using Repository: GetEntities with ordering
-        var history = await _repository.GetEntities<PricingHistory>(
-            predicate: h => h.JobId == jobId,
-            orderBy: q => q.OrderByDescending(h => h.CreatedAt)
+        // Get pricing history with ordering
+        var history = await _repository.GetEntities<PricingHistory, DateTime>(
+            h => h.JobId == jobId,
+            h => h.CreatedAt,
+            isDescending: true
         );
 
         if (!history.Any())
@@ -174,18 +175,18 @@ public class PricingController : ControllerBase
     [ProducesResponseType(typeof(List<PricingRule>), StatusCodes.Status200OK)]
     public async Task<ActionResult<List<PricingRule>>> GetPricingRules([FromQuery] bool? isActive = null)
     {
-        // Build predicate based on filter
-        System.Linq.Expressions.Expression<Func<PricingRule, bool>>? predicate = null;
+        // Get pricing rules (using DbContext for ThenBy support)
+        var query = _context.PricingRules.AsQueryable();
+
         if (isActive.HasValue)
         {
-            predicate = r => r.IsActive == isActive.Value;
+            query = query.Where(r => r.IsActive == isActive.Value);
         }
 
-        // Using Repository: GetEntities with ordering
-        var rules = await _repository.GetEntities<PricingRule>(
-            predicate: predicate,
-            orderBy: q => q.OrderBy(r => r.Priority).ThenBy(r => r.Type)
-        );
+        var rules = await query
+            .OrderBy(r => r.Priority)
+            .ThenBy(r => r.Type)
+            .ToListAsync();
 
         return Ok(rules);
     }

@@ -58,10 +58,11 @@ public class DocumentsController : ControllerBase
         if (driver == null)
             return NotFound("Driver profile not found");
 
-        // Using Repository: GetEntities with ordering
-        var documents = await _repository.GetEntities<DriverDocument>(
-            predicate: d => d.DriverId == driver.Id,
-            orderBy: q => q.OrderByDescending(d => d.UploadedDate)
+        // Get my documents with ordering
+        var documents = await _repository.GetEntities<DriverDocument, DateTime>(
+            d => d.DriverId == driver.Id,
+            d => d.UploadedDate,
+            isDescending: true
         );
 
         return Ok(documents);
@@ -157,11 +158,10 @@ public class DocumentsController : ControllerBase
         if (string.IsNullOrEmpty(userId))
             return Unauthorized();
 
-        // Using Repository: GetEntity with include
-        var document = await _repository.GetEntity<DriverDocument>(
-            predicate: d => d.Id == id,
-            includeProperties: "Driver"
-        );
+        // Get document with driver info (using DbContext for Include)
+        var document = await _context.DriverDocuments
+            .Include(d => d.Driver)
+            .FirstOrDefaultAsync(d => d.Id == id);
 
         if (document == null)
             return NotFound();
@@ -239,20 +239,23 @@ public class DocumentsController : ControllerBase
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 50)
     {
-        // Using Repository: GetEntitiesPaged with filter and include
-        var result = await _repository.GetEntitiesPaged<DriverDocument>(
-            pageNumber: page,
-            pageSize: pageSize,
-            predicate: d => d.Status == "pending",
-            orderBy: q => q.OrderBy(d => d.UploadedDate),
-            includeProperties: "Driver"
-        );
+        // Get pending documents (using DbContext for Include support)
+        var query = _context.DriverDocuments
+            .Include(d => d.Driver)
+            .Where(d => d.Status == "pending");
 
-        Response.Headers.Append("X-Total-Count", result.TotalCount.ToString());
+        var totalCount = await query.CountAsync();
+        var documents = await query
+            .OrderBy(d => d.UploadedDate)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync();
+
+        Response.Headers.Append("X-Total-Count", totalCount.ToString());
         Response.Headers.Append("X-Page", page.ToString());
         Response.Headers.Append("X-Page-Size", pageSize.ToString());
 
-        return Ok(result.Items);
+        return Ok(documents);
     }
 
     /// <summary>
@@ -268,11 +271,10 @@ public class DocumentsController : ControllerBase
         if (string.IsNullOrEmpty(userId))
             return Unauthorized();
 
-        // Using Repository: GetEntity with include
-        var document = await _repository.GetEntity<DriverDocument>(
-            predicate: d => d.Id == id,
-            includeProperties: "Driver"
-        );
+        // Get document with driver info (using DbContext for Include)
+        var document = await _context.DriverDocuments
+            .Include(d => d.Driver)
+            .FirstOrDefaultAsync(d => d.Id == id);
 
         if (document == null)
             return NotFound();
@@ -309,11 +311,10 @@ public class DocumentsController : ControllerBase
         if (string.IsNullOrEmpty(userId))
             return Unauthorized();
 
-        // Using Repository: GetEntity with include
-        var document = await _repository.GetEntity<DriverDocument>(
-            predicate: d => d.Id == id,
-            includeProperties: "Driver"
-        );
+        // Get document with driver info (using DbContext for Include)
+        var document = await _context.DriverDocuments
+            .Include(d => d.Driver)
+            .FirstOrDefaultAsync(d => d.Id == id);
 
         if (document == null)
             return NotFound();
@@ -370,10 +371,11 @@ public class DocumentsController : ControllerBase
     [ProducesResponseType(typeof(List<DriverDocument>), StatusCodes.Status200OK)]
     public async Task<ActionResult<List<DriverDocument>>> GetDriverDocuments(Guid driverId)
     {
-        // Using Repository: GetEntities with filter and ordering
-        var documents = await _repository.GetEntities<DriverDocument>(
-            predicate: d => d.DriverId == driverId,
-            orderBy: q => q.OrderByDescending(d => d.UploadedDate)
+        // Get driver documents with ordering
+        var documents = await _repository.GetEntities<DriverDocument, DateTime>(
+            d => d.DriverId == driverId,
+            d => d.UploadedDate,
+            isDescending: true
         );
 
         return Ok(documents);

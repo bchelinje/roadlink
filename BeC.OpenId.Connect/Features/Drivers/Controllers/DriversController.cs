@@ -171,21 +171,22 @@ public class DriversController : ControllerBase
             }
         }
 
-        // Using Repository: GetEntitiesPaged with filtering and includes
-        var result = await _repository.GetEntitiesPaged<Driver>(
-            pageNumber: pageNumber,
-            pageSize: pageSize,
-            predicate: predicate,
-            orderBy: d => d.OrderByDescending(x => x.CreatedAt),
-            includeProperties: "Vehicles"
-        );
+        // Build query with filters (using DbContext for Include support)
+        var query = _context.Drivers.Include(d => d.Vehicles).Where(predicate);
 
-        var driverDtos = result.Items.Select(MapToDto).ToList();
+        var totalCount = await query.CountAsync();
+        var drivers = await query
+            .OrderByDescending(d => d.CreatedAt)
+            .Skip((pageNumber - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync();
+
+        var driverDtos = drivers.Select(MapToDto).ToList();
 
         return Ok(new DriverDtoPaginatedResult
         {
             Items = driverDtos,
-            Total = result.TotalCount,
+            Total = totalCount,
             PageNumber = pageNumber,
             PageSize = pageSize
         });

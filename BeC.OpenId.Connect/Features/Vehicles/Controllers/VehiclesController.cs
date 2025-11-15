@@ -67,20 +67,26 @@ public class VehiclesController : ControllerBase
             predicate = v => v.DriverId == driverId.Value;
         }
 
-        // Using Repository: GetEntitiesPaged with filter
-        var result = await _repository.GetEntitiesPaged<Vehicle>(
-            pageNumber: page,
-            pageSize: pageSize,
-            predicate: predicate,
-            orderBy: q => q.OrderByDescending(v => v.CreatedAt),
-            includeProperties: "Driver"
-        );
+        // Build query with filters (using DbContext for Include support)
+        var query = _context.Vehicles.Include(v => v.Driver).AsQueryable();
 
-        Response.Headers.Append("X-Total-Count", result.TotalCount.ToString());
+        if (predicate != null)
+        {
+            query = query.Where(predicate);
+        }
+
+        var totalCount = await query.CountAsync();
+        var vehicles = await query
+            .OrderByDescending(v => v.CreatedAt)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync();
+
+        Response.Headers.Append("X-Total-Count", totalCount.ToString());
         Response.Headers.Append("X-Page", page.ToString());
         Response.Headers.Append("X-Page-Size", pageSize.ToString());
 
-        return Ok(result.Items);
+        return Ok(vehicles);
     }
 
     /// <summary>
@@ -91,11 +97,10 @@ public class VehiclesController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<Vehicle>> GetVehicle(Guid id)
     {
-        // Using Repository: GetEntity with include
-        var vehicle = await _repository.GetEntity<Vehicle>(
-            predicate: v => v.Id == id,
-            includeProperties: "Driver"
-        );
+        // Get vehicle with driver info (using DbContext for Include)
+        var vehicle = await _context.Vehicles
+            .Include(v => v.Driver)
+            .FirstOrDefaultAsync(v => v.Id == id);
 
         if (vehicle == null)
             return NotFound();
@@ -120,10 +125,11 @@ public class VehiclesController : ControllerBase
         if (driver == null)
             return NotFound("Driver profile not found");
 
-        // Using Repository: GetEntities with filter and ordering
-        var vehicles = await _repository.GetEntities<Vehicle>(
-            predicate: v => v.DriverId == driver.Id,
-            orderBy: q => q.OrderByDescending(v => v.CreatedAt)
+        // Get my vehicles with ordering
+        var vehicles = await _repository.GetEntities<Vehicle, DateTime>(
+            v => v.DriverId == driver.Id,
+            v => v.CreatedAt,
+            isDescending: true
         );
 
         return Ok(vehicles);
@@ -246,11 +252,10 @@ public class VehiclesController : ControllerBase
         if (string.IsNullOrEmpty(userId))
             return Unauthorized();
 
-        // Using Repository: GetEntity with include
-        var vehicle = await _repository.GetEntity<Vehicle>(
-            predicate: v => v.Id == id,
-            includeProperties: "Driver"
-        );
+        // Get vehicle with driver info (using DbContext for Include)
+        var vehicle = await _context.Vehicles
+            .Include(v => v.Driver)
+            .FirstOrDefaultAsync(v => v.Id == id);
 
         if (vehicle == null)
             return NotFound();
@@ -323,11 +328,10 @@ public class VehiclesController : ControllerBase
         if (string.IsNullOrEmpty(userId))
             return Unauthorized();
 
-        // Using Repository: GetEntity with include
-        var vehicle = await _repository.GetEntity<Vehicle>(
-            predicate: v => v.Id == id,
-            includeProperties: "Driver"
-        );
+        // Get vehicle with driver info (using DbContext for Include)
+        var vehicle = await _context.Vehicles
+            .Include(v => v.Driver)
+            .FirstOrDefaultAsync(v => v.Id == id);
 
         if (vehicle == null)
             return NotFound();
@@ -373,11 +377,10 @@ public class VehiclesController : ControllerBase
         if (string.IsNullOrEmpty(userId))
             return Unauthorized();
 
-        // Using Repository: GetEntity with include
-        var vehicle = await _repository.GetEntity<Vehicle>(
-            predicate: v => v.Id == id,
-            includeProperties: "Driver"
-        );
+        // Get vehicle with driver info (using DbContext for Include)
+        var vehicle = await _context.Vehicles
+            .Include(v => v.Driver)
+            .FirstOrDefaultAsync(v => v.Id == id);
 
         if (vehicle == null)
             return NotFound();
@@ -453,11 +456,10 @@ public class VehiclesController : ControllerBase
         if (string.IsNullOrEmpty(userId))
             return Unauthorized();
 
-        // Using Repository: GetEntity with include
-        var vehicle = await _repository.GetEntity<Vehicle>(
-            predicate: v => v.Id == id,
-            includeProperties: "Driver"
-        );
+        // Get vehicle with driver info (using DbContext for Include)
+        var vehicle = await _context.Vehicles
+            .Include(v => v.Driver)
+            .FirstOrDefaultAsync(v => v.Id == id);
 
         if (vehicle == null)
             return NotFound();
