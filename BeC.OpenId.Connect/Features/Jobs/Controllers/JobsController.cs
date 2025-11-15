@@ -1029,7 +1029,7 @@ public class JobsController : ControllerBase
                     Priority = jobRequest.Priority ?? "normal",
                     ScheduledDate = jobRequest.ScheduledDate,
                     ScheduledTime = jobRequest.ScheduledTime,
-                    EstimatedDuration = jobRequest.EstimatedDuration,
+                    EstimatedDuration = jobRequest.EstimatedDuration ?? 0,
                     PickupLocation = jobRequest.PickupLocation,
                     DeliveryLocation = jobRequest.DeliveryLocation,
                     Distance = jobRequest.Distance,

@@ -310,7 +310,7 @@ public class RecurringJobsController : ControllerBase
                     ScheduledTime = recurring.PreferredTime ?? "09:00",
                     PickupLocation = recurring.PickupLocation,
                     DeliveryLocation = recurring.DeliveryLocation,
-                    Distance = recurring.Distance,
+                    Distance = (decimal?)recurring.Distance,
                     Items = recurring.Items,
                     SpecialInstructions = recurring.SpecialInstructions,
                     Status = "pending",
