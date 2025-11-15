@@ -1685,12 +1685,6 @@ public class CompleteJobDto
     public string? Notes { get; set; }
 }
 
-public class UpdateJobStatusDto
-{
-    public required string Status { get; set; }
-    public string? Notes { get; set; }
-}
-
 public class AddNoteDto
 {
     public required string Note { get; set; }
