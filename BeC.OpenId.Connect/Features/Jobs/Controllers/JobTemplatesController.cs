@@ -38,7 +38,7 @@ public class JobTemplatesController : ControllerBase
     /// Get my job templates
     /// </summary>
     [HttpGet("me")]
-    [Authorize(Roles = Roles.Customer)]
+    [Authorize(Roles = Infrastructure.Authorization.Roles.Customer)]
     [ProducesResponseType(typeof(List<JobTemplate>), StatusCodes.Status200OK)]
     public async Task<ActionResult<List<JobTemplate>>> GetMyTemplates()
     {
@@ -83,7 +83,7 @@ public class JobTemplatesController : ControllerBase
     /// Create a new job template
     /// </summary>
     [HttpPost]
-    [Authorize(Roles = Roles.Customer)]
+    [Authorize(Roles = Infrastructure.Authorization.Roles.Customer)]
     [ProducesResponseType(typeof(JobTemplate), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<JobTemplate>> CreateTemplate([FromBody] CreateJobTemplateDto dto)
@@ -149,7 +149,7 @@ public class JobTemplatesController : ControllerBase
     /// Update a job template
     /// </summary>
     [HttpPut("{id}")]
-    [Authorize(Roles = Roles.Customer)]
+    [Authorize(Roles = Infrastructure.Authorization.Roles.Customer)]
     [ProducesResponseType(typeof(JobTemplate), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<JobTemplate>> UpdateTemplate(Guid id, [FromBody] UpdateJobTemplateDto dto)
@@ -217,7 +217,7 @@ public class JobTemplatesController : ControllerBase
     /// Delete (archive) a job template
     /// </summary>
     [HttpDelete("{id}")]
-    [Authorize(Roles = Roles.Customer)]
+    [Authorize(Roles = Infrastructure.Authorization.Roles.Customer)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> DeleteTemplate(Guid id)
@@ -254,7 +254,7 @@ public class JobTemplatesController : ControllerBase
     /// Create a job from a template
     /// </summary>
     [HttpPost("{id}/create-job")]
-    [Authorize(Roles = Roles.Customer)]
+    [Authorize(Roles = Infrastructure.Authorization.Roles.Customer)]
     [ProducesResponseType(typeof(Job), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<Job>> CreateJobFromTemplate(Guid id, [FromBody] CreateJobFromTemplateDto dto)

@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using BeC.OpenId.Connect.Features.Drivers.Dtos;
 
 namespace BeC.OpenId.Connect.Features.Jobs.Dtos;
 

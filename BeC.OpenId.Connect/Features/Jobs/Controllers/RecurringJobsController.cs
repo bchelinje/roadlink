@@ -38,7 +38,7 @@ public class RecurringJobsController : ControllerBase
     /// Get my recurring jobs
     /// </summary>
     [HttpGet("me")]
-    [Authorize(Roles = Roles.Customer)]
+    [Authorize(Roles = Infrastructure.Authorization.Roles.Customer)]
     [ProducesResponseType(typeof(List<RecurringJob>), StatusCodes.Status200OK)]
     public async Task<ActionResult<List<RecurringJob>>> GetMyRecurringJobs()
     {
@@ -80,7 +80,7 @@ public class RecurringJobsController : ControllerBase
     /// Create a recurring job
     /// </summary>
     [HttpPost]
-    [Authorize(Roles = Roles.Customer)]
+    [Authorize(Roles = Infrastructure.Authorization.Roles.Customer)]
     [ProducesResponseType(typeof(RecurringJob), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<RecurringJob>> CreateRecurringJob([FromBody] CreateRecurringJobDto dto)
@@ -132,7 +132,7 @@ public class RecurringJobsController : ControllerBase
     /// Update a recurring job
     /// </summary>
     [HttpPut("{id}")]
-    [Authorize(Roles = Roles.Customer)]
+    [Authorize(Roles = Infrastructure.Authorization.Roles.Customer)]
     [ProducesResponseType(typeof(RecurringJob), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<RecurringJob>> UpdateRecurringJob(Guid id, [FromBody] UpdateRecurringJobDto dto)
@@ -176,7 +176,7 @@ public class RecurringJobsController : ControllerBase
     /// Pause/Resume a recurring job
     /// </summary>
     [HttpPatch("{id}/status")]
-    [Authorize(Roles = Roles.Customer)]
+    [Authorize(Roles = Infrastructure.Authorization.Roles.Customer)]
     [ProducesResponseType(typeof(RecurringJob), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<RecurringJob>> UpdateStatus(Guid id, [FromBody] UpdateRecurringJobStatusDto dto)
@@ -213,7 +213,7 @@ public class RecurringJobsController : ControllerBase
     /// Cancel a recurring job
     /// </summary>
     [HttpDelete("{id}")]
-    [Authorize(Roles = Roles.Customer)]
+    [Authorize(Roles = Infrastructure.Authorization.Roles.Customer)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> CancelRecurringJob(Guid id)
@@ -249,7 +249,7 @@ public class RecurringJobsController : ControllerBase
     /// Generate jobs from active recurring schedules (Admin/Background task)
     /// </summary>
     [HttpPost("generate")]
-    [Authorize(Roles = Roles.Admin + "," + Roles.SuperAdmin)]
+    [Authorize(Roles = Infrastructure.Authorization.Roles.Admin + "," + Infrastructure.Authorization.Roles.SuperAdmin)]
     [ProducesResponseType(typeof(GenerateJobsResponse), StatusCodes.Status200OK)]
     public async Task<ActionResult<GenerateJobsResponse>> GenerateJobs()
     {
