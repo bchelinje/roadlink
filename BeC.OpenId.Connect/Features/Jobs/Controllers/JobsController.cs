@@ -711,6 +711,174 @@ public class JobsController : ControllerBase
         return Ok(MapJobToDto(job));
     }
 
+    /// <summary>
+    /// Reschedule a job to a new date/time
+    /// </summary>
+    [HttpPost("{id}/reschedule")]
+    [Authorize(AuthenticationSchemes = OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme,
+        Roles = "Admin,SuperAdmin,Customer,Driver")]
+    [ProducesResponseType(typeof(JobDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<ActionResult<JobDto>> RescheduleJob(Guid id, RescheduleJobDto dto)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        var userRole = User.FindFirst(Claims.Role)?.Value;
+        var userEmail = User.FindFirst(Claims.Email)?.Value;
+
+        var job = await _context.Jobs
+            .Include(j => j.Driver)
+            .FirstOrDefaultAsync(j => j.Id == id);
+
+        if (job == null)
+            return NotFound("Job not found");
+
+        // Authorization check
+        if (userRole == "Customer" && job.CustomerEmail != userEmail)
+            return Forbid("You can only reschedule your own jobs");
+
+        if (userRole == "Driver" && (job.Driver == null || job.Driver.UserId != userId))
+            return Forbid("You can only reschedule jobs assigned to you");
+
+        // Validate job status - cannot reschedule completed or cancelled jobs
+        if (job.Status == "completed")
+            return BadRequest("Cannot reschedule completed jobs");
+
+        if (job.Status == "cancelled")
+            return BadRequest("Cannot reschedule cancelled jobs");
+
+        // Store old values for history
+        var oldScheduledDate = job.ScheduledDate;
+        var oldScheduledTime = job.ScheduledTime;
+
+        // Update job
+        job.ScheduledDate = dto.NewScheduledDate;
+        job.ScheduledTime = dto.NewScheduledTime;
+        job.UpdatedAt = DateTime.UtcNow;
+
+        // Add to status history
+        var rescheduleNote = $"Job rescheduled from {oldScheduledDate:yyyy-MM-dd} {oldScheduledTime} to {dto.NewScheduledDate:yyyy-MM-dd} {dto.NewScheduledTime}";
+        if (!string.IsNullOrEmpty(dto.Reason))
+        {
+            rescheduleNote += $". Reason: {dto.Reason}";
+        }
+        if (!string.IsNullOrEmpty(dto.Notes))
+        {
+            rescheduleNote += $". Notes: {dto.Notes}";
+        }
+
+        AddStatusHistory(job, job.Status, userId!, rescheduleNote);
+
+        await _context.SaveChangesAsync();
+
+        await _activityLogService.LogActivityAsync(
+            action: "job.rescheduled",
+            entityType: "Job",
+            entityId: id.ToString(),
+            entityName: job.JobNumber,
+            description: rescheduleNote,
+            severity: "INFO",
+            metadata: new Dictionary<string, object>
+            {
+                { "OldDate", oldScheduledDate },
+                { "OldTime", oldScheduledTime },
+                { "NewDate", dto.NewScheduledDate },
+                { "NewTime", dto.NewScheduledTime },
+                { "RescheduledBy", userRole ?? "Unknown" }
+            }
+        );
+
+        return Ok(MapJobToDto(job));
+    }
+
+    /// <summary>
+    /// Cancel a job with a reason
+    /// </summary>
+    [HttpPost("{id}/cancel")]
+    [Authorize(AuthenticationSchemes = OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme,
+        Roles = "Admin,SuperAdmin,Customer,Driver")]
+    [ProducesResponseType(typeof(JobDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<ActionResult<JobDto>> CancelJob(Guid id, CancelJobDto dto)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        var userRole = User.FindFirst(Claims.Role)?.Value;
+        var userEmail = User.FindFirst(Claims.Email)?.Value;
+
+        var job = await _context.Jobs
+            .Include(j => j.Driver)
+            .FirstOrDefaultAsync(j => j.Id == id);
+
+        if (job == null)
+            return NotFound("Job not found");
+
+        // Authorization check
+        if (userRole == "Customer" && job.CustomerEmail != userEmail)
+            return Forbid("You can only cancel your own jobs");
+
+        if (userRole == "Driver" && (job.Driver == null || job.Driver.UserId != userId))
+            return Forbid("You can only cancel jobs assigned to you");
+
+        // Validate job status
+        if (job.Status == "completed")
+            return BadRequest("Cannot cancel completed jobs");
+
+        if (job.Status == "cancelled")
+            return BadRequest("Job is already cancelled");
+
+        var oldStatus = job.Status;
+
+        // Update job status
+        job.Status = "cancelled";
+        job.UpdatedAt = DateTime.UtcNow;
+
+        // Update driver stats if job was assigned
+        if (job.DriverId.HasValue)
+        {
+            var driver = await _context.Drivers.FindAsync(job.DriverId.Value);
+            if (driver != null)
+            {
+                driver.ActiveJobs -= 1;
+                if (driver.ActiveJobs < 0) driver.ActiveJobs = 0;
+                driver.Status = driver.ActiveJobs > 0 ? "on_job" : "available";
+            }
+        }
+
+        // Add cancellation notes
+        var cancellationNote = $"Job cancelled. Reason: {dto.Reason}";
+        if (!string.IsNullOrEmpty(dto.CancellationNotes))
+        {
+            cancellationNote += $". Notes: {dto.CancellationNotes}";
+        }
+
+        job.CustomerNotes = string.IsNullOrEmpty(job.CustomerNotes)
+            ? cancellationNote
+            : $"{job.CustomerNotes}\n{cancellationNote}";
+
+        AddStatusHistory(job, "cancelled", userId!, cancellationNote);
+
+        await _context.SaveChangesAsync();
+
+        await _activityLogService.LogActivityAsync(
+            action: "job.cancelled",
+            entityType: "Job",
+            entityId: id.ToString(),
+            entityName: job.JobNumber,
+            description: cancellationNote,
+            severity: "WARNING",
+            metadata: new Dictionary<string, object>
+            {
+                { "PreviousStatus", oldStatus },
+                { "Reason", dto.Reason },
+                { "CancelledBy", userRole ?? "Unknown" },
+                { "RequestRefund", dto.RequestRefund }
+            }
+        );
+
+        return Ok(MapJobToDto(job));
+    }
+
     #region Helper Methods
 
     private static JobDto MapJobToDto(Job job)

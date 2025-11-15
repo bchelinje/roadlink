@@ -551,6 +551,146 @@ public class PaymentsController : ControllerBase
         return Ok(payout);
     }
 
+    /// <summary>
+    /// Process a refund for a payment (Admin or Customer who made the payment)
+    /// </summary>
+    [HttpPost("{id}/refund")]
+    [Authorize(Roles = AuthRoles.Admin + "," + AuthRoles.SuperAdmin + "," + AuthRoles.Customer)]
+    [ProducesResponseType(typeof(RefundResponseDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<ActionResult<RefundResponseDto>> ProcessRefund(Guid id, [FromBody] ProcessRefundDto request)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrEmpty(userId))
+            return Unauthorized();
+
+        var payment = await _context.Payments.FindAsync(id);
+        if (payment == null)
+            return NotFound("Payment not found");
+
+        // Authorization check - customers can only refund their own payments
+        var userRoles = User.Claims.Where(c => c.Type == ClaimTypes.Role).Select(c => c.Value).ToList();
+        if (!userRoles.Contains(AuthRoles.Admin) && !userRoles.Contains(AuthRoles.SuperAdmin))
+        {
+            if (payment.CustomerId != userId)
+                return Forbid("You can only request refunds for your own payments");
+        }
+
+        // Validate payment status
+        if (payment.Status == "refunded")
+            return BadRequest("Payment has already been fully refunded");
+
+        if (payment.Status == "pending" || payment.Status == "failed" || payment.Status == "cancelled")
+            return BadRequest($"Cannot refund payment with status: {payment.Status}");
+
+        // Calculate refund amount
+        var refundAmount = request.Amount ?? (payment.TotalAmount - (payment.RefundAmount ?? 0));
+
+        // Validate refund amount
+        var alreadyRefunded = payment.RefundAmount ?? 0;
+        var maxRefundable = payment.TotalAmount - alreadyRefunded;
+
+        if (refundAmount <= 0)
+            return BadRequest("Refund amount must be greater than 0");
+
+        if (refundAmount > maxRefundable)
+            return BadRequest($"Refund amount ({refundAmount}) exceeds refundable amount ({maxRefundable})");
+
+        // Update payment
+        var previousRefundAmount = payment.RefundAmount ?? 0;
+        payment.RefundAmount = previousRefundAmount + refundAmount;
+        payment.RefundedAt = DateTime.UtcNow;
+        payment.UpdatedAt = DateTime.UtcNow;
+
+        // Update status
+        if (payment.RefundAmount >= payment.TotalAmount)
+        {
+            payment.Status = "refunded";
+        }
+        else
+        {
+            payment.Status = "partially_refunded";
+        }
+
+        // Generate refund reference
+        var refundReference = $"REF-{DateTime.UtcNow:yyyyMMdd}-{Guid.NewGuid().ToString()[..8].ToUpper()}";
+        payment.StripeRefundId = refundReference;
+
+        // Add notes to payment
+        var refundNote = $"Refund processed: {refundAmount:C} - Reason: {request.Reason}";
+        if (!string.IsNullOrEmpty(request.Notes))
+        {
+            refundNote += $" - Notes: {request.Notes}";
+        }
+        payment.Notes = string.IsNullOrEmpty(payment.Notes)
+            ? refundNote
+            : $"{payment.Notes}\n{refundNote}";
+
+        await _context.SaveChangesAsync();
+
+        await _activityLogService.LogActivityAsync(
+            userId,
+            "payment.refunded",
+            "Payment",
+            payment.Id.ToString(),
+            payment.PaymentNumber,
+            $"Refund processed: {refundAmount:C} for payment {payment.PaymentNumber}. Reason: {request.Reason}",
+            metadata: new Dictionary<string, object>
+            {
+                { "RefundAmount", refundAmount },
+                { "TotalRefunded", payment.RefundAmount ?? 0 },
+                { "OriginalAmount", payment.TotalAmount },
+                { "Reason", request.Reason },
+                { "RefundReference", refundReference }
+            }
+        );
+
+        var response = new RefundResponseDto
+        {
+            PaymentId = payment.Id,
+            PaymentNumber = payment.PaymentNumber,
+            RefundAmount = refundAmount,
+            OriginalAmount = payment.TotalAmount,
+            RefundStatus = payment.Status,
+            Reason = request.Reason,
+            RefundedAt = payment.RefundedAt.Value,
+            RefundReference = refundReference
+        };
+
+        return Ok(response);
+    }
+
+    /// <summary>
+    /// Get refund status for a payment
+    /// </summary>
+    [HttpGet("{id}/refund-status")]
+    [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult> GetRefundStatus(Guid id)
+    {
+        var payment = await _context.Payments.FindAsync(id);
+        if (payment == null)
+            return NotFound("Payment not found");
+
+        var response = new
+        {
+            PaymentId = payment.Id,
+            PaymentNumber = payment.PaymentNumber,
+            OriginalAmount = payment.TotalAmount,
+            RefundedAmount = payment.RefundAmount ?? 0,
+            RemainingAmount = payment.TotalAmount - (payment.RefundAmount ?? 0),
+            RefundStatus = payment.Status,
+            IsFullyRefunded = payment.Status == "refunded",
+            IsPartiallyRefunded = payment.Status == "partially_refunded",
+            CanBeRefunded = payment.Status == "completed" || payment.Status == "partially_refunded",
+            RefundedAt = payment.RefundedAt
+        };
+
+        return Ok(response);
+    }
+
     #endregion
 }
 

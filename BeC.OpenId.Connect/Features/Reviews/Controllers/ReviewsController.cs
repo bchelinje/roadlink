@@ -433,6 +433,164 @@ public class ReviewsController : ControllerBase
 
         return Ok(reviews);
     }
+
+    /// <summary>
+    /// Respond to a review (Driver or Admin can respond to reviews about them)
+    /// </summary>
+    [HttpPost("{id}/response")]
+    [ProducesResponseType(typeof(Review), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<Review>> RespondToReview(Guid id, [FromBody] CreateReviewResponseDto dto)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrEmpty(userId))
+            return Unauthorized();
+
+        var review = await _context.Reviews.FindAsync(id);
+        if (review == null)
+            return NotFound("Review not found");
+
+        var user = await _userManager.FindByIdAsync(userId);
+        if (user == null)
+            return NotFound("User not found");
+
+        var userRoles = await _userManager.GetRolesAsync(user);
+        var isAdmin = userRoles.Contains(Infrastructure.Authorization.Roles.Admin) ||
+                     userRoles.Contains(Infrastructure.Authorization.Roles.SuperAdmin);
+
+        // Only the reviewee or admin can respond
+        if (!isAdmin && review.RevieweeId != userId)
+            return Forbid("You can only respond to reviews about you");
+
+        // Check if already responded
+        if (!string.IsNullOrEmpty(review.Response))
+            return BadRequest("Review already has a response");
+
+        review.Response = dto.Response;
+        review.ResponseDate = DateTime.UtcNow;
+        review.RespondedBy = userId;
+
+        await _context.SaveChangesAsync();
+
+        await _activityLogService.LogActivityAsync(
+            userId,
+            "review.responded",
+            "Review",
+            review.Id.ToString(),
+            $"Review for {review.RevieweeName}",
+            $"Response added to review by {user.DisplayName ?? user.Email}"
+        );
+
+        return Ok(review);
+    }
+
+    /// <summary>
+    /// Report a review as inappropriate
+    /// </summary>
+    [HttpPost("{id}/report")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> ReportReview(Guid id, [FromBody] ReportReviewDto dto)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrEmpty(userId))
+            return Unauthorized();
+
+        var review = await _context.Reviews.FindAsync(id);
+        if (review == null)
+            return NotFound("Review not found");
+
+        review.IsFlagged = true;
+        review.FlaggedDate = DateTime.UtcNow;
+        review.FlagReason = dto.Reason;
+        review.FlaggedBy = userId;
+
+        if (!string.IsNullOrEmpty(dto.Details))
+        {
+            review.ModeratorNotes = dto.Details;
+        }
+
+        await _context.SaveChangesAsync();
+
+        await _activityLogService.LogActivityAsync(
+            userId,
+            "review.reported",
+            "Review",
+            review.Id.ToString(),
+            $"Review for {review.RevieweeName}",
+            $"Review flagged for: {dto.Reason}",
+            "WARNING"
+        );
+
+        return Ok(new { message = "Review has been reported for moderation" });
+    }
+
+    /// <summary>
+    /// Moderate a review (Admin only)
+    /// </summary>
+    [HttpPatch("{id}/moderate")]
+    [Authorize(Roles = Infrastructure.Authorization.Roles.Admin + "," + Infrastructure.Authorization.Roles.SuperAdmin)]
+    [ProducesResponseType(typeof(Review), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<Review>> ModerateReview(Guid id, [FromBody] ModerateReviewDto dto)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrEmpty(userId))
+            return Unauthorized();
+
+        var review = await _context.Reviews.FindAsync(id);
+        if (review == null)
+            return NotFound("Review not found");
+
+        var validActions = new[] { "approve", "hide", "remove" };
+        if (!validActions.Contains(dto.Action.ToLower()))
+            return BadRequest($"Invalid action. Valid actions: {string.Join(", ", validActions)}");
+
+        switch (dto.Action.ToLower())
+        {
+            case "approve":
+                review.Status = "approved";
+                review.IsHidden = false;
+                review.IsFlagged = false;
+                break;
+
+            case "hide":
+                review.Status = "hidden";
+                review.IsHidden = true;
+                break;
+
+            case "remove":
+                // Soft delete - mark as removed
+                review.Status = "removed";
+                review.IsHidden = true;
+                break;
+        }
+
+        review.ModeratedBy = userId;
+        review.ModeratedDate = DateTime.UtcNow;
+
+        if (!string.IsNullOrEmpty(dto.ModeratorNotes))
+        {
+            review.ModeratorNotes = string.IsNullOrEmpty(review.ModeratorNotes)
+                ? dto.ModeratorNotes
+                : $"{review.ModeratorNotes}\n{dto.ModeratorNotes}";
+        }
+
+        await _context.SaveChangesAsync();
+
+        await _activityLogService.LogActivityAsync(
+            userId,
+            $"review.moderated_{dto.Action}",
+            "Review",
+            review.Id.ToString(),
+            $"Review for {review.RevieweeName}",
+            $"Review {dto.Action}ed by moderator",
+            "WARNING"
+        );
+
+        return Ok(review);
+    }
 }
 
 #region DTOs
