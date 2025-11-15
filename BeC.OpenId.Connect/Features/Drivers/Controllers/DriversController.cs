@@ -414,6 +414,136 @@ public class DriversController : ControllerBase
         return Ok(MapToDto(driver));
     }
 
+    /// <summary>
+    /// Toggle driver availability status (online/offline)
+    /// </summary>
+    [HttpPatch("me/availability")]
+    [Authorize(AuthenticationSchemes = OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme, Roles = "Driver")]
+    [ProducesResponseType(typeof(DriverDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<DriverDto>> UpdateAvailability([FromBody] UpdateAvailabilityDto dto)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrEmpty(userId))
+            return Unauthorized("User ID not found in token");
+
+        var driver = await _context.Drivers.FirstOrDefaultAsync(d => d.UserId == userId);
+        if (driver == null)
+            return NotFound("Driver profile not found");
+
+        var previousStatus = driver.Status;
+
+        // Update status based on availability
+        if (dto.IsAvailable)
+        {
+            // Check if driver has active jobs
+            if (driver.ActiveJobs > 0)
+            {
+                driver.Status = "on_job";
+            }
+            else
+            {
+                driver.Status = "available";
+            }
+        }
+        else
+        {
+            driver.Status = "unavailable";
+        }
+
+        driver.LastActiveDate = DateTime.UtcNow;
+        driver.UpdatedAt = DateTime.UtcNow;
+
+        await _context.SaveChangesAsync();
+
+        await _activityLogService.LogActivityAsync(
+            action: "driver.availability_updated",
+            entityType: "Driver",
+            entityId: driver.Id.ToString(),
+            entityName: $"{driver.FirstName} {driver.LastName}",
+            description: $"Driver availability changed from {previousStatus} to {driver.Status}",
+            severity: "INFO",
+            metadata: new Dictionary<string, object>
+            {
+                { "PreviousStatus", previousStatus },
+                { "NewStatus", driver.Status },
+                { "IsAvailable", dto.IsAvailable }
+            }
+        );
+
+        return Ok(MapToDto(driver));
+    }
+
+    /// <summary>
+    /// Get driver earnings summary
+    /// </summary>
+    [HttpGet("me/earnings")]
+    [Authorize(AuthenticationSchemes = OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme, Roles = "Driver")]
+    [ProducesResponseType(typeof(EarningSummaryDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<EarningSummaryDto>> GetMyEarnings(
+        [FromQuery] DateTime? startDate,
+        [FromQuery] DateTime? endDate)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrEmpty(userId))
+            return Unauthorized("User ID not found in token");
+
+        var driver = await _context.Drivers.FirstOrDefaultAsync(d => d.UserId == userId);
+        if (driver == null)
+            return NotFound("Driver profile not found");
+
+        // Set default date range if not provided
+        var start = startDate ?? DateTime.UtcNow.AddMonths(-1);
+        var end = endDate ?? DateTime.UtcNow;
+
+        // Get payments for this driver in the date range
+        var payments = await _context.Payments
+            .Where(p => p.DriverId == driver.Id && p.CreatedAt >= start && p.CreatedAt <= end)
+            .ToListAsync();
+
+        var totalEarnings = payments.Sum(p => p.DriverEarnings);
+        var pendingEarnings = payments.Where(p => p.Status == "pending" || p.Status == "processing").Sum(p => p.DriverEarnings);
+        var paidEarnings = payments.Where(p => p.Status == "paid" || p.Status == "completed").Sum(p => p.DriverEarnings);
+        var totalTips = payments.Sum(p => p.TipAmount);
+        var totalBonuses = payments.Sum(p => p.BonusAmount ?? 0);
+
+        var completedJobs = await _context.Jobs
+            .Where(j => j.DriverId == driver.Id &&
+                       j.Status == "completed" &&
+                       j.CompletedAt >= start &&
+                       j.CompletedAt <= end)
+            .CountAsync();
+
+        var summary = new EarningSummaryDto
+        {
+            TotalEarnings = totalEarnings,
+            PendingEarnings = pendingEarnings,
+            PaidEarnings = paidEarnings,
+            TotalJobs = completedJobs,
+            PendingPayments = payments.Count(p => p.Status == "pending" || p.Status == "processing"),
+            CompletedPayments = payments.Count(p => p.Status == "paid" || p.Status == "completed"),
+            AverageEarningPerJob = completedJobs > 0 ? totalEarnings / completedJobs : 0,
+            TotalBonuses = totalBonuses,
+            TotalTips = totalTips,
+            LastPaymentDate = payments.Where(p => p.Status == "paid" || p.Status == "completed")
+                .OrderByDescending(p => p.UpdatedAt)
+                .FirstOrDefault()?.UpdatedAt,
+            NextPaymentDate = null // TODO: Implement payout schedule logic
+        };
+
+        await _activityLogService.LogActivityAsync(
+            action: "driver.earnings_viewed",
+            entityType: "Driver",
+            entityId: driver.Id.ToString(),
+            entityName: $"{driver.FirstName} {driver.LastName}",
+            description: "Driver viewed earnings summary",
+            severity: "INFO"
+        );
+
+        return Ok(summary);
+    }
+
     #endregion
 
     #region Driver Jobs

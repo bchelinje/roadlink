@@ -516,6 +516,201 @@ public class JobsController : ControllerBase
         return NoContent();
     }
 
+    /// <summary>
+    /// Update job status (Driver can update their assigned jobs, Admin can update any job)
+    /// </summary>
+    [HttpPatch("{id}/status")]
+    [Authorize(AuthenticationSchemes = OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme,
+        Roles = "Admin,SuperAdmin,Driver")]
+    [ProducesResponseType(typeof(JobDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<JobDto>> UpdateJobStatus(Guid id, UpdateJobStatusDto dto)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        var userRole = User.FindFirst(Claims.Role)?.Value;
+
+        var job = await _context.Jobs
+            .Include(j => j.Driver)
+            .FirstOrDefaultAsync(j => j.Id == id);
+
+        if (job == null)
+            return NotFound("Job not found");
+
+        // Authorization check - drivers can only update their own assigned jobs
+        if (userRole == "Driver")
+        {
+            if (job.Driver == null || job.Driver.UserId != userId)
+                return Forbid("You can only update jobs assigned to you");
+        }
+
+        // Validate status transition
+        var validStatuses = new[] { "pending", "assigned", "confirmed", "in_progress", "completed", "cancelled", "on_hold" };
+        if (!validStatuses.Contains(dto.Status))
+            return BadRequest($"Invalid status. Valid statuses: {string.Join(", ", validStatuses)}");
+
+        var oldStatus = job.Status;
+        job.Status = dto.Status;
+        job.UpdatedAt = DateTime.UtcNow;
+
+        // Update timestamps based on status
+        if (dto.Status == "in_progress" && dto.ActualStartTime.HasValue)
+        {
+            job.ActualStartTime = dto.ActualStartTime.Value;
+        }
+        else if (dto.Status == "in_progress" && !job.ActualStartTime.HasValue)
+        {
+            job.ActualStartTime = DateTime.UtcNow;
+        }
+
+        if (dto.Status == "completed")
+        {
+            if (dto.ActualEndTime.HasValue)
+            {
+                job.ActualEndTime = dto.ActualEndTime.Value;
+            }
+            else
+            {
+                job.ActualEndTime = DateTime.UtcNow;
+            }
+            job.CompletedAt = DateTime.UtcNow;
+
+            // Update driver stats
+            if (job.DriverId.HasValue)
+            {
+                var driver = await _context.Drivers.FindAsync(job.DriverId.Value);
+                if (driver != null)
+                {
+                    driver.CompletedJobs += 1;
+                    driver.ActiveJobs -= 1;
+                    if (driver.ActiveJobs < 0) driver.ActiveJobs = 0;
+                    driver.Status = driver.ActiveJobs > 0 ? "on_job" : "available";
+                }
+            }
+        }
+
+        // Add to status history
+        AddStatusHistory(job, dto.Status, userId!, dto.Notes ?? $"Status changed from {oldStatus} to {dto.Status}");
+
+        await _context.SaveChangesAsync();
+
+        await _activityLogService.LogActivityAsync(
+            action: "job.status_updated",
+            entityType: "Job",
+            entityId: id.ToString(),
+            entityName: job.JobNumber,
+            description: $"Job {job.JobNumber} status changed from {oldStatus} to {dto.Status}",
+            severity: "INFO",
+            metadata: new Dictionary<string, object>
+            {
+                { "OldStatus", oldStatus },
+                { "NewStatus", dto.Status },
+                { "UpdatedBy", userRole ?? "Unknown" }
+            }
+        );
+
+        return Ok(MapJobToDto(job));
+    }
+
+    /// <summary>
+    /// Get available jobs for drivers to claim
+    /// </summary>
+    [HttpGet("available")]
+    [Authorize(AuthenticationSchemes = OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme,
+        Roles = "Driver")]
+    [ProducesResponseType(typeof(PaginatedResult<JobDto>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<PaginatedResult<JobDto>>> GetAvailableJobs(
+        [FromQuery] string? vehicleType,
+        [FromQuery] int page = 1,
+        [FromQuery] int limit = 10)
+    {
+        // Get jobs that are pending or unassigned
+        var query = _context.Jobs
+            .Where(j => j.Status == "pending" && j.DriverId == null)
+            .AsQueryable();
+
+        // Filter by vehicle type if specified
+        if (!string.IsNullOrEmpty(vehicleType))
+        {
+            query = query.Where(j => j.VehicleTypeRequired == vehicleType);
+        }
+
+        var total = await query.CountAsync();
+        var jobs = await query
+            .OrderBy(j => j.ScheduledDate)
+            .ThenBy(j => j.Priority == "urgent" ? 0 : j.Priority == "high" ? 1 : j.Priority == "normal" ? 2 : 3)
+            .Skip((page - 1) * limit)
+            .Take(limit)
+            .ToListAsync();
+
+        return Ok(new PaginatedResult<JobDto>
+        {
+            Items = jobs.Select(MapJobToDto).ToList(),
+            Total = total,
+            Page = page,
+            Limit = limit,
+            TotalPages = (int)Math.Ceiling(total / (double)limit)
+        });
+    }
+
+    /// <summary>
+    /// Upload proof of delivery or job photos
+    /// </summary>
+    [HttpPost("{id}/photos")]
+    [Authorize(AuthenticationSchemes = OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme,
+        Roles = "Driver,Admin,SuperAdmin")]
+    [ProducesResponseType(typeof(JobDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<ActionResult<JobDto>> UploadJobPhotos(Guid id, [FromBody] List<JobPhotoDto> photos)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        var userRole = User.FindFirst(Claims.Role)?.Value;
+
+        var job = await _context.Jobs
+            .Include(j => j.Driver)
+            .FirstOrDefaultAsync(j => j.Id == id);
+
+        if (job == null)
+            return NotFound("Job not found");
+
+        // Authorization check
+        if (userRole == "Driver")
+        {
+            if (job.Driver == null || job.Driver.UserId != userId)
+                return Forbid("You can only upload photos for jobs assigned to you");
+        }
+
+        // Deserialize existing photos or create new list
+        var existingPhotos = string.IsNullOrEmpty(job.Photos)
+            ? new List<JobPhotoDto>()
+            : System.Text.Json.JsonSerializer.Deserialize<List<JobPhotoDto>>(job.Photos) ?? new List<JobPhotoDto>();
+
+        // Add new photos
+        existingPhotos.AddRange(photos);
+
+        // Serialize back to JSON
+        job.Photos = System.Text.Json.JsonSerializer.Serialize(existingPhotos);
+        job.UpdatedAt = DateTime.UtcNow;
+
+        await _context.SaveChangesAsync();
+
+        await _activityLogService.LogActivityAsync(
+            action: "job.photos_uploaded",
+            entityType: "Job",
+            entityId: id.ToString(),
+            entityName: job.JobNumber,
+            description: $"{photos.Count} photo(s) uploaded for job {job.JobNumber}",
+            severity: "INFO",
+            metadata: new Dictionary<string, object>
+            {
+                { "PhotoCount", photos.Count },
+                { "UploadedBy", userRole ?? "Unknown" }
+            }
+        );
+
+        return Ok(MapJobToDto(job));
+    }
+
     #region Helper Methods
 
     private static JobDto MapJobToDto(Job job)
