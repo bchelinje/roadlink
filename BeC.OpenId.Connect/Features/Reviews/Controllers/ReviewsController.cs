@@ -331,50 +331,13 @@ public class ReviewsController : ControllerBase
     }
 
     /// <summary>
-    /// Report a review as inappropriate
+    /// Respond to a review (reviewee only) - Legacy endpoint
     /// </summary>
-    [HttpPost("{id}/report")]
-    [ProducesResponseType(StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> ReportReview(Guid id, [FromBody] ReportReviewDto request)
-    {
-        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        if (string.IsNullOrEmpty(userId))
-            return Unauthorized();
-
-        var review = await _context.Reviews.FindAsync(id);
-        if (review == null)
-            return NotFound();
-
-        review.IsFlagged = true;
-        review.FlagReason = request.Reason;
-        review.FlaggedBy = userId;
-        review.FlaggedDate = DateTime.UtcNow;
-        review.Status = "reported";
-        review.UpdatedAt = DateTime.UtcNow;
-
-        await _context.SaveChangesAsync();
-
-        await _activityLogService.LogActivityAsync(
-            userId,
-            "review_reported",
-            "Review",
-            review.Id.ToString(),
-            $"Review for {review.RevieweeName}",
-            $"Review reported: {request.Reason}"
-        );
-
-        return Ok(new { message = "Review has been reported and will be reviewed by moderators" });
-    }
-
-    /// <summary>
-    /// Respond to a review (reviewee only)
-    /// </summary>
-    [HttpPost("{id}/response")]
+    [HttpPost("{id}/response-legacy")]
     [ProducesResponseType(typeof(Review), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<Review>> RespondToReview(Guid id, [FromBody] RespondToReviewDto request)
+    public async Task<ActionResult<Review>> RespondToReviewLegacy(Guid id, [FromBody] RespondToReviewDto request)
     {
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
         if (string.IsNullOrEmpty(userId))
