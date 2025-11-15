@@ -6,6 +6,7 @@ using BeC.OpenId.Connect.Features.Drivers.Dtos;
 using BeC.OpenId.Connect.Features.Drivers.Controllers;
 using BeC.OpenId.Connect.Features.Jobs.Dtos;
 using BeC.OpenId.Connect.Features.ActivityLogs.Services.Interfaces;
+using BeC.OpenId.Connect.Features.Notifications.Services.Interfaces;
 using BeC.OpenId.Connect.Infrastructure.Authorization;
 using OpenIddict.Validation.AspNetCore;
 using OpenIddict.Abstractions;
@@ -21,11 +22,13 @@ public class JobsController : ControllerBase
 {
     private readonly ApplicationDbContext _context;
     private readonly IActivityLogService _activityLogService;
+    private readonly INotificationService _notificationService;
 
-    public JobsController(ApplicationDbContext context, IActivityLogService activityLogService)
+    public JobsController(ApplicationDbContext context, IActivityLogService activityLogService, INotificationService notificationService)
     {
         _context = context;
         _activityLogService = activityLogService;
+        _notificationService = notificationService;
     }
 
     /// <summary>
@@ -461,6 +464,42 @@ public class JobsController : ControllerBase
             }
         );
 
+        // Send notification to driver
+        if (!string.IsNullOrEmpty(driver.UserId))
+        {
+            _ = _notificationService.SendJobNotificationAsync(
+                driver.UserId,
+                job.Id,
+                job.JobNumber,
+                "job_assigned",
+                $"You have been assigned to job {job.JobNumber}. Pickup: {job.PickupLocation}, Delivery: {job.DeliveryLocation}",
+                new Dictionary<string, object>
+                {
+                    { "scheduledDate", job.ScheduledDate },
+                    { "scheduledTime", job.ScheduledTime },
+                    { "pickupLocation", job.PickupLocation },
+                    { "deliveryLocation", job.DeliveryLocation }
+                }
+            );
+        }
+
+        // Send notification to customer
+        if (!string.IsNullOrEmpty(job.CustomerId))
+        {
+            _ = _notificationService.SendJobNotificationAsync(
+                job.CustomerId,
+                job.Id,
+                job.JobNumber,
+                "job_updated",
+                $"Your job {job.JobNumber} has been assigned to driver {driver.FirstName} {driver.LastName}",
+                new Dictionary<string, object>
+                {
+                    { "driverName", $"{driver.FirstName} {driver.LastName}" },
+                    { "driverPhone", driver.PhoneNumber ?? "" }
+                }
+            );
+        }
+
         return Ok(MapJobToDto(job));
     }
 
@@ -788,6 +827,44 @@ public class JobsController : ControllerBase
             }
         );
 
+        // Send notification to customer (if rescheduled by driver or admin)
+        if (userRole != "Customer" && !string.IsNullOrEmpty(job.CustomerId))
+        {
+            _ = _notificationService.SendJobNotificationAsync(
+                job.CustomerId,
+                job.Id,
+                job.JobNumber,
+                "job_rescheduled",
+                $"Your job {job.JobNumber} has been rescheduled to {dto.NewScheduledDate:yyyy-MM-dd} at {dto.NewScheduledTime}",
+                new Dictionary<string, object>
+                {
+                    { "oldDate", oldScheduledDate },
+                    { "oldTime", oldScheduledTime },
+                    { "newDate", dto.NewScheduledDate },
+                    { "newTime", dto.NewScheduledTime }
+                }
+            );
+        }
+
+        // Send notification to driver (if rescheduled by customer or admin and driver is assigned)
+        if (userRole != "Driver" && job.Driver != null && !string.IsNullOrEmpty(job.Driver.UserId))
+        {
+            _ = _notificationService.SendJobNotificationAsync(
+                job.Driver.UserId,
+                job.Id,
+                job.JobNumber,
+                "job_rescheduled",
+                $"Job {job.JobNumber} has been rescheduled to {dto.NewScheduledDate:yyyy-MM-dd} at {dto.NewScheduledTime}",
+                new Dictionary<string, object>
+                {
+                    { "oldDate", oldScheduledDate },
+                    { "oldTime", oldScheduledTime },
+                    { "newDate", dto.NewScheduledDate },
+                    { "newTime", dto.NewScheduledTime }
+                }
+            );
+        }
+
         return Ok(MapJobToDto(job));
     }
 
@@ -875,6 +952,40 @@ public class JobsController : ControllerBase
                 { "RequestRefund", dto.RequestRefund }
             }
         );
+
+        // Send notification to customer (if cancelled by driver or admin)
+        if (userRole != "Customer" && !string.IsNullOrEmpty(job.CustomerId))
+        {
+            _ = _notificationService.SendJobNotificationAsync(
+                job.CustomerId,
+                job.Id,
+                job.JobNumber,
+                "job_cancelled",
+                $"Your job {job.JobNumber} has been cancelled. Reason: {dto.Reason}",
+                new Dictionary<string, object>
+                {
+                    { "reason", dto.Reason },
+                    { "cancelledBy", userRole ?? "Unknown" }
+                }
+            );
+        }
+
+        // Send notification to driver (if cancelled by customer or admin and driver is assigned)
+        if (userRole != "Driver" && job.Driver != null && !string.IsNullOrEmpty(job.Driver.UserId))
+        {
+            _ = _notificationService.SendJobNotificationAsync(
+                job.Driver.UserId,
+                job.Id,
+                job.JobNumber,
+                "job_cancelled",
+                $"Job {job.JobNumber} has been cancelled. Reason: {dto.Reason}",
+                new Dictionary<string, object>
+                {
+                    { "reason", dto.Reason },
+                    { "cancelledBy", userRole ?? "Unknown" }
+                }
+            );
+        }
 
         return Ok(MapJobToDto(job));
     }

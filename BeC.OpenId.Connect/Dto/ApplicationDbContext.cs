@@ -29,6 +29,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     public DbSet<DriverLocation> DriverLocations { get; set; }
     public DbSet<Earning> Earnings { get; set; }
     public DbSet<SavedAddress> SavedAddresses { get; set; }
+    public DbSet<NotificationPreferences> NotificationPreferences { get; set; }
 
     protected override void OnModelCreating(ModelBuilder builder)
     {

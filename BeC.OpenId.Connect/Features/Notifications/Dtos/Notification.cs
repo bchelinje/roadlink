@@ -63,6 +63,10 @@ public class Notification
     public bool PushSent { get; set; } = false;
     public DateTime? PushSentAt { get; set; }
 
+    public bool SendSms { get; set; } = false;
+    public bool SmsSent { get; set; } = false;
+    public DateTime? SmsSentAt { get; set; }
+
     // Audit
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime? ExpiresAt { get; set; }
