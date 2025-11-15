@@ -144,6 +144,9 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseOpenIddict();
 });
 
+// Register DbContext for Repository pattern
+builder.Services.AddScoped<DbContext>(provider => provider.GetRequiredService<ApplicationDbContext>());
+
 builder.Services.AddOpenIddict()
     .AddCore(options =>
     {
