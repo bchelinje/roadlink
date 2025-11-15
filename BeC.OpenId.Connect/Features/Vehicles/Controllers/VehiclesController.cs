@@ -6,6 +6,7 @@ using BeC.OpenId.Connect.Features.Vehicles.Models;
 using BeC.OpenId.Connect.Features.Vehicles.Services.Interfaces;
 using BeC.OpenId.Connect.Features.Vehicles.ViewModels;
 using BeC.OpenId.Connect.Infrastructure.Authorization;
+using AuthRoles = BeC.OpenId.Connect.Infrastructure.Authorization.Roles;
 
 namespace BeC.OpenId.Connect.Features.Vehicles.Controllers;
 
@@ -33,7 +34,7 @@ public class VehiclesController : ControllerBase
     /// Get all vehicles with pagination and filtering (Admin only)
     /// </summary>
     [HttpGet]
-    [Authorize(Roles = Roles.Admin + "," + Roles.SuperAdmin)]
+    [Authorize(Roles = AuthRoles.Admin + "," + AuthRoles.SuperAdmin)]
     [ProducesResponseType(typeof(VehicleListViewModel), StatusCodes.Status200OK)]
     public async Task<ActionResult<VehicleListViewModel>> GetAllVehicles(
         [FromQuery] string? status = null,
@@ -85,7 +86,7 @@ public class VehiclesController : ControllerBase
     /// Get my vehicles (Driver)
     /// </summary>
     [HttpGet("~/api/drivers/me/vehicles")]
-    [Authorize(Roles = Roles.Driver)]
+    [Authorize(Roles = AuthRoles.Driver)]
     [ProducesResponseType(typeof(List<VehicleViewModel>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<ActionResult<List<VehicleViewModel>>> GetMyVehicles()
@@ -111,7 +112,7 @@ public class VehiclesController : ControllerBase
     /// Create a new vehicle
     /// </summary>
     [HttpPost]
-    [Authorize(Roles = Roles.Driver + "," + Roles.Admin + "," + Roles.SuperAdmin)]
+    [Authorize(Roles = AuthRoles.Driver + "," + AuthRoles.Admin + "," + AuthRoles.SuperAdmin)]
     [ProducesResponseType(typeof(VehicleViewModel), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -148,7 +149,7 @@ public class VehiclesController : ControllerBase
     /// Add my vehicle (Driver shorthand endpoint)
     /// </summary>
     [HttpPost("~/api/drivers/me/vehicles")]
-    [Authorize(Roles = Roles.Driver)]
+    [Authorize(Roles = AuthRoles.Driver)]
     [ProducesResponseType(typeof(VehicleViewModel), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<VehicleViewModel>> AddMyVehicle([FromBody] CreateVehicleModel request)
@@ -162,7 +163,7 @@ public class VehiclesController : ControllerBase
     /// Update a vehicle
     /// </summary>
     [HttpPut("{id}")]
-    [Authorize(Roles = Roles.Driver + "," + Roles.Admin + "," + Roles.SuperAdmin)]
+    [Authorize(Roles = AuthRoles.Driver + "," + AuthRoles.Admin + "," + AuthRoles.SuperAdmin)]
     [ProducesResponseType(typeof(VehicleViewModel), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -198,7 +199,7 @@ public class VehiclesController : ControllerBase
     /// Update vehicle status
     /// </summary>
     [HttpPatch("{id}/status")]
-    [Authorize(Roles = Roles.Driver + "," + Roles.Admin + "," + Roles.SuperAdmin)]
+    [Authorize(Roles = AuthRoles.Driver + "," + AuthRoles.Admin + "," + AuthRoles.SuperAdmin)]
     [ProducesResponseType(typeof(VehicleViewModel), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -234,7 +235,7 @@ public class VehiclesController : ControllerBase
     /// Log vehicle maintenance
     /// </summary>
     [HttpPost("{id}/maintenance")]
-    [Authorize(Roles = Roles.Driver + "," + Roles.Admin + "," + Roles.SuperAdmin)]
+    [Authorize(Roles = AuthRoles.Driver + "," + AuthRoles.Admin + "," + AuthRoles.SuperAdmin)]
     [ProducesResponseType(typeof(VehicleViewModel), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -295,7 +296,7 @@ public class VehiclesController : ControllerBase
     /// Delete a vehicle (soft delete)
     /// </summary>
     [HttpDelete("{id}")]
-    [Authorize(Roles = Roles.Driver + "," + Roles.Admin + "," + Roles.SuperAdmin)]
+    [Authorize(Roles = AuthRoles.Driver + "," + AuthRoles.Admin + "," + AuthRoles.SuperAdmin)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]

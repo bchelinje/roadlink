@@ -8,6 +8,7 @@ using BeC.OpenId.Connect.Features.Documents.ViewModels;
 using BeC.OpenId.Connect.Features.Drivers.Dtos;
 using BeC.OpenId.Connect.Infrastructure.Authorization;
 using Microsoft.EntityFrameworkCore;
+using AuthRoles = BeC.OpenId.Connect.Infrastructure.Authorization.Roles;
 
 namespace BeC.OpenId.Connect.Features.Documents.Services;
 
@@ -329,7 +330,7 @@ public class DocumentService : IDocumentService
             return false;
         }
 
-        var isAdmin = userRoles.Contains(Roles.Admin) || userRoles.Contains(Roles.SuperAdmin);
+        var isAdmin = userRoles.Contains(AuthRoles.Admin) || userRoles.Contains(AuthRoles.SuperAdmin);
         var isOwner = document.Driver.UserId == userId;
 
         return isAdmin || isOwner;

@@ -11,6 +11,7 @@ using BeC.OpenId.Connect.Features.Reviews.Dtos;
 using BeC.OpenId.Connect.Features.Users.Dtos;
 using BeC.OpenId.Connect.Features.ActivityLogs.Services.Interfaces;
 using BeC.OpenId.Connect.Infrastructure.Authorization;
+using AuthRoles = BeC.OpenId.Connect.Infrastructure.Authorization.Roles;
 using BeC.Common.Data.Repositories.Interfaces;
 
 namespace BeC.OpenId.Connect.Features.Reviews.Controllers;
@@ -58,7 +59,7 @@ public class ReviewsController : ControllerBase
             return NotFound("User not found");
 
         var userRoles = await _userManager.GetRolesAsync(user);
-        var reviewerType = userRoles.Contains(Infrastructure.Authorization.Roles.Driver) ? "driver" : "customer";
+        var reviewerType = userRoles.Contains(Infrastructure.Authorization.AuthRoles.Driver) ? "driver" : "customer";
 
         // Verify job exists and user is part of it
         if (request.JobId.HasValue)
@@ -180,7 +181,7 @@ public class ReviewsController : ControllerBase
     /// Get all reviews for a customer (Admin only)
     /// </summary>
     [HttpGet("customers/{id}")]
-    [Authorize(Roles = Infrastructure.Authorization.Roles.Admin + "," + Infrastructure.Authorization.Roles.SuperAdmin)]
+    [Authorize(Roles = Infrastructure.Authorization.AuthRoles.Admin + "," + Infrastructure.Authorization.AuthRoles.SuperAdmin)]
     [ProducesResponseType(typeof(List<Review>), StatusCodes.Status200OK)]
     public async Task<ActionResult<List<Review>>> GetCustomerReviews(
         string id,
@@ -286,7 +287,7 @@ public class ReviewsController : ControllerBase
 
         var user = await _userManager.FindByIdAsync(userId);
         var userRoles = await _userManager.GetRolesAsync(user!);
-        var isAdmin = userRoles.Contains(Infrastructure.Authorization.Roles.Admin) || userRoles.Contains(Infrastructure.Authorization.Roles.SuperAdmin);
+        var isAdmin = userRoles.Contains(Infrastructure.Authorization.AuthRoles.Admin) || userRoles.Contains(Infrastructure.Authorization.AuthRoles.SuperAdmin);
 
         // Only owner or admin can delete
         if (review.ReviewerId != userId && !isAdmin)
@@ -421,7 +422,7 @@ public class ReviewsController : ControllerBase
     /// Get reviews pending moderation (Admin only)
     /// </summary>
     [HttpGet("pending")]
-    [Authorize(Roles = Infrastructure.Authorization.Roles.Admin + "," + Infrastructure.Authorization.Roles.SuperAdmin)]
+    [Authorize(Roles = Infrastructure.Authorization.AuthRoles.Admin + "," + Infrastructure.Authorization.AuthRoles.SuperAdmin)]
     [ProducesResponseType(typeof(List<Review>), StatusCodes.Status200OK)]
     public async Task<ActionResult<List<Review>>> GetPendingReviews()
     {
