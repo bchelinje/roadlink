@@ -990,6 +990,229 @@ public class JobsController : ControllerBase
         return Ok(MapJobToDto(job));
     }
 
+    /// <summary>
+    /// Create bulk jobs (Admin or Customer creating multiple jobs at once)
+    /// </summary>
+    [HttpPost("bulk")]
+    [Authorize(AuthenticationSchemes = OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme,
+        Roles = "Admin,SuperAdmin,Customer")]
+    [ProducesResponseType(typeof(BulkJobCreationResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<BulkJobCreationResponse>> CreateBulkJobs([FromBody] BulkJobCreationDto dto)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrEmpty(userId))
+            return Unauthorized();
+
+        var user = await _context.Users.FindAsync(userId);
+        if (user == null)
+            return NotFound("User not found");
+
+        var createdJobs = new List<Job>();
+        var errors = new List<string>();
+
+        foreach (var jobRequest in dto.Jobs)
+        {
+            try
+            {
+                var jobNumber = $"JOB-{DateTime.UtcNow:yyyyMMdd}-{Guid.NewGuid().ToString()[..8].ToUpper()}";
+
+                var job = new Job
+                {
+                    JobNumber = jobNumber,
+                    CustomerId = dto.CustomerId ?? userId,
+                    CustomerName = jobRequest.CustomerName ?? user.DisplayName ?? user.UserName ?? "Unknown",
+                    CustomerEmail = jobRequest.CustomerEmail ?? user.Email ?? "",
+                    CustomerPhone = jobRequest.CustomerPhone ?? user.PhoneNumber ?? "",
+                    JobType = jobRequest.JobType,
+                    VehicleTypeRequired = jobRequest.VehicleTypeRequired,
+                    Priority = jobRequest.Priority ?? "normal",
+                    ScheduledDate = jobRequest.ScheduledDate,
+                    ScheduledTime = jobRequest.ScheduledTime,
+                    EstimatedDuration = jobRequest.EstimatedDuration,
+                    PickupLocation = jobRequest.PickupLocation,
+                    DeliveryLocation = jobRequest.DeliveryLocation,
+                    Distance = jobRequest.Distance,
+                    Items = jobRequest.Items != null ? System.Text.Json.JsonSerializer.Serialize(jobRequest.Items) : null,
+                    SpecialInstructions = jobRequest.SpecialInstructions,
+                    CustomerNotes = jobRequest.CustomerNotes,
+                    Status = "pending"
+                };
+
+                AddStatusHistory(job, "pending", userId, $"Job created via bulk import");
+
+                _context.Jobs.Add(job);
+                createdJobs.Add(job);
+            }
+            catch (Exception ex)
+            {
+                errors.Add($"Error creating job: {ex.Message}");
+            }
+        }
+
+        await _context.SaveChangesAsync();
+
+        await _activityLogService.LogActivityAsync(
+            userId,
+            "jobs.bulk_created",
+            "Job",
+            "bulk",
+            $"{createdJobs.Count} jobs",
+            $"Created {createdJobs.Count} jobs via bulk import"
+        );
+
+        return Ok(new BulkJobCreationResponse
+        {
+            SuccessCount = createdJobs.Count,
+            TotalRequested = dto.Jobs.Count,
+            CreatedJobs = createdJobs.Select(j => new BulkJobResult
+            {
+                JobId = j.Id,
+                JobNumber = j.JobNumber
+            }).ToList(),
+            Errors = errors
+        });
+    }
+
+    /// <summary>
+    /// Get job stops for a multi-stop delivery
+    /// </summary>
+    [HttpGet("{id}/stops")]
+    [ProducesResponseType(typeof(List<JobStop>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<List<JobStop>>> GetJobStops(Guid id)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrEmpty(userId))
+            return Unauthorized();
+
+        var job = await _context.Jobs.FindAsync(id);
+        if (job == null)
+            return NotFound("Job not found");
+
+        var stops = await _context.JobStops
+            .Where(s => s.JobId == id)
+            .OrderBy(s => s.StopOrder)
+            .ToListAsync();
+
+        return Ok(stops);
+    }
+
+    /// <summary>
+    /// Add a stop to a multi-stop job
+    /// </summary>
+    [HttpPost("{id}/stops")]
+    [Authorize(AuthenticationSchemes = OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme,
+        Roles = "Admin,SuperAdmin,Customer")]
+    [ProducesResponseType(typeof(JobStop), StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<JobStop>> AddJobStop(Guid id, [FromBody] CreateJobStopDto dto)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrEmpty(userId))
+            return Unauthorized();
+
+        var job = await _context.Jobs.FindAsync(id);
+        if (job == null)
+            return NotFound("Job not found");
+
+        // Check permissions
+        var userRoles = User.Claims.Where(c => c.Type == System.Security.Claims.ClaimTypes.Role).Select(c => c.Value).ToList();
+        var isAdmin = userRoles.Contains("Admin") || userRoles.Contains("SuperAdmin");
+
+        if (!isAdmin && job.CustomerId != userId)
+            return Forbid("You can only add stops to your own jobs");
+
+        var stop = new JobStop
+        {
+            JobId = id,
+            StopOrder = dto.StopOrder,
+            StopType = dto.StopType,
+            Location = dto.Location,
+            Latitude = dto.Latitude,
+            Longitude = dto.Longitude,
+            ContactName = dto.ContactName,
+            ContactPhone = dto.ContactPhone,
+            SpecialInstructions = dto.SpecialInstructions,
+            Items = dto.Items != null ? System.Text.Json.JsonSerializer.Serialize(dto.Items) : null,
+            ScheduledArrival = dto.ScheduledArrival,
+            Status = "pending"
+        };
+
+        _context.JobStops.Add(stop);
+        await _context.SaveChangesAsync();
+
+        await _activityLogService.LogActivityAsync(
+            userId,
+            "job.stop_added",
+            "Job",
+            id.ToString(),
+            job.JobNumber,
+            $"Added stop #{dto.StopOrder} to job {job.JobNumber}"
+        );
+
+        return CreatedAtAction(nameof(GetJobStops), new { id = id }, stop);
+    }
+
+    /// <summary>
+    /// Update a job stop (mark as completed, add photos, etc.)
+    /// </summary>
+    [HttpPatch("{jobId}/stops/{stopId}")]
+    [Authorize(AuthenticationSchemes = OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme,
+        Roles = "Admin,SuperAdmin,Driver")]
+    [ProducesResponseType(typeof(JobStop), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<JobStop>> UpdateJobStop(Guid jobId, Guid stopId, [FromBody] UpdateJobStopDto dto)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrEmpty(userId))
+            return Unauthorized();
+
+        var stop = await _context.JobStops
+            .Include(s => s.Job)
+            .FirstOrDefaultAsync(s => s.Id == stopId && s.JobId == jobId);
+
+        if (stop == null)
+            return NotFound("Stop not found");
+
+        // Update status
+        if (!string.IsNullOrEmpty(dto.Status))
+        {
+            stop.Status = dto.Status;
+
+            if (dto.Status == "arrived")
+                stop.ActualArrival = DateTime.UtcNow;
+            else if (dto.Status == "completed")
+                stop.ActualDeparture = DateTime.UtcNow;
+        }
+
+        // Update photos
+        if (dto.Photos != null)
+            stop.Photos = System.Text.Json.JsonSerializer.Serialize(dto.Photos);
+
+        // Update signature
+        if (!string.IsNullOrEmpty(dto.Signature))
+            stop.Signature = dto.Signature;
+
+        // Update notes
+        if (!string.IsNullOrEmpty(dto.Notes))
+            stop.Notes = dto.Notes;
+
+        stop.UpdatedAt = DateTime.UtcNow;
+        await _context.SaveChangesAsync();
+
+        await _activityLogService.LogActivityAsync(
+            userId,
+            "job.stop_updated",
+            "JobStop",
+            stop.Id.ToString(),
+            $"Stop #{stop.StopOrder}",
+            $"Updated stop #{stop.StopOrder} for job {stop.Job?.JobNumber}"
+        );
+
+        return Ok(stop);
+    }
+
     #region Helper Methods
 
     private static JobDto MapJobToDto(Job job)
@@ -1068,5 +1291,68 @@ public class StatusHistoryItem
     public required string Status { get; set; }
     public required string ChangedBy { get; set; }
     public DateTime ChangedAt { get; set; }
+    public string? Notes { get; set; }
+}
+
+// Bulk job creation DTOs
+public class BulkJobCreationDto
+{
+    public string? CustomerId { get; set; } // Optional - for admin creating jobs for a customer
+    public required List<BulkJobRequestItem> Jobs { get; set; }
+}
+
+public class BulkJobRequestItem
+{
+    public string? CustomerName { get; set; }
+    public string? CustomerEmail { get; set; }
+    public string? CustomerPhone { get; set; }
+    public required string JobType { get; set; }
+    public string? VehicleTypeRequired { get; set; }
+    public string? Priority { get; set; }
+    public required DateTime ScheduledDate { get; set; }
+    public required string ScheduledTime { get; set; }
+    public int? EstimatedDuration { get; set; }
+    public required string PickupLocation { get; set; }
+    public required string DeliveryLocation { get; set; }
+    public double? Distance { get; set; }
+    public List<object>? Items { get; set; }
+    public string? SpecialInstructions { get; set; }
+    public string? CustomerNotes { get; set; }
+}
+
+public class BulkJobCreationResponse
+{
+    public int SuccessCount { get; set; }
+    public int TotalRequested { get; set; }
+    public List<BulkJobResult> CreatedJobs { get; set; } = new();
+    public List<string> Errors { get; set; } = new();
+}
+
+public class BulkJobResult
+{
+    public Guid JobId { get; set; }
+    public required string JobNumber { get; set; }
+}
+
+// Multi-stop DTOs
+public class CreateJobStopDto
+{
+    public required int StopOrder { get; set; }
+    public required string StopType { get; set; } // pickup, delivery, waypoint
+    public required string Location { get; set; }
+    public double? Latitude { get; set; }
+    public double? Longitude { get; set; }
+    public string? ContactName { get; set; }
+    public string? ContactPhone { get; set; }
+    public string? SpecialInstructions { get; set; }
+    public List<object>? Items { get; set; }
+    public DateTime? ScheduledArrival { get; set; }
+}
+
+public class UpdateJobStopDto
+{
+    public string? Status { get; set; } // pending, arrived, completed, skipped, failed
+    public List<string>? Photos { get; set; }
+    public string? Signature { get; set; }
     public string? Notes { get; set; }
 }
