@@ -505,8 +505,7 @@ public class DriversController : ControllerBase
         var totalEarnings = payments.Sum(p => p.DriverEarnings);
         var pendingEarnings = payments.Where(p => p.Status == "pending" || p.Status == "processing").Sum(p => p.DriverEarnings);
         var paidEarnings = payments.Where(p => p.Status == "paid" || p.Status == "completed").Sum(p => p.DriverEarnings);
-        var totalTips = payments.Sum(p => p.TipAmount);
-        var totalBonuses = payments.Sum(p => p.BonusAmount ?? 0);
+        var totalTips = payments.Sum(p => p.TipAmount ?? 0);
 
         var completedJobs = await _context.Jobs
             .Where(j => j.DriverId == driver.Id &&
@@ -524,8 +523,9 @@ public class DriversController : ControllerBase
             PendingPayments = payments.Count(p => p.Status == "pending" || p.Status == "processing"),
             CompletedPayments = payments.Count(p => p.Status == "paid" || p.Status == "completed"),
             AverageEarningPerJob = completedJobs > 0 ? totalEarnings / completedJobs : 0,
-            TotalBonuses = totalBonuses,
+            TotalBonuses = null, // Bonus tracking can be implemented in future
             TotalTips = totalTips,
+            TotalDeductions = null, // Deduction tracking can be implemented in future
             LastPaymentDate = payments.Where(p => p.Status == "paid" || p.Status == "completed")
                 .OrderByDescending(p => p.UpdatedAt)
                 .FirstOrDefault()?.UpdatedAt,
