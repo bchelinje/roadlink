@@ -46,6 +46,7 @@ builder.Services.AddScoped<IPricingCalculatorService, PricingCalculatorService>(
 // Feature services
 builder.Services.AddScoped<BeC.OpenId.Connect.Features.Vehicles.Services.Interfaces.IVehicleService, BeC.OpenId.Connect.Features.Vehicles.Services.VehicleService>();
 builder.Services.AddScoped<BeC.OpenId.Connect.Features.Documents.Services.Interfaces.IDocumentService, BeC.OpenId.Connect.Features.Documents.Services.DocumentService>();
+builder.Services.AddScoped<BeC.OpenId.Connect.Features.Location.Services.Interfaces.ILocationService, BeC.OpenId.Connect.Features.Location.Services.LocationService>();
 
 // Register BeC.Common.Data Repository
 builder.Services.AddScoped<IRepository, Repository>();
