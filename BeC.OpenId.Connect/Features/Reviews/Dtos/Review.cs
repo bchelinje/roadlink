@@ -60,6 +60,9 @@ public class Review
 
     public DateTime? ResponseDate { get; set; }
 
+    [MaxLength(100)]
+    public string? RespondedBy { get; set; }
+
     // Moderation
     [MaxLength(20)]
     public string Status { get; set; } = "active"; // active, reported, hidden, deleted
@@ -71,6 +74,16 @@ public class Review
 
     public string? FlaggedBy { get; set; }
     public DateTime? FlaggedDate { get; set; }
+
+    [MaxLength(1000)]
+    public string? ModeratorNotes { get; set; }
+
+    public bool IsHidden { get; set; } = false;
+
+    [MaxLength(100)]
+    public string? ModeratedBy { get; set; }
+
+    public DateTime? ModeratedDate { get; set; }
 
     // Audit
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
