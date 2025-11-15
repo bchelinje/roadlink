@@ -382,3 +382,12 @@ FodyWeavers.xsd
 # JetBrains Rider
 .idea/
 *.sln.iml
+
+# Generated API documentation
+swagger.json
+**/swagger.json
+
+# Database files (SQLite)
+*.db
+*.db-shm
+*.db-wal
