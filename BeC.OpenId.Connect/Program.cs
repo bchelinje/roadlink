@@ -43,6 +43,9 @@ builder.Services.AddScoped<IActivityLogService, ActivityLogService>();
 builder.Services.AddScoped<IGoogleMapsService, GoogleMapsService>();
 builder.Services.AddScoped<IPricingCalculatorService, PricingCalculatorService>();
 
+// Feature services
+builder.Services.AddScoped<BeC.OpenId.Connect.Features.Vehicles.Services.Interfaces.IVehicleService, BeC.OpenId.Connect.Features.Vehicles.Services.VehicleService>();
+
 // Register BeC.Common.Data Repository
 builder.Services.AddScoped<IRepository, Repository>();
 

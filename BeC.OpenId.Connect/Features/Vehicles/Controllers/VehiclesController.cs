@@ -1,15 +1,11 @@
 using System.Security.Claims;
-using System.Text.Json;
 using Microsoft.AspNetCore.Authorization;
-using BeC.Common.Data.Repositories.Interfaces;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using OpenIddict.Validation.AspNetCore;
-using BeC.OpenId.Connect.Dto;
-using BeC.OpenId.Connect.Features.Drivers.Dtos;
-using BeC.OpenId.Connect.Features.ActivityLogs.Services.Interfaces;
+using BeC.OpenId.Connect.Features.Vehicles.Models;
+using BeC.OpenId.Connect.Features.Vehicles.Services.Interfaces;
+using BeC.OpenId.Connect.Features.Vehicles.ViewModels;
 using BeC.OpenId.Connect.Infrastructure.Authorization;
-using BeC.Common.Data.Repositories.Interfaces;
 
 namespace BeC.OpenId.Connect.Features.Vehicles.Controllers;
 
@@ -22,216 +18,140 @@ namespace BeC.OpenId.Connect.Features.Vehicles.Controllers;
 [Produces("application/json")]
 public class VehiclesController : ControllerBase
 {
-    private readonly ApplicationDbContext _context;
-    private readonly IRepository _repository;
-    private readonly IActivityLogService _activityLogService;
+    private readonly IVehicleService _vehicleService;
     private readonly ILogger<VehiclesController> _logger;
 
     public VehiclesController(
-        ApplicationDbContext context,
-        IRepository repository,
-        IActivityLogService activityLogService,
+        IVehicleService vehicleService,
         ILogger<VehiclesController> logger)
     {
-        _context = context;
-        _repository = repository;
-        _activityLogService = activityLogService;
+        _vehicleService = vehicleService;
         _logger = logger;
     }
 
     /// <summary>
-    /// Get all vehicles (Admin only)
+    /// Get all vehicles with pagination and filtering (Admin only)
     /// </summary>
     [HttpGet]
-    [Authorize(Roles = Infrastructure.Authorization.Roles.Admin + "," + Infrastructure.Authorization.Roles.SuperAdmin)]
-    [ProducesResponseType(typeof(List<Vehicle>), StatusCodes.Status200OK)]
-    public async Task<ActionResult<List<Vehicle>>> GetAllVehicles(
+    [Authorize(Roles = Roles.Admin + "," + Roles.SuperAdmin)]
+    [ProducesResponseType(typeof(VehicleListViewModel), StatusCodes.Status200OK)]
+    public async Task<ActionResult<VehicleListViewModel>> GetAllVehicles(
         [FromQuery] string? status = null,
         [FromQuery] Guid? driverId = null,
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 20)
     {
-        // Build predicate based on filters
-        System.Linq.Expressions.Expression<Func<Vehicle, bool>>? predicate = null;
-
-        if (!string.IsNullOrWhiteSpace(status) && driverId.HasValue)
+        try
         {
-            predicate = v => v.Status == status && v.DriverId == driverId.Value;
+            var result = await _vehicleService.GetAllVehiclesAsync(status, driverId, page, pageSize);
+
+            Response.Headers.Append("X-Total-Count", result.TotalCount.ToString());
+            Response.Headers.Append("X-Page", result.Page.ToString());
+            Response.Headers.Append("X-Page-Size", result.PageSize.ToString());
+
+            return this.Ok(result);
         }
-        else if (!string.IsNullOrWhiteSpace(status))
+        catch (Exception ex)
         {
-            predicate = v => v.Status == status;
+            _logger.LogError(ex, "Error getting all vehicles");
+            return this.StatusCode(StatusCodes.Status500InternalServerError, ex.Message);
         }
-        else if (driverId.HasValue)
-        {
-            predicate = v => v.DriverId == driverId.Value;
-        }
-
-        // Build query with filters (using DbContext for Include support)
-        var query = _context.Vehicles.Include(v => v.Driver).AsQueryable();
-
-        if (predicate != null)
-        {
-            query = query.Where(predicate);
-        }
-
-        var totalCount = await query.CountAsync();
-        var vehicles = await query
-            .OrderByDescending(v => v.CreatedAt)
-            .Skip((page - 1) * pageSize)
-            .Take(pageSize)
-            .ToListAsync();
-
-        Response.Headers.Append("X-Total-Count", totalCount.ToString());
-        Response.Headers.Append("X-Page", page.ToString());
-        Response.Headers.Append("X-Page-Size", pageSize.ToString());
-
-        return Ok(vehicles);
     }
 
     /// <summary>
     /// Get vehicle by ID
     /// </summary>
     [HttpGet("{id}")]
-    [ProducesResponseType(typeof(Vehicle), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(VehicleViewModel), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<Vehicle>> GetVehicle(Guid id)
+    public async Task<ActionResult<VehicleViewModel>> GetVehicle(Guid id)
     {
-        // Get vehicle with driver info (using DbContext for Include)
-        var vehicle = await _context.Vehicles
-            .Include(v => v.Driver)
-            .FirstOrDefaultAsync(v => v.Id == id);
+        try
+        {
+            var result = await _vehicleService.GetVehicleByIdAsync(id);
 
-        if (vehicle == null)
-            return NotFound();
-
-        return Ok(vehicle);
+            return result is not null
+                ? this.Ok(result)
+                : this.NotFound();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting vehicle {VehicleId}", id);
+            return this.StatusCode(StatusCodes.Status500InternalServerError, ex.Message);
+        }
     }
 
     /// <summary>
     /// Get my vehicles (Driver)
     /// </summary>
     [HttpGet("~/api/drivers/me/vehicles")]
-    [Authorize(Roles = Infrastructure.Authorization.Roles.Driver)]
-    [ProducesResponseType(typeof(List<Vehicle>), StatusCodes.Status200OK)]
-    public async Task<ActionResult<List<Vehicle>>> GetMyVehicles()
+    [Authorize(Roles = Roles.Driver)]
+    [ProducesResponseType(typeof(List<VehicleViewModel>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<ActionResult<List<VehicleViewModel>>> GetMyVehicles()
     {
-        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        if (string.IsNullOrEmpty(userId))
-            return Unauthorized();
+        try
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(userId))
+                return this.Unauthorized();
 
-        // Using Repository: GetEntity
-        var driver = await _repository.GetEntity<Driver>(d => d.UserId == userId);
-        if (driver == null)
-            return NotFound("Driver profile not found");
+            var result = await _vehicleService.GetVehiclesByDriverUserIdAsync(userId);
 
-        // Get my vehicles with ordering
-        var vehicles = await _repository.GetEntities<Vehicle, DateTime>(
-            v => v.DriverId == driver.Id,
-            v => v.CreatedAt,
-            isDescending: true
-        );
-
-        return Ok(vehicles);
+            return this.Ok(result);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting my vehicles");
+            return this.StatusCode(StatusCodes.Status500InternalServerError, ex.Message);
+        }
     }
 
     /// <summary>
     /// Create a new vehicle
     /// </summary>
     [HttpPost]
-    [Authorize(Roles = Infrastructure.Authorization.Roles.Driver + "," + Infrastructure.Authorization.Roles.Admin + "," + Infrastructure.Authorization.Roles.SuperAdmin)]
-    [ProducesResponseType(typeof(Vehicle), StatusCodes.Status201Created)]
+    [Authorize(Roles = Roles.Driver + "," + Roles.Admin + "," + Roles.SuperAdmin)]
+    [ProducesResponseType(typeof(VehicleViewModel), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    public async Task<ActionResult<Vehicle>> CreateVehicle([FromBody] CreateVehicleDto request)
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<ActionResult<VehicleViewModel>> CreateVehicle([FromBody] CreateVehicleModel request)
     {
-        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        if (string.IsNullOrEmpty(userId))
-            return Unauthorized();
-
-        // Determine the driver ID
-        Guid targetDriverId;
-
-        if (request.DriverId.HasValue)
+        try
         {
-            // Admin creating vehicle for a specific driver
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(userId))
+                return this.Unauthorized();
+
             var userRoles = User.Claims.Where(c => c.Type == ClaimTypes.Role).Select(c => c.Value);
-            if (!userRoles.Contains(Infrastructure.Authorization.Roles.Admin) && !userRoles.Contains(Infrastructure.Authorization.Roles.SuperAdmin))
-                return Forbid("Only admins can create vehicles for other drivers");
 
-            targetDriverId = request.DriverId.Value;
+            var result = await _vehicleService.CreateVehicleAsync(request, userId, userRoles);
+
+            return this.CreatedAtAction(nameof(GetVehicle), new { id = result.Id }, result);
         }
-        else
+        catch (UnauthorizedAccessException ex)
         {
-            // Driver creating their own vehicle
-            // Using Repository: GetEntity
-            var driver = await _repository.GetEntity<Driver>(d => d.UserId == userId);
-            if (driver == null)
-                return NotFound("Driver profile not found");
-
-            targetDriverId = driver.Id;
+            return this.Forbid();
         }
-
-        // Verify driver exists
-        // Using Repository: GetEntity
-        var targetDriver = await _repository.GetEntity<Driver>(d => d.Id == targetDriverId);
-        if (targetDriver == null)
-            return NotFound("Driver not found");
-
-        // Check for duplicate registration number
-        // Using Repository: Exists
-        var exists = await _repository.Exists<Vehicle>(v => v.RegistrationNumber == request.RegistrationNumber);
-        if (exists)
-            return BadRequest("A vehicle with this registration number already exists");
-
-        var vehicle = new Vehicle
+        catch (InvalidOperationException ex)
         {
-            DriverId = targetDriverId,
-            Type = request.Type,
-            Make = request.Make,
-            Model = request.Model,
-            Year = request.Year,
-            RegistrationNumber = request.RegistrationNumber,
-            VinNumber = request.VinNumber,
-            CargoCapacity = request.CargoCapacity,
-            MaxPayloadWeight = request.MaxPayloadWeight,
-            MaxGrossWeight = request.MaxGrossWeight,
-            CargoLength = request.CargoLength,
-            CargoWidth = request.CargoWidth,
-            CargoHeight = request.CargoHeight,
-            Features = request.Features != null ? JsonSerializer.Serialize(request.Features) : null,
-            HasInsurance = request.HasInsurance,
-            InsuranceExpiry = request.InsuranceExpiry,
-            Status = "active",
-            LastInspectionDate = request.LastInspectionDate,
-            NextInspectionDue = request.NextInspectionDue,
-            Mileage = request.Mileage,
-            Photos = request.Photos != null ? JsonSerializer.Serialize(request.Photos) : null,
-            IsActive = true
-        };
-
-        // Using Repository: InsertEntity
-        await _repository.InsertEntity(vehicle);
-
-        await _activityLogService.LogActivityAsync(
-            userId,
-            "vehicle_created",
-            "Vehicle",
-            vehicle.Id.ToString(),
-            $"{vehicle.Make} {vehicle.Model} ({vehicle.RegistrationNumber})",
-            $"Created vehicle for driver {targetDriver.FirstName} {targetDriver.LastName}"
-        );
-
-        return CreatedAtAction(nameof(GetVehicle), new { id = vehicle.Id }, vehicle);
+            return this.BadRequest(ex.Message);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error creating vehicle");
+            return this.StatusCode(StatusCodes.Status500InternalServerError, ex.Message);
+        }
     }
 
     /// <summary>
     /// Add my vehicle (Driver shorthand endpoint)
     /// </summary>
     [HttpPost("~/api/drivers/me/vehicles")]
-    [Authorize(Roles = Infrastructure.Authorization.Roles.Driver)]
-    [ProducesResponseType(typeof(Vehicle), StatusCodes.Status201Created)]
+    [Authorize(Roles = Roles.Driver)]
+    [ProducesResponseType(typeof(VehicleViewModel), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    public async Task<ActionResult<Vehicle>> AddMyVehicle([FromBody] CreateVehicleDto request)
+    public async Task<ActionResult<VehicleViewModel>> AddMyVehicle([FromBody] CreateVehicleModel request)
     {
         // Ensure DriverId is not set (will be determined automatically)
         request.DriverId = null;
@@ -242,317 +162,168 @@ public class VehiclesController : ControllerBase
     /// Update a vehicle
     /// </summary>
     [HttpPut("{id}")]
-    [Authorize(Roles = Infrastructure.Authorization.Roles.Driver + "," + Infrastructure.Authorization.Roles.Admin + "," + Infrastructure.Authorization.Roles.SuperAdmin)]
-    [ProducesResponseType(typeof(Vehicle), StatusCodes.Status200OK)]
+    [Authorize(Roles = Roles.Driver + "," + Roles.Admin + "," + Roles.SuperAdmin)]
+    [ProducesResponseType(typeof(VehicleViewModel), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<Vehicle>> UpdateVehicle(Guid id, [FromBody] UpdateVehicleDto request)
+    public async Task<ActionResult<VehicleViewModel>> UpdateVehicle(Guid id, [FromBody] UpdateVehicleModel request)
     {
-        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        if (string.IsNullOrEmpty(userId))
-            return Unauthorized();
-
-        // Get vehicle with driver info (using DbContext for Include)
-        var vehicle = await _context.Vehicles
-            .Include(v => v.Driver)
-            .FirstOrDefaultAsync(v => v.Id == id);
-
-        if (vehicle == null)
-            return NotFound();
-
-        // Check permissions
-        var userRoles = User.Claims.Where(c => c.Type == ClaimTypes.Role).Select(c => c.Value);
-        var isAdmin = userRoles.Contains(Infrastructure.Authorization.Roles.Admin) || userRoles.Contains(Infrastructure.Authorization.Roles.SuperAdmin);
-        var isOwner = vehicle.Driver.UserId == userId;
-
-        if (!isAdmin && !isOwner)
-            return Forbid("You can only update your own vehicles");
-
-        // Update fields
-        vehicle.Type = request.Type ?? vehicle.Type;
-        vehicle.Make = request.Make ?? vehicle.Make;
-        vehicle.Model = request.Model ?? vehicle.Model;
-        vehicle.Year = request.Year ?? vehicle.Year;
-        vehicle.RegistrationNumber = request.RegistrationNumber ?? vehicle.RegistrationNumber;
-        vehicle.VinNumber = request.VinNumber ?? vehicle.VinNumber;
-        vehicle.CargoCapacity = request.CargoCapacity ?? vehicle.CargoCapacity;
-        vehicle.MaxPayloadWeight = request.MaxPayloadWeight ?? vehicle.MaxPayloadWeight;
-        vehicle.MaxGrossWeight = request.MaxGrossWeight ?? vehicle.MaxGrossWeight;
-        vehicle.CargoLength = request.CargoLength ?? vehicle.CargoLength;
-        vehicle.CargoWidth = request.CargoWidth ?? vehicle.CargoWidth;
-        vehicle.CargoHeight = request.CargoHeight ?? vehicle.CargoHeight;
-        vehicle.HasInsurance = request.HasInsurance ?? vehicle.HasInsurance;
-        vehicle.InsuranceExpiry = request.InsuranceExpiry ?? vehicle.InsuranceExpiry;
-        vehicle.LastInspectionDate = request.LastInspectionDate ?? vehicle.LastInspectionDate;
-        vehicle.NextInspectionDue = request.NextInspectionDue ?? vehicle.NextInspectionDue;
-        vehicle.Mileage = request.Mileage ?? vehicle.Mileage;
-
-        if (request.Features != null)
+        try
         {
-            vehicle.Features = JsonSerializer.Serialize(request.Features);
-        }
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(userId))
+                return this.Unauthorized();
 
-        if (request.Photos != null)
+            var userRoles = User.Claims.Where(c => c.Type == ClaimTypes.Role).Select(c => c.Value);
+
+            var (success, vehicle, errorMessage) = await _vehicleService.UpdateVehicleAsync(id, request, userId, userRoles);
+
+            if (!success)
+            {
+                return errorMessage == "Vehicle not found"
+                    ? this.NotFound()
+                    : this.Forbid();
+            }
+
+            return this.Ok(vehicle);
+        }
+        catch (Exception ex)
         {
-            vehicle.Photos = JsonSerializer.Serialize(request.Photos);
+            _logger.LogError(ex, "Error updating vehicle {VehicleId}", id);
+            return this.StatusCode(StatusCodes.Status500InternalServerError, ex.Message);
         }
-
-        vehicle.UpdatedAt = DateTime.UtcNow;
-
-        // Using Repository: UpdateEntity
-        await _repository.UpdateEntity(vehicle);
-
-        await _activityLogService.LogActivityAsync(
-            userId,
-            "vehicle_updated",
-            "Vehicle",
-            vehicle.Id.ToString(),
-            $"{vehicle.Make} {vehicle.Model} ({vehicle.RegistrationNumber})",
-            "Vehicle updated"
-        );
-
-        return Ok(vehicle);
     }
 
     /// <summary>
     /// Update vehicle status
     /// </summary>
     [HttpPatch("{id}/status")]
-    [Authorize(Roles = Infrastructure.Authorization.Roles.Driver + "," + Infrastructure.Authorization.Roles.Admin + "," + Infrastructure.Authorization.Roles.SuperAdmin)]
-    [ProducesResponseType(typeof(Vehicle), StatusCodes.Status200OK)]
+    [Authorize(Roles = Roles.Driver + "," + Roles.Admin + "," + Roles.SuperAdmin)]
+    [ProducesResponseType(typeof(VehicleViewModel), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<Vehicle>> UpdateVehicleStatus(Guid id, [FromBody] UpdateVehicleStatusDto request)
+    public async Task<ActionResult<VehicleViewModel>> UpdateVehicleStatus(Guid id, [FromBody] UpdateVehicleStatusModel request)
     {
-        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        if (string.IsNullOrEmpty(userId))
-            return Unauthorized();
+        try
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(userId))
+                return this.Unauthorized();
 
-        // Get vehicle with driver info (using DbContext for Include)
-        var vehicle = await _context.Vehicles
-            .Include(v => v.Driver)
-            .FirstOrDefaultAsync(v => v.Id == id);
+            var userRoles = User.Claims.Where(c => c.Type == ClaimTypes.Role).Select(c => c.Value);
 
-        if (vehicle == null)
-            return NotFound();
+            var (success, vehicle, errorMessage) = await _vehicleService.UpdateVehicleStatusAsync(id, request, userId, userRoles);
 
-        // Check permissions
-        var userRoles = User.Claims.Where(c => c.Type == ClaimTypes.Role).Select(c => c.Value);
-        var isAdmin = userRoles.Contains(Infrastructure.Authorization.Roles.Admin) || userRoles.Contains(Infrastructure.Authorization.Roles.SuperAdmin);
-        var isOwner = vehicle.Driver.UserId == userId;
+            if (!success)
+            {
+                return errorMessage == "Vehicle not found"
+                    ? this.NotFound()
+                    : this.Forbid();
+            }
 
-        if (!isAdmin && !isOwner)
-            return Forbid("You can only update your own vehicles");
-
-        var oldStatus = vehicle.Status;
-        vehicle.Status = request.Status;
-        vehicle.UpdatedAt = DateTime.UtcNow;
-
-        // Using Repository: UpdateEntity
-        await _repository.UpdateEntity(vehicle);
-
-        await _activityLogService.LogActivityAsync(
-            userId,
-            "vehicle_status_changed",
-            "Vehicle",
-            vehicle.Id.ToString(),
-            $"{vehicle.Make} {vehicle.Model}",
-            $"Status changed from {oldStatus} to {request.Status}"
-        );
-
-        return Ok(vehicle);
+            return this.Ok(vehicle);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error updating vehicle status {VehicleId}", id);
+            return this.StatusCode(StatusCodes.Status500InternalServerError, ex.Message);
+        }
     }
 
     /// <summary>
     /// Log vehicle maintenance
     /// </summary>
     [HttpPost("{id}/maintenance")]
-    [Authorize(Roles = Infrastructure.Authorization.Roles.Driver + "," + Infrastructure.Authorization.Roles.Admin + "," + Infrastructure.Authorization.Roles.SuperAdmin)]
-    [ProducesResponseType(typeof(Vehicle), StatusCodes.Status200OK)]
+    [Authorize(Roles = Roles.Driver + "," + Roles.Admin + "," + Roles.SuperAdmin)]
+    [ProducesResponseType(typeof(VehicleViewModel), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<Vehicle>> LogMaintenance(Guid id, [FromBody] LogMaintenanceDto request)
+    public async Task<ActionResult<VehicleViewModel>> LogMaintenance(Guid id, [FromBody] LogMaintenanceModel request)
     {
-        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        if (string.IsNullOrEmpty(userId))
-            return Unauthorized();
+        try
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(userId))
+                return this.Unauthorized();
 
-        // Get vehicle with driver info (using DbContext for Include)
-        var vehicle = await _context.Vehicles
-            .Include(v => v.Driver)
-            .FirstOrDefaultAsync(v => v.Id == id);
+            var userRoles = User.Claims.Where(c => c.Type == ClaimTypes.Role).Select(c => c.Value);
 
-        if (vehicle == null)
-            return NotFound();
+            var (success, vehicle, errorMessage) = await _vehicleService.LogMaintenanceAsync(id, request, userId, userRoles);
 
-        // Check permissions
-        var userRoles = User.Claims.Where(c => c.Type == ClaimTypes.Role).Select(c => c.Value);
-        var isAdmin = userRoles.Contains(Infrastructure.Authorization.Roles.Admin) || userRoles.Contains(Infrastructure.Authorization.Roles.SuperAdmin);
-        var isOwner = vehicle.Driver.UserId == userId;
+            if (!success)
+            {
+                return errorMessage == "Vehicle not found"
+                    ? this.NotFound()
+                    : this.Forbid();
+            }
 
-        if (!isAdmin && !isOwner)
-            return Forbid("You can only log maintenance for your own vehicles");
-
-        vehicle.LastInspectionDate = request.MaintenanceDate ?? DateTime.UtcNow;
-        vehicle.NextInspectionDue = request.NextInspectionDue;
-        vehicle.Mileage = request.Mileage ?? vehicle.Mileage;
-        vehicle.UpdatedAt = DateTime.UtcNow;
-
-        // Using Repository: UpdateEntity
-        await _repository.UpdateEntity(vehicle);
-
-        await _activityLogService.LogActivityAsync(
-            userId,
-            "vehicle_maintenance",
-            "Vehicle",
-            vehicle.Id.ToString(),
-            $"{vehicle.Make} {vehicle.Model}",
-            $"Maintenance logged: {request.Description ?? "Routine maintenance"}"
-        );
-
-        return Ok(vehicle);
+            return this.Ok(vehicle);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error logging maintenance for vehicle {VehicleId}", id);
+            return this.StatusCode(StatusCodes.Status500InternalServerError, ex.Message);
+        }
     }
 
     /// <summary>
     /// Get vehicle maintenance history
     /// </summary>
     [HttpGet("{id}/maintenance-history")]
-    [ProducesResponseType(typeof(List<object>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(List<MaintenanceHistoryViewModel>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<List<object>>> GetMaintenanceHistory(Guid id)
+    public async Task<ActionResult<List<MaintenanceHistoryViewModel>>> GetMaintenanceHistory(Guid id)
     {
-        var vehicle = await _context.Vehicles.FindAsync(id);
-        if (vehicle == null)
-            return NotFound();
+        try
+        {
+            var vehicle = await _vehicleService.GetVehicleByIdAsync(id);
+            if (vehicle is null)
+                return this.NotFound();
 
-        // Get activity logs related to this vehicle's maintenance
-        var maintenanceLogs = await _context.ActivityLogs
-            .Where(a => a.EntityType == "Vehicle" &&
-                       a.EntityId == id.ToString() &&
-                       a.Action == "vehicle_maintenance")
-            .OrderByDescending(a => a.Timestamp)
-            .Select(a => new
-            {
-                a.Timestamp,
-                a.Description,
-                a.UserName
-            })
-            .ToListAsync();
+            var result = await _vehicleService.GetMaintenanceHistoryAsync(id);
 
-        return Ok(maintenanceLogs);
+            return this.Ok(result);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting maintenance history for vehicle {VehicleId}", id);
+            return this.StatusCode(StatusCodes.Status500InternalServerError, ex.Message);
+        }
     }
 
     /// <summary>
-    /// Delete a vehicle
+    /// Delete a vehicle (soft delete)
     /// </summary>
     [HttpDelete("{id}")]
-    [Authorize(Roles = Infrastructure.Authorization.Roles.Driver + "," + Infrastructure.Authorization.Roles.Admin + "," + Infrastructure.Authorization.Roles.SuperAdmin)]
+    [Authorize(Roles = Roles.Driver + "," + Roles.Admin + "," + Roles.SuperAdmin)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> DeleteVehicle(Guid id)
     {
-        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        if (string.IsNullOrEmpty(userId))
-            return Unauthorized();
+        try
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(userId))
+                return this.Unauthorized();
 
-        // Get vehicle with driver info (using DbContext for Include)
-        var vehicle = await _context.Vehicles
-            .Include(v => v.Driver)
-            .FirstOrDefaultAsync(v => v.Id == id);
+            var userRoles = User.Claims.Where(c => c.Type == ClaimTypes.Role).Select(c => c.Value);
 
-        if (vehicle == null)
-            return NotFound();
+            var (success, errorMessage) = await _vehicleService.DeleteVehicleAsync(id, userId, userRoles);
 
-        // Check permissions
-        var userRoles = User.Claims.Where(c => c.Type == ClaimTypes.Role).Select(c => c.Value);
-        var isAdmin = userRoles.Contains(Infrastructure.Authorization.Roles.Admin) || userRoles.Contains(Infrastructure.Authorization.Roles.SuperAdmin);
-        var isOwner = vehicle.Driver.UserId == userId;
+            if (!success)
+            {
+                return errorMessage == "Vehicle not found"
+                    ? this.NotFound()
+                    : this.Forbid();
+            }
 
-        if (!isAdmin && !isOwner)
-            return Forbid("You can only delete your own vehicles");
-
-        // Soft delete
-        vehicle.IsActive = false;
-        vehicle.Status = "retired";
-        vehicle.UpdatedAt = DateTime.UtcNow;
-
-        // Using Repository: UpdateEntity
-        await _repository.UpdateEntity(vehicle);
-
-        await _activityLogService.LogActivityAsync(
-            userId,
-            "vehicle_deleted",
-            "Vehicle",
-            vehicle.Id.ToString(),
-            $"{vehicle.Make} {vehicle.Model}",
-            "Vehicle deleted (soft delete)"
-        );
-
-        return NoContent();
+            return this.NoContent();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error deleting vehicle {VehicleId}", id);
+            return this.StatusCode(StatusCodes.Status500InternalServerError, ex.Message);
+        }
     }
 }
-
-#region DTOs
-
-public class CreateVehicleDto
-{
-    public Guid? DriverId { get; set; } // Only for admin use
-    public required string Type { get; set; }
-    public required string Make { get; set; }
-    public required string Model { get; set; }
-    public required int Year { get; set; }
-    public required string RegistrationNumber { get; set; }
-    public string? VinNumber { get; set; }
-    public required int CargoCapacity { get; set; }
-    public required decimal MaxPayloadWeight { get; set; }
-    public required decimal MaxGrossWeight { get; set; }
-    public decimal? CargoLength { get; set; }
-    public decimal? CargoWidth { get; set; }
-    public decimal? CargoHeight { get; set; }
-    public List<string>? Features { get; set; }
-    public required bool HasInsurance { get; set; }
-    public DateTime? InsuranceExpiry { get; set; }
-    public DateTime? LastInspectionDate { get; set; }
-    public DateTime? NextInspectionDue { get; set; }
-    public int? Mileage { get; set; }
-    public List<string>? Photos { get; set; }
-}
-
-public class UpdateVehicleDto
-{
-    public string? Type { get; set; }
-    public string? Make { get; set; }
-    public string? Model { get; set; }
-    public int? Year { get; set; }
-    public string? RegistrationNumber { get; set; }
-    public string? VinNumber { get; set; }
-    public int? CargoCapacity { get; set; }
-    public decimal? MaxPayloadWeight { get; set; }
-    public decimal? MaxGrossWeight { get; set; }
-    public decimal? CargoLength { get; set; }
-    public decimal? CargoWidth { get; set; }
-    public decimal? CargoHeight { get; set; }
-    public List<string>? Features { get; set; }
-    public bool? HasInsurance { get; set; }
-    public DateTime? InsuranceExpiry { get; set; }
-    public DateTime? LastInspectionDate { get; set; }
-    public DateTime? NextInspectionDue { get; set; }
-    public int? Mileage { get; set; }
-    public List<string>? Photos { get; set; }
-}
-
-public class UpdateVehicleStatusDto
-{
-    public required string Status { get; set; } // active, inactive, maintenance, retired
-}
-
-public class LogMaintenanceDto
-{
-    public DateTime? MaintenanceDate { get; set; }
-    public DateTime? NextInspectionDue { get; set; }
-    public int? Mileage { get; set; }
-    public string? Description { get; set; }
-}
-
-#endregion
