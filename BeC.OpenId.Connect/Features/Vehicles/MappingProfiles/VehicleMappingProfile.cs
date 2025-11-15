@@ -17,11 +17,11 @@ public class VehicleMappingProfile : Profile
         CreateMap<Vehicle, VehicleViewModel>()
             .ForMember(dest => dest.Features, opt => opt.MapFrom(src =>
                 !string.IsNullOrWhiteSpace(src.Features)
-                    ? JsonSerializer.Deserialize<List<string>>(src.Features)
+                    ? JsonSerializer.Deserialize<List<string>>(src.Features, (JsonSerializerOptions?)null)
                     : null))
             .ForMember(dest => dest.Photos, opt => opt.MapFrom(src =>
                 !string.IsNullOrWhiteSpace(src.Photos)
-                    ? JsonSerializer.Deserialize<List<string>>(src.Photos)
+                    ? JsonSerializer.Deserialize<List<string>>(src.Photos, (JsonSerializerOptions?)null)
                     : null))
             .ForMember(dest => dest.Driver, opt => opt.MapFrom(src => src.Driver));
 
