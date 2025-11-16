@@ -642,6 +642,122 @@ public class PaymentsController : ControllerBase
         return Ok(response);
     }
 
+    /// <summary>
+    /// Download payment receipt as PDF
+    /// </summary>
+    [HttpGet("{id}/receipt")]
+    [ProducesResponseType(typeof(FileResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<ActionResult> DownloadReceipt(Guid id)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrEmpty(userId))
+            return Unauthorized();
+
+        var payment = await _context.Payments
+            .Include(p => p.Job)
+            .FirstOrDefaultAsync(p => p.Id == id);
+
+        if (payment == null)
+            return NotFound("Payment not found");
+
+        // Authorization check - customers can only download their own receipts
+        var userRoles = User.Claims.Where(c => c.Type == ClaimTypes.Role).Select(c => c.Value).ToList();
+        if (!userRoles.Contains(AuthRoles.Admin) && !userRoles.Contains(AuthRoles.SuperAdmin))
+        {
+            if (payment.CustomerId != userId)
+                return Forbid("You can only download your own receipts");
+        }
+
+        // Generate receipt content (simple text-based format)
+        var receiptContent = GenerateReceiptContent(payment);
+        var receiptBytes = System.Text.Encoding.UTF8.GetBytes(receiptContent);
+
+        var fileName = $"Receipt-{payment.PaymentNumber}-{DateTime.UtcNow:yyyyMMdd}.txt";
+
+        return File(receiptBytes, "text/plain", fileName);
+    }
+
+    private string GenerateReceiptContent(Payment payment)
+    {
+        var sb = new System.Text.StringBuilder();
+
+        sb.AppendLine("=====================================");
+        sb.AppendLine("      PAYMENT RECEIPT");
+        sb.AppendLine("=====================================");
+        sb.AppendLine();
+        sb.AppendLine($"Receipt #: {payment.PaymentNumber}");
+        sb.AppendLine($"Date: {payment.CreatedAt:yyyy-MM-dd HH:mm:ss UTC}");
+        sb.AppendLine();
+        sb.AppendLine("-------------------------------------");
+        sb.AppendLine("PAYMENT DETAILS");
+        sb.AppendLine("-------------------------------------");
+        sb.AppendLine($"Payment Method: {payment.PaymentMethod}");
+        sb.AppendLine($"Transaction ID: {payment.StripePaymentIntentId ?? "N/A"}");
+        sb.AppendLine($"Status: {payment.Status.ToUpper()}");
+        sb.AppendLine();
+
+        if (payment.Job != null)
+        {
+            sb.AppendLine("-------------------------------------");
+            sb.AppendLine("SERVICE DETAILS");
+            sb.AppendLine("-------------------------------------");
+            sb.AppendLine($"Job #: {payment.Job.JobNumber}");
+            sb.AppendLine($"Service Type: {payment.Job.JobType}");
+            sb.AppendLine($"Scheduled Date: {payment.Job.ScheduledDate:yyyy-MM-dd}");
+            sb.AppendLine();
+        }
+
+        sb.AppendLine("-------------------------------------");
+        sb.AppendLine("CHARGES");
+        sb.AppendLine("-------------------------------------");
+        sb.AppendLine($"Subtotal:          {payment.Amount,12:C}");
+
+        if (payment.TipAmount > 0)
+        {
+            sb.AppendLine($"Tip:               {payment.TipAmount,12:C}");
+        }
+
+        if (payment.PlatformFee > 0)
+        {
+            sb.AppendLine($"Platform Fee:      {payment.PlatformFee,12:C}");
+        }
+
+        sb.AppendLine("-------------------------------------");
+        sb.AppendLine($"TOTAL:             {payment.TotalAmount,12:C}");
+        sb.AppendLine("=====================================");
+
+        if (payment.RefundAmount > 0)
+        {
+            sb.AppendLine();
+            sb.AppendLine("-------------------------------------");
+            sb.AppendLine("REFUND INFORMATION");
+            sb.AppendLine("-------------------------------------");
+            sb.AppendLine($"Refunded Amount:   {payment.RefundAmount,12:C}");
+            sb.AppendLine($"Refunded On: {payment.RefundedAt:yyyy-MM-dd HH:mm:ss UTC}");
+            sb.AppendLine($"Net Amount:        {payment.TotalAmount - payment.RefundAmount.Value,12:C}");
+            sb.AppendLine("=====================================");
+        }
+
+        if (!string.IsNullOrEmpty(payment.Description))
+        {
+            sb.AppendLine();
+            sb.AppendLine("Description:");
+            sb.AppendLine(payment.Description);
+        }
+
+        sb.AppendLine();
+        sb.AppendLine("Thank you for your business!");
+        sb.AppendLine();
+        sb.AppendLine("For support, please contact:");
+        sb.AppendLine("Email: support@becvanmoving.com");
+        sb.AppendLine("Phone: +44 (0) 20 XXXX XXXX");
+        sb.AppendLine();
+
+        return sb.ToString();
+    }
+
     #endregion
 }
 

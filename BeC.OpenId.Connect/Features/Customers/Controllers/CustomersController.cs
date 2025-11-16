@@ -392,8 +392,18 @@ public class CustomersController : ControllerBase
     [ProducesResponseType(typeof(List<Driver>), StatusCodes.Status200OK)]
     public async Task<ActionResult<List<Driver>>> GetFavoriteDrivers()
     {
-        // TODO: Implement favorites table and logic
-        return Ok(new List<Driver>());
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrEmpty(userId))
+            return Unauthorized();
+
+        var favoriteDrivers = await _context.FavoriteDrivers
+            .Include(f => f.Driver)
+            .Where(f => f.CustomerId == userId)
+            .OrderByDescending(f => f.CreatedAt)
+            .Select(f => f.Driver!)
+            .ToListAsync();
+
+        return Ok(favoriteDrivers);
     }
 
     /// <summary>
@@ -402,10 +412,62 @@ public class CustomersController : ControllerBase
     [HttpPost("me/favorites/{driverId}")]
     [Authorize(Roles = Infrastructure.Authorization.Roles.Customer)]
     [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> AddFavoriteDriver(Guid driverId)
     {
-        // TODO: Implement favorites table and logic
-        return Ok(new { message = "Favorites feature coming soon" });
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrEmpty(userId))
+            return Unauthorized();
+
+        // Check if driver exists
+        var driver = await _context.Drivers.FindAsync(driverId);
+        if (driver == null)
+            return NotFound(new { message = "Driver not found" });
+
+        // Check if already in favorites
+        var existing = await _context.FavoriteDrivers
+            .FirstOrDefaultAsync(f => f.CustomerId == userId && f.DriverId == driverId);
+
+        if (existing != null)
+            return BadRequest(new { message = "Driver already in favorites" });
+
+        // Add to favorites
+        var favorite = new FavoriteDriver
+        {
+            CustomerId = userId,
+            DriverId = driverId
+        };
+
+        _context.FavoriteDrivers.Add(favorite);
+        await _context.SaveChangesAsync();
+
+        return Ok(new { message = "Driver added to favorites", favoriteId = favorite.Id });
+    }
+
+    /// <summary>
+    /// Remove driver from favorites
+    /// </summary>
+    [HttpDelete("me/favorites/{driverId}")]
+    [Authorize(Roles = Infrastructure.Authorization.Roles.Customer)]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> RemoveFavoriteDriver(Guid driverId)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrEmpty(userId))
+            return Unauthorized();
+
+        var favorite = await _context.FavoriteDrivers
+            .FirstOrDefaultAsync(f => f.CustomerId == userId && f.DriverId == driverId);
+
+        if (favorite == null)
+            return NotFound(new { message = "Driver not in favorites" });
+
+        _context.FavoriteDrivers.Remove(favorite);
+        await _context.SaveChangesAsync();
+
+        return Ok(new { message = "Driver removed from favorites" });
     }
 
     #endregion

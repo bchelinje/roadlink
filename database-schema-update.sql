@@ -372,6 +372,31 @@ ELSE
     PRINT 'JobTemplates table already exists.';
 
 -- ============================================================================
+-- 8. CREATE FAVORITE DRIVERS TABLE
+-- ============================================================================
+PRINT 'Creating FavoriteDrivers table...';
+
+IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'FavoriteDrivers')
+BEGIN
+    CREATE TABLE [FavoriteDrivers] (
+        [Id] UNIQUEIDENTIFIER NOT NULL PRIMARY KEY DEFAULT NEWID(),
+        [CustomerId] NVARCHAR(450) NOT NULL,
+        [DriverId] UNIQUEIDENTIFIER NOT NULL,
+        [Notes] NVARCHAR(500) NULL,
+        [CreatedAt] DATETIME2 NOT NULL DEFAULT GETUTCDATE(),
+        CONSTRAINT [FK_FavoriteDrivers_Drivers_DriverId]
+            FOREIGN KEY ([DriverId]) REFERENCES [Drivers]([Id]) ON DELETE CASCADE
+    );
+
+    CREATE INDEX [IX_FavoriteDrivers_CustomerId] ON [FavoriteDrivers]([CustomerId]);
+    CREATE INDEX [IX_FavoriteDrivers_DriverId] ON [FavoriteDrivers]([DriverId]);
+    CREATE UNIQUE INDEX [IX_FavoriteDrivers_CustomerId_DriverId] ON [FavoriteDrivers]([CustomerId], [DriverId]);
+    PRINT 'FavoriteDrivers table created successfully.';
+END
+ELSE
+    PRINT 'FavoriteDrivers table already exists.';
+
+-- ============================================================================
 -- COMMIT TRANSACTION
 -- ============================================================================
 COMMIT TRANSACTION;
