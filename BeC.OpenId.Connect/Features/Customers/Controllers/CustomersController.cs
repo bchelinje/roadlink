@@ -9,6 +9,7 @@ using BeC.OpenId.Connect.Dto;
 using BeC.OpenId.Connect.Features.Drivers.Dtos;
 using BeC.OpenId.Connect.Features.Users.Dtos;
 using BeC.OpenId.Connect.Features.Reviews.Dtos;
+using BeC.OpenId.Connect.Features.Customers.Dtos;
 using BeC.OpenId.Connect.Features.ActivityLogs.Services.Interfaces;
 using BeC.OpenId.Connect.Infrastructure.Authorization;
 using BeC.Common.Data.Repositories.Interfaces;
@@ -405,6 +406,226 @@ public class CustomersController : ControllerBase
     {
         // TODO: Implement favorites table and logic
         return Ok(new { message = "Favorites feature coming soon" });
+    }
+
+    #endregion
+
+    #region Saved Addresses
+
+    /// <summary>
+    /// Get all saved addresses for the current customer
+    /// </summary>
+    [HttpGet("me/addresses")]
+    [Authorize(Roles = Infrastructure.Authorization.Roles.Customer)]
+    [ProducesResponseType(typeof(List<SavedAddress>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<List<SavedAddress>>> GetSavedAddresses()
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrEmpty(userId))
+            return Unauthorized();
+
+        var addresses = await _context.SavedAddresses
+            .Where(a => a.CustomerId == userId)
+            .OrderByDescending(a => a.IsDefault)
+            .ThenByDescending(a => a.CreatedAt)
+            .ToListAsync();
+
+        return Ok(addresses);
+    }
+
+    /// <summary>
+    /// Save a new address
+    /// </summary>
+    [HttpPost("me/addresses")]
+    [Authorize(Roles = Infrastructure.Authorization.Roles.Customer)]
+    [ProducesResponseType(typeof(SavedAddress), StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<SavedAddress>> SaveAddress([FromBody] CreateSavedAddressDto dto)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrEmpty(userId))
+            return Unauthorized();
+
+        // If setting as default, remove default from other addresses
+        if (dto.IsDefault)
+        {
+            var existingDefaults = await _context.SavedAddresses
+                .Where(a => a.CustomerId == userId && a.IsDefault)
+                .ToListAsync();
+
+            foreach (var addr in existingDefaults)
+            {
+                addr.IsDefault = false;
+            }
+        }
+
+        var address = new SavedAddress
+        {
+            CustomerId = userId,
+            Label = dto.Label,
+            AddressLine1 = dto.AddressLine1,
+            AddressLine2 = dto.AddressLine2,
+            City = dto.City,
+            County = dto.County,
+            PostalCode = dto.PostalCode,
+            Country = dto.Country,
+            Latitude = dto.Latitude,
+            Longitude = dto.Longitude,
+            SpecialInstructions = dto.SpecialInstructions,
+            IsDefault = dto.IsDefault,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+
+        _context.SavedAddresses.Add(address);
+        await _context.SaveChangesAsync();
+
+        await _activityLogService.LogActivityAsync(
+            userId,
+            "address.saved",
+            "SavedAddress",
+            address.Id.ToString(),
+            dto.Label,
+            $"Saved address '{dto.Label}' created"
+        );
+
+        return CreatedAtAction(nameof(GetSavedAddresses), new { id = address.Id }, address);
+    }
+
+    /// <summary>
+    /// Update a saved address
+    /// </summary>
+    [HttpPut("me/addresses/{id}")]
+    [Authorize(Roles = Infrastructure.Authorization.Roles.Customer)]
+    [ProducesResponseType(typeof(SavedAddress), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<ActionResult<SavedAddress>> UpdateAddress(Guid id, [FromBody] UpdateSavedAddressDto dto)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrEmpty(userId))
+            return Unauthorized();
+
+        var address = await _context.SavedAddresses.FindAsync(id);
+        if (address == null)
+            return NotFound("Address not found");
+
+        if (address.CustomerId != userId)
+            return Forbid("You can only update your own addresses");
+
+        // Update fields if provided
+        if (dto.Label != null) address.Label = dto.Label;
+        if (dto.AddressLine1 != null) address.AddressLine1 = dto.AddressLine1;
+        if (dto.AddressLine2 != null) address.AddressLine2 = dto.AddressLine2;
+        if (dto.City != null) address.City = dto.City;
+        if (dto.County != null) address.County = dto.County;
+        if (dto.PostalCode != null) address.PostalCode = dto.PostalCode;
+        if (dto.Country != null) address.Country = dto.Country;
+        if (dto.Latitude.HasValue) address.Latitude = dto.Latitude;
+        if (dto.Longitude.HasValue) address.Longitude = dto.Longitude;
+        if (dto.SpecialInstructions != null) address.SpecialInstructions = dto.SpecialInstructions;
+
+        address.UpdatedAt = DateTime.UtcNow;
+
+        await _context.SaveChangesAsync();
+
+        await _activityLogService.LogActivityAsync(
+            userId,
+            "address.updated",
+            "SavedAddress",
+            address.Id.ToString(),
+            address.Label,
+            $"Updated saved address '{address.Label}'"
+        );
+
+        return Ok(address);
+    }
+
+    /// <summary>
+    /// Delete a saved address
+    /// </summary>
+    [HttpDelete("me/addresses/{id}")]
+    [Authorize(Roles = Infrastructure.Authorization.Roles.Customer)]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> DeleteAddress(Guid id)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrEmpty(userId))
+            return Unauthorized();
+
+        var address = await _context.SavedAddresses.FindAsync(id);
+        if (address == null)
+            return NotFound("Address not found");
+
+        if (address.CustomerId != userId)
+            return Forbid("You can only delete your own addresses");
+
+        var addressLabel = address.Label;
+
+        _context.SavedAddresses.Remove(address);
+        await _context.SaveChangesAsync();
+
+        await _activityLogService.LogActivityAsync(
+            userId,
+            "address.deleted",
+            "SavedAddress",
+            id.ToString(),
+            addressLabel,
+            $"Deleted saved address '{addressLabel}'"
+        );
+
+        return NoContent();
+    }
+
+    /// <summary>
+    /// Set an address as default
+    /// </summary>
+    [HttpPatch("me/addresses/{id}/set-default")]
+    [Authorize(Roles = Infrastructure.Authorization.Roles.Customer)]
+    [ProducesResponseType(typeof(SavedAddress), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<ActionResult<SavedAddress>> SetDefaultAddress(Guid id)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrEmpty(userId))
+            return Unauthorized();
+
+        var address = await _context.SavedAddresses.FindAsync(id);
+        if (address == null)
+            return NotFound("Address not found");
+
+        if (address.CustomerId != userId)
+            return Forbid("You can only modify your own addresses");
+
+        // Remove default from all other addresses
+        var otherAddresses = await _context.SavedAddresses
+            .Where(a => a.CustomerId == userId && a.Id != id && a.IsDefault)
+            .ToListAsync();
+
+        foreach (var addr in otherAddresses)
+        {
+            addr.IsDefault = false;
+        }
+
+        // Set this as default
+        address.IsDefault = true;
+        address.UpdatedAt = DateTime.UtcNow;
+
+        await _context.SaveChangesAsync();
+
+        await _activityLogService.LogActivityAsync(
+            userId,
+            "address.set_default",
+            "SavedAddress",
+            address.Id.ToString(),
+            address.Label,
+            $"Set '{address.Label}' as default address"
+        );
+
+        return Ok(address);
     }
 
     #endregion

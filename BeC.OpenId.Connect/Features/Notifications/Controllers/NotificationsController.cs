@@ -10,9 +10,9 @@ using BeC.OpenId.Connect.Dto;
 using BeC.OpenId.Connect.Features.Notifications.Dtos;
 using BeC.OpenId.Connect.Features.Users.Dtos;
 using BeC.OpenId.Connect.Features.ActivityLogs.Services.Interfaces;
+using BeC.OpenId.Connect.Features.Notifications.Services.Interfaces;
 using BeC.OpenId.Connect.Infrastructure.Authorization;
 using AuthRoles = BeC.OpenId.Connect.Infrastructure.Authorization.Roles;
-using BeC.Common.Data.Repositories.Interfaces;
 
 namespace BeC.OpenId.Connect.Features.Notifications.Controllers;
 
@@ -28,17 +28,20 @@ public class NotificationsController : ControllerBase
     private readonly ApplicationDbContext _context;
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly IActivityLogService _activityLogService;
+    private readonly INotificationService _notificationService;
     private readonly ILogger<NotificationsController> _logger;
 
     public NotificationsController(
         ApplicationDbContext context,
         UserManager<ApplicationUser> userManager,
         IActivityLogService activityLogService,
+        INotificationService notificationService,
         ILogger<NotificationsController> logger)
     {
         _context = context;
         _userManager = userManager;
         _activityLogService = activityLogService;
+        _notificationService = notificationService;
         _logger = logger;
     }
 
@@ -186,29 +189,108 @@ public class NotificationsController : ControllerBase
     }
 
     /// <summary>
-    /// Update notification preferences (placeholder for future implementation)
+    /// Get my notification preferences
     /// </summary>
-    [HttpPatch("settings")]
-    [ProducesResponseType(StatusCodes.Status200OK)]
-    public async Task<IActionResult> UpdateNotificationSettings([FromBody] NotificationSettingsDto settings)
+    [HttpGet("preferences")]
+    [ProducesResponseType(typeof(NotificationPreferences), StatusCodes.Status200OK)]
+    public async Task<ActionResult<NotificationPreferences>> GetMyPreferences()
     {
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
         if (string.IsNullOrEmpty(userId))
             return Unauthorized();
 
-        // TODO: Implement user notification preferences table
-        // For now, just acknowledge the request
+        var preferences = await _notificationService.GetUserPreferencesAsync(userId);
+        return Ok(preferences);
+    }
+
+    /// <summary>
+    /// Update notification preferences
+    /// </summary>
+    [HttpPut("preferences")]
+    [ProducesResponseType(typeof(NotificationPreferences), StatusCodes.Status200OK)]
+    public async Task<ActionResult<NotificationPreferences>> UpdatePreferences([FromBody] UpdateNotificationPreferencesDto dto)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrEmpty(userId))
+            return Unauthorized();
+
+        var preferences = await _context.NotificationPreferences
+            .FirstOrDefaultAsync(p => p.UserId == userId);
+
+        if (preferences == null)
+        {
+            preferences = new NotificationPreferences { UserId = userId };
+            _context.NotificationPreferences.Add(preferences);
+        }
+
+        // Update channel preferences
+        if (dto.EmailEnabled.HasValue) preferences.EmailEnabled = dto.EmailEnabled.Value;
+        if (dto.SmsEnabled.HasValue) preferences.SmsEnabled = dto.SmsEnabled.Value;
+        if (dto.PushEnabled.HasValue) preferences.PushEnabled = dto.PushEnabled.Value;
+
+        // Job notifications
+        if (dto.JobAssignedEmail.HasValue) preferences.JobAssignedEmail = dto.JobAssignedEmail.Value;
+        if (dto.JobAssignedSms.HasValue) preferences.JobAssignedSms = dto.JobAssignedSms.Value;
+        if (dto.JobAssignedPush.HasValue) preferences.JobAssignedPush = dto.JobAssignedPush.Value;
+
+        if (dto.JobCompletedEmail.HasValue) preferences.JobCompletedEmail = dto.JobCompletedEmail.Value;
+        if (dto.JobCompletedSms.HasValue) preferences.JobCompletedSms = dto.JobCompletedSms.Value;
+        if (dto.JobCompletedPush.HasValue) preferences.JobCompletedPush = dto.JobCompletedPush.Value;
+
+        if (dto.JobCancelledEmail.HasValue) preferences.JobCancelledEmail = dto.JobCancelledEmail.Value;
+        if (dto.JobCancelledSms.HasValue) preferences.JobCancelledSms = dto.JobCancelledSms.Value;
+        if (dto.JobCancelledPush.HasValue) preferences.JobCancelledPush = dto.JobCancelledPush.Value;
+
+        if (dto.JobRescheduledEmail.HasValue) preferences.JobRescheduledEmail = dto.JobRescheduledEmail.Value;
+        if (dto.JobRescheduledSms.HasValue) preferences.JobRescheduledSms = dto.JobRescheduledSms.Value;
+        if (dto.JobRescheduledPush.HasValue) preferences.JobRescheduledPush = dto.JobRescheduledPush.Value;
+
+        // Payment notifications
+        if (dto.PaymentReceivedEmail.HasValue) preferences.PaymentReceivedEmail = dto.PaymentReceivedEmail.Value;
+        if (dto.PaymentReceivedSms.HasValue) preferences.PaymentReceivedSms = dto.PaymentReceivedSms.Value;
+        if (dto.PaymentReceivedPush.HasValue) preferences.PaymentReceivedPush = dto.PaymentReceivedPush.Value;
+
+        if (dto.PayoutProcessedEmail.HasValue) preferences.PayoutProcessedEmail = dto.PayoutProcessedEmail.Value;
+        if (dto.PayoutProcessedSms.HasValue) preferences.PayoutProcessedSms = dto.PayoutProcessedSms.Value;
+        if (dto.PayoutProcessedPush.HasValue) preferences.PayoutProcessedPush = dto.PayoutProcessedPush.Value;
+
+        // Review notifications
+        if (dto.ReviewReceivedEmail.HasValue) preferences.ReviewReceivedEmail = dto.ReviewReceivedEmail.Value;
+        if (dto.ReviewReceivedSms.HasValue) preferences.ReviewReceivedSms = dto.ReviewReceivedSms.Value;
+        if (dto.ReviewReceivedPush.HasValue) preferences.ReviewReceivedPush = dto.ReviewReceivedPush.Value;
+
+        // System notifications
+        if (dto.SystemAlertsEmail.HasValue) preferences.SystemAlertsEmail = dto.SystemAlertsEmail.Value;
+        if (dto.SystemAlertsSms.HasValue) preferences.SystemAlertsSms = dto.SystemAlertsSms.Value;
+        if (dto.SystemAlertsPush.HasValue) preferences.SystemAlertsPush = dto.SystemAlertsPush.Value;
+
+        // Promotional
+        if (dto.PromotionalEmail.HasValue) preferences.PromotionalEmail = dto.PromotionalEmail.Value;
+        if (dto.PromotionalSms.HasValue) preferences.PromotionalSms = dto.PromotionalSms.Value;
+        if (dto.PromotionalPush.HasValue) preferences.PromotionalPush = dto.PromotionalPush.Value;
+
+        // Quiet hours
+        if (dto.EnableQuietHours.HasValue) preferences.EnableQuietHours = dto.EnableQuietHours.Value;
+        if (dto.QuietHoursStart.HasValue) preferences.QuietHoursStart = dto.QuietHoursStart;
+        if (dto.QuietHoursEnd.HasValue) preferences.QuietHoursEnd = dto.QuietHoursEnd;
+
+        // Digest
+        if (dto.EnableEmailDigest.HasValue) preferences.EnableEmailDigest = dto.EnableEmailDigest.Value;
+        if (!string.IsNullOrEmpty(dto.DigestFrequency)) preferences.DigestFrequency = dto.DigestFrequency;
+
+        preferences.UpdatedAt = DateTime.UtcNow;
+        await _context.SaveChangesAsync();
 
         await _activityLogService.LogActivityAsync(
             userId,
-            "notification_settings_updated",
-            "User",
-            userId,
-            "Notification Settings",
+            "notification_preferences_updated",
+            "NotificationPreferences",
+            preferences.Id.ToString(),
+            "Preferences",
             "User updated notification preferences"
         );
 
-        return Ok(new { message = "Notification settings updated (feature coming soon)" });
+        return Ok(preferences);
     }
 
     #region Admin Endpoints
@@ -483,6 +565,64 @@ public class NotificationStatistics
     public Dictionary<string, int> ByPriority { get; set; } = new();
     public int EmailsSent { get; set; }
     public int PushNotificationsSent { get; set; }
+}
+
+public class UpdateNotificationPreferencesDto
+{
+    // Channel preferences
+    public bool? EmailEnabled { get; set; }
+    public bool? SmsEnabled { get; set; }
+    public bool? PushEnabled { get; set; }
+
+    // Job notifications
+    public bool? JobAssignedEmail { get; set; }
+    public bool? JobAssignedSms { get; set; }
+    public bool? JobAssignedPush { get; set; }
+
+    public bool? JobCompletedEmail { get; set; }
+    public bool? JobCompletedSms { get; set; }
+    public bool? JobCompletedPush { get; set; }
+
+    public bool? JobCancelledEmail { get; set; }
+    public bool? JobCancelledSms { get; set; }
+    public bool? JobCancelledPush { get; set; }
+
+    public bool? JobRescheduledEmail { get; set; }
+    public bool? JobRescheduledSms { get; set; }
+    public bool? JobRescheduledPush { get; set; }
+
+    // Payment notifications
+    public bool? PaymentReceivedEmail { get; set; }
+    public bool? PaymentReceivedSms { get; set; }
+    public bool? PaymentReceivedPush { get; set; }
+
+    public bool? PayoutProcessedEmail { get; set; }
+    public bool? PayoutProcessedSms { get; set; }
+    public bool? PayoutProcessedPush { get; set; }
+
+    // Review notifications
+    public bool? ReviewReceivedEmail { get; set; }
+    public bool? ReviewReceivedSms { get; set; }
+    public bool? ReviewReceivedPush { get; set; }
+
+    // System notifications
+    public bool? SystemAlertsEmail { get; set; }
+    public bool? SystemAlertsSms { get; set; }
+    public bool? SystemAlertsPush { get; set; }
+
+    // Promotional
+    public bool? PromotionalEmail { get; set; }
+    public bool? PromotionalSms { get; set; }
+    public bool? PromotionalPush { get; set; }
+
+    // Quiet hours
+    public bool? EnableQuietHours { get; set; }
+    public TimeSpan? QuietHoursStart { get; set; }
+    public TimeSpan? QuietHoursEnd { get; set; }
+
+    // Digest
+    public bool? EnableEmailDigest { get; set; }
+    public string? DigestFrequency { get; set; }
 }
 
 #endregion

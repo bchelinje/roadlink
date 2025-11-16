@@ -17,6 +17,7 @@ using BeC.Common.Data.Repositories;
 using BeC.Common.Data.Repositories.Interfaces;
 using BeC.Common.Events.Services;
 using BeC.Common.Events.Services.Interfaces;
+using BeC.OpenId.Connect.Infrastructure.Swagger;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -50,6 +51,7 @@ builder.Services.AddScoped<BeC.OpenId.Connect.Features.Vehicles.Services.Interfa
 builder.Services.AddScoped<BeC.OpenId.Connect.Features.Documents.Services.Interfaces.IDocumentService, BeC.OpenId.Connect.Features.Documents.Services.DocumentService>();
 builder.Services.AddScoped<BeC.OpenId.Connect.Features.Location.Services.Interfaces.ILocationService, BeC.OpenId.Connect.Features.Location.Services.LocationService>();
 builder.Services.AddScoped<BeC.OpenId.Connect.Features.Users.Services.Interfaces.IUserService, BeC.OpenId.Connect.Features.Users.Services.UserService>();
+builder.Services.AddScoped<BeC.OpenId.Connect.Features.Notifications.Services.Interfaces.INotificationService, BeC.OpenId.Connect.Features.Notifications.Services.NotificationService>();
 
 // Register BeC.Common.Data Repository
 builder.Services.AddScoped<IRepository, Repository>();
@@ -196,6 +198,13 @@ builder.Services.AddOpenIddict()
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
 {
+    // Map IFormFile to string with binary format for file uploads
+    options.MapType<IFormFile>(() => new OpenApiSchema
+    {
+        Type = "string",
+        Format = "binary"
+    });
+
     options.SwaggerDoc("v1", new OpenApiInfo
     {
         Title = "BeC API",
@@ -250,6 +259,9 @@ builder.Services.AddSwaggerGen(options =>
             Array.Empty<string>()
         }
     });
+
+    // Add operation filter for file uploads
+    options.OperationFilter<FileUploadOperationFilter>();
 
     // Use XML comments if available
     var xmlFile = $"{System.Reflection.Assembly.GetExecutingAssembly().GetName().Name}.xml";

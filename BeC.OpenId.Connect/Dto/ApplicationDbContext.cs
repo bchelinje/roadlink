@@ -6,6 +6,8 @@ using BeC.OpenId.Connect.Features.Notifications.Dtos;
 using BeC.OpenId.Connect.Features.Payments.Dtos;
 using BeC.OpenId.Connect.Features.Pricing.Dtos;
 using BeC.OpenId.Connect.Features.Location.Dtos;
+using BeC.OpenId.Connect.Features.Customers.Dtos;
+using BeC.OpenId.Connect.Features.Jobs.Dtos;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 
@@ -27,6 +29,11 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     public DbSet<PricingHistory> PricingHistory { get; set; }
     public DbSet<DriverLocation> DriverLocations { get; set; }
     public DbSet<Earning> Earnings { get; set; }
+    public DbSet<SavedAddress> SavedAddresses { get; set; }
+    public DbSet<NotificationPreferences> NotificationPreferences { get; set; }
+    public DbSet<JobStop> JobStops { get; set; }
+    public DbSet<RecurringJob> RecurringJobs { get; set; }
+    public DbSet<JobTemplate> JobTemplates { get; set; }
 
     protected override void OnModelCreating(ModelBuilder builder)
     {

@@ -414,6 +414,66 @@ public class DriversController : ControllerBase
         return Ok(MapToDto(driver));
     }
 
+    /// <summary>
+    /// Toggle driver availability status (online/offline)
+    /// </summary>
+    [HttpPatch("me/availability")]
+    [Authorize(AuthenticationSchemes = OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme, Roles = "Driver")]
+    [ProducesResponseType(typeof(DriverDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<DriverDto>> UpdateAvailability([FromBody] UpdateAvailabilityDto dto)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrEmpty(userId))
+            return Unauthorized("User ID not found in token");
+
+        var driver = await _context.Drivers.FirstOrDefaultAsync(d => d.UserId == userId);
+        if (driver == null)
+            return NotFound("Driver profile not found");
+
+        var previousStatus = driver.Status;
+
+        // Update status based on availability
+        if (dto.IsAvailable)
+        {
+            // Check if driver has active jobs
+            if (driver.ActiveJobs > 0)
+            {
+                driver.Status = "on_job";
+            }
+            else
+            {
+                driver.Status = "available";
+            }
+        }
+        else
+        {
+            driver.Status = "unavailable";
+        }
+
+        driver.LastActiveDate = DateTime.UtcNow;
+        driver.UpdatedAt = DateTime.UtcNow;
+
+        await _context.SaveChangesAsync();
+
+        await _activityLogService.LogActivityAsync(
+            action: "driver.availability_updated",
+            entityType: "Driver",
+            entityId: driver.Id.ToString(),
+            entityName: $"{driver.FirstName} {driver.LastName}",
+            description: $"Driver availability changed from {previousStatus} to {driver.Status}",
+            severity: "INFO",
+            metadata: new Dictionary<string, object>
+            {
+                { "PreviousStatus", previousStatus },
+                { "NewStatus", driver.Status },
+                { "IsAvailable", dto.IsAvailable }
+            }
+        );
+
+        return Ok(MapToDto(driver));
+    }
+
     #endregion
 
     #region Driver Jobs
@@ -1552,12 +1612,6 @@ public class UpdateStatusDto
 
 public class CompleteJobDto
 {
-    public string? Notes { get; set; }
-}
-
-public class UpdateJobStatusDto
-{
-    public required string Status { get; set; }
     public string? Notes { get; set; }
 }
 

@@ -6,6 +6,7 @@ using BeC.OpenId.Connect.Features.Drivers.Dtos;
 using BeC.OpenId.Connect.Features.Drivers.Controllers;
 using BeC.OpenId.Connect.Features.Jobs.Dtos;
 using BeC.OpenId.Connect.Features.ActivityLogs.Services.Interfaces;
+using BeC.OpenId.Connect.Features.Notifications.Services.Interfaces;
 using BeC.OpenId.Connect.Infrastructure.Authorization;
 using OpenIddict.Validation.AspNetCore;
 using OpenIddict.Abstractions;
@@ -21,11 +22,13 @@ public class JobsController : ControllerBase
 {
     private readonly ApplicationDbContext _context;
     private readonly IActivityLogService _activityLogService;
+    private readonly INotificationService _notificationService;
 
-    public JobsController(ApplicationDbContext context, IActivityLogService activityLogService)
+    public JobsController(ApplicationDbContext context, IActivityLogService activityLogService, INotificationService notificationService)
     {
         _context = context;
         _activityLogService = activityLogService;
+        _notificationService = notificationService;
     }
 
     /// <summary>
@@ -461,6 +464,42 @@ public class JobsController : ControllerBase
             }
         );
 
+        // Send notification to driver
+        if (!string.IsNullOrEmpty(driver.UserId))
+        {
+            _ = _notificationService.SendJobNotificationAsync(
+                driver.UserId,
+                job.Id,
+                job.JobNumber,
+                "job_assigned",
+                $"You have been assigned to job {job.JobNumber}. Pickup: {job.PickupLocation}, Delivery: {job.DeliveryLocation}",
+                new Dictionary<string, object>
+                {
+                    { "scheduledDate", job.ScheduledDate },
+                    { "scheduledTime", job.ScheduledTime },
+                    { "pickupLocation", job.PickupLocation },
+                    { "deliveryLocation", job.DeliveryLocation }
+                }
+            );
+        }
+
+        // Send notification to customer
+        if (!string.IsNullOrEmpty(job.CustomerId))
+        {
+            _ = _notificationService.SendJobNotificationAsync(
+                job.CustomerId,
+                job.Id,
+                job.JobNumber,
+                "job_updated",
+                $"Your job {job.JobNumber} has been assigned to driver {driver.FirstName} {driver.LastName}",
+                new Dictionary<string, object>
+                {
+                    { "driverName", $"{driver.FirstName} {driver.LastName}" },
+                    { "driverPhone", driver.Phone ?? "" }
+                }
+            );
+        }
+
         return Ok(MapJobToDto(job));
     }
 
@@ -514,6 +553,664 @@ public class JobsController : ControllerBase
         );
 
         return NoContent();
+    }
+
+    /// <summary>
+    /// Update job status (Driver can update their assigned jobs, Admin can update any job)
+    /// </summary>
+    [HttpPatch("{id}/status")]
+    [Authorize(AuthenticationSchemes = OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme,
+        Roles = "Admin,SuperAdmin,Driver")]
+    [ProducesResponseType(typeof(JobDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<JobDto>> UpdateJobStatus(Guid id, UpdateJobStatusDto dto)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        var userRole = User.FindFirst(Claims.Role)?.Value;
+
+        var job = await _context.Jobs
+            .Include(j => j.Driver)
+            .FirstOrDefaultAsync(j => j.Id == id);
+
+        if (job == null)
+            return NotFound("Job not found");
+
+        // Authorization check - drivers can only update their own assigned jobs
+        if (userRole == "Driver")
+        {
+            if (job.Driver == null || job.Driver.UserId != userId)
+                return Forbid("You can only update jobs assigned to you");
+        }
+
+        // Validate status transition
+        var validStatuses = new[] { "pending", "assigned", "confirmed", "in_progress", "completed", "cancelled", "on_hold" };
+        if (!validStatuses.Contains(dto.Status))
+            return BadRequest($"Invalid status. Valid statuses: {string.Join(", ", validStatuses)}");
+
+        var oldStatus = job.Status;
+        job.Status = dto.Status;
+        job.UpdatedAt = DateTime.UtcNow;
+
+        // Update timestamps based on status
+        if (dto.Status == "in_progress" && dto.ActualStartTime.HasValue)
+        {
+            job.ActualStartTime = dto.ActualStartTime.Value;
+        }
+        else if (dto.Status == "in_progress" && !job.ActualStartTime.HasValue)
+        {
+            job.ActualStartTime = DateTime.UtcNow;
+        }
+
+        if (dto.Status == "completed")
+        {
+            if (dto.ActualEndTime.HasValue)
+            {
+                job.ActualEndTime = dto.ActualEndTime.Value;
+            }
+            else
+            {
+                job.ActualEndTime = DateTime.UtcNow;
+            }
+            job.CompletedAt = DateTime.UtcNow;
+
+            // Update driver stats
+            if (job.DriverId.HasValue)
+            {
+                var driver = await _context.Drivers.FindAsync(job.DriverId.Value);
+                if (driver != null)
+                {
+                    driver.CompletedJobs += 1;
+                    driver.ActiveJobs -= 1;
+                    if (driver.ActiveJobs < 0) driver.ActiveJobs = 0;
+                    driver.Status = driver.ActiveJobs > 0 ? "on_job" : "available";
+                }
+            }
+        }
+
+        // Add to status history
+        AddStatusHistory(job, dto.Status, userId!, dto.Notes ?? $"Status changed from {oldStatus} to {dto.Status}");
+
+        await _context.SaveChangesAsync();
+
+        await _activityLogService.LogActivityAsync(
+            action: "job.status_updated",
+            entityType: "Job",
+            entityId: id.ToString(),
+            entityName: job.JobNumber,
+            description: $"Job {job.JobNumber} status changed from {oldStatus} to {dto.Status}",
+            severity: "INFO",
+            metadata: new Dictionary<string, object>
+            {
+                { "OldStatus", oldStatus },
+                { "NewStatus", dto.Status },
+                { "UpdatedBy", userRole ?? "Unknown" }
+            }
+        );
+
+        return Ok(MapJobToDto(job));
+    }
+
+    /// <summary>
+    /// Get available jobs for drivers to claim
+    /// </summary>
+    [HttpGet("available")]
+    [Authorize(AuthenticationSchemes = OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme,
+        Roles = "Driver")]
+    [ProducesResponseType(typeof(PaginatedResult<JobDto>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<PaginatedResult<JobDto>>> GetAvailableJobs(
+        [FromQuery] string? vehicleType,
+        [FromQuery] int page = 1,
+        [FromQuery] int limit = 10)
+    {
+        // Get jobs that are pending or unassigned
+        var query = _context.Jobs
+            .Where(j => j.Status == "pending" && j.DriverId == null)
+            .AsQueryable();
+
+        // Filter by vehicle type if specified
+        if (!string.IsNullOrEmpty(vehicleType))
+        {
+            query = query.Where(j => j.VehicleTypeRequired == vehicleType);
+        }
+
+        var total = await query.CountAsync();
+        var jobs = await query
+            .OrderBy(j => j.ScheduledDate)
+            .ThenBy(j => j.Priority == "urgent" ? 0 : j.Priority == "high" ? 1 : j.Priority == "normal" ? 2 : 3)
+            .Skip((page - 1) * limit)
+            .Take(limit)
+            .ToListAsync();
+
+        return Ok(new PaginatedResult<JobDto>
+        {
+            Items = jobs.Select(MapJobToDto).ToList(),
+            Total = total,
+            Page = page,
+            Limit = limit,
+            TotalPages = (int)Math.Ceiling(total / (double)limit)
+        });
+    }
+
+    /// <summary>
+    /// Upload proof of delivery or job photos
+    /// </summary>
+    [HttpPost("{id}/photos")]
+    [Authorize(AuthenticationSchemes = OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme,
+        Roles = "Driver,Admin,SuperAdmin")]
+    [ProducesResponseType(typeof(JobDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<ActionResult<JobDto>> UploadJobPhotos(Guid id, [FromBody] List<JobPhotoDto> photos)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        var userRole = User.FindFirst(Claims.Role)?.Value;
+
+        var job = await _context.Jobs
+            .Include(j => j.Driver)
+            .FirstOrDefaultAsync(j => j.Id == id);
+
+        if (job == null)
+            return NotFound("Job not found");
+
+        // Authorization check
+        if (userRole == "Driver")
+        {
+            if (job.Driver == null || job.Driver.UserId != userId)
+                return Forbid("You can only upload photos for jobs assigned to you");
+        }
+
+        // Deserialize existing photos or create new list
+        var existingPhotos = string.IsNullOrEmpty(job.Photos)
+            ? new List<JobPhotoDto>()
+            : System.Text.Json.JsonSerializer.Deserialize<List<JobPhotoDto>>(job.Photos) ?? new List<JobPhotoDto>();
+
+        // Add new photos
+        existingPhotos.AddRange(photos);
+
+        // Serialize back to JSON
+        job.Photos = System.Text.Json.JsonSerializer.Serialize(existingPhotos);
+        job.UpdatedAt = DateTime.UtcNow;
+
+        await _context.SaveChangesAsync();
+
+        await _activityLogService.LogActivityAsync(
+            action: "job.photos_uploaded",
+            entityType: "Job",
+            entityId: id.ToString(),
+            entityName: job.JobNumber,
+            description: $"{photos.Count} photo(s) uploaded for job {job.JobNumber}",
+            severity: "INFO",
+            metadata: new Dictionary<string, object>
+            {
+                { "PhotoCount", photos.Count },
+                { "UploadedBy", userRole ?? "Unknown" }
+            }
+        );
+
+        return Ok(MapJobToDto(job));
+    }
+
+    /// <summary>
+    /// Reschedule a job to a new date/time
+    /// </summary>
+    [HttpPost("{id}/reschedule")]
+    [Authorize(AuthenticationSchemes = OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme,
+        Roles = "Admin,SuperAdmin,Customer,Driver")]
+    [ProducesResponseType(typeof(JobDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<ActionResult<JobDto>> RescheduleJob(Guid id, RescheduleJobDto dto)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        var userRole = User.FindFirst(Claims.Role)?.Value;
+        var userEmail = User.FindFirst(Claims.Email)?.Value;
+
+        var job = await _context.Jobs
+            .Include(j => j.Driver)
+            .FirstOrDefaultAsync(j => j.Id == id);
+
+        if (job == null)
+            return NotFound("Job not found");
+
+        // Authorization check
+        if (userRole == "Customer" && job.CustomerEmail != userEmail)
+            return Forbid("You can only reschedule your own jobs");
+
+        if (userRole == "Driver" && (job.Driver == null || job.Driver.UserId != userId))
+            return Forbid("You can only reschedule jobs assigned to you");
+
+        // Validate job status - cannot reschedule completed or cancelled jobs
+        if (job.Status == "completed")
+            return BadRequest("Cannot reschedule completed jobs");
+
+        if (job.Status == "cancelled")
+            return BadRequest("Cannot reschedule cancelled jobs");
+
+        // Store old values for history
+        var oldScheduledDate = job.ScheduledDate;
+        var oldScheduledTime = job.ScheduledTime;
+
+        // Update job
+        job.ScheduledDate = dto.NewScheduledDate;
+        job.ScheduledTime = dto.NewScheduledTime;
+        job.UpdatedAt = DateTime.UtcNow;
+
+        // Add to status history
+        var rescheduleNote = $"Job rescheduled from {oldScheduledDate:yyyy-MM-dd} {oldScheduledTime} to {dto.NewScheduledDate:yyyy-MM-dd} {dto.NewScheduledTime}";
+        if (!string.IsNullOrEmpty(dto.Reason))
+        {
+            rescheduleNote += $". Reason: {dto.Reason}";
+        }
+        if (!string.IsNullOrEmpty(dto.Notes))
+        {
+            rescheduleNote += $". Notes: {dto.Notes}";
+        }
+
+        AddStatusHistory(job, job.Status, userId!, rescheduleNote);
+
+        await _context.SaveChangesAsync();
+
+        await _activityLogService.LogActivityAsync(
+            action: "job.rescheduled",
+            entityType: "Job",
+            entityId: id.ToString(),
+            entityName: job.JobNumber,
+            description: rescheduleNote,
+            severity: "INFO",
+            metadata: new Dictionary<string, object>
+            {
+                { "OldDate", oldScheduledDate },
+                { "OldTime", oldScheduledTime },
+                { "NewDate", dto.NewScheduledDate },
+                { "NewTime", dto.NewScheduledTime },
+                { "RescheduledBy", userRole ?? "Unknown" }
+            }
+        );
+
+        // Send notification to customer (if rescheduled by driver or admin)
+        if (userRole != "Customer" && !string.IsNullOrEmpty(job.CustomerId))
+        {
+            _ = _notificationService.SendJobNotificationAsync(
+                job.CustomerId,
+                job.Id,
+                job.JobNumber,
+                "job_rescheduled",
+                $"Your job {job.JobNumber} has been rescheduled to {dto.NewScheduledDate:yyyy-MM-dd} at {dto.NewScheduledTime}",
+                new Dictionary<string, object>
+                {
+                    { "oldDate", oldScheduledDate },
+                    { "oldTime", oldScheduledTime },
+                    { "newDate", dto.NewScheduledDate },
+                    { "newTime", dto.NewScheduledTime }
+                }
+            );
+        }
+
+        // Send notification to driver (if rescheduled by customer or admin and driver is assigned)
+        if (userRole != "Driver" && job.Driver != null && !string.IsNullOrEmpty(job.Driver.UserId))
+        {
+            _ = _notificationService.SendJobNotificationAsync(
+                job.Driver.UserId,
+                job.Id,
+                job.JobNumber,
+                "job_rescheduled",
+                $"Job {job.JobNumber} has been rescheduled to {dto.NewScheduledDate:yyyy-MM-dd} at {dto.NewScheduledTime}",
+                new Dictionary<string, object>
+                {
+                    { "oldDate", oldScheduledDate },
+                    { "oldTime", oldScheduledTime },
+                    { "newDate", dto.NewScheduledDate },
+                    { "newTime", dto.NewScheduledTime }
+                }
+            );
+        }
+
+        return Ok(MapJobToDto(job));
+    }
+
+    /// <summary>
+    /// Cancel a job with a reason
+    /// </summary>
+    [HttpPost("{id}/cancel")]
+    [Authorize(AuthenticationSchemes = OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme,
+        Roles = "Admin,SuperAdmin,Customer,Driver")]
+    [ProducesResponseType(typeof(JobDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<ActionResult<JobDto>> CancelJob(Guid id, CancelJobDto dto)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        var userRole = User.FindFirst(Claims.Role)?.Value;
+        var userEmail = User.FindFirst(Claims.Email)?.Value;
+
+        var job = await _context.Jobs
+            .Include(j => j.Driver)
+            .FirstOrDefaultAsync(j => j.Id == id);
+
+        if (job == null)
+            return NotFound("Job not found");
+
+        // Authorization check
+        if (userRole == "Customer" && job.CustomerEmail != userEmail)
+            return Forbid("You can only cancel your own jobs");
+
+        if (userRole == "Driver" && (job.Driver == null || job.Driver.UserId != userId))
+            return Forbid("You can only cancel jobs assigned to you");
+
+        // Validate job status
+        if (job.Status == "completed")
+            return BadRequest("Cannot cancel completed jobs");
+
+        if (job.Status == "cancelled")
+            return BadRequest("Job is already cancelled");
+
+        var oldStatus = job.Status;
+
+        // Update job status
+        job.Status = "cancelled";
+        job.UpdatedAt = DateTime.UtcNow;
+
+        // Update driver stats if job was assigned
+        if (job.DriverId.HasValue)
+        {
+            var driver = await _context.Drivers.FindAsync(job.DriverId.Value);
+            if (driver != null)
+            {
+                driver.ActiveJobs -= 1;
+                if (driver.ActiveJobs < 0) driver.ActiveJobs = 0;
+                driver.Status = driver.ActiveJobs > 0 ? "on_job" : "available";
+            }
+        }
+
+        // Add cancellation notes
+        var cancellationNote = $"Job cancelled. Reason: {dto.Reason}";
+        if (!string.IsNullOrEmpty(dto.CancellationNotes))
+        {
+            cancellationNote += $". Notes: {dto.CancellationNotes}";
+        }
+
+        job.CustomerNotes = string.IsNullOrEmpty(job.CustomerNotes)
+            ? cancellationNote
+            : $"{job.CustomerNotes}\n{cancellationNote}";
+
+        AddStatusHistory(job, "cancelled", userId!, cancellationNote);
+
+        await _context.SaveChangesAsync();
+
+        await _activityLogService.LogActivityAsync(
+            action: "job.cancelled",
+            entityType: "Job",
+            entityId: id.ToString(),
+            entityName: job.JobNumber,
+            description: cancellationNote,
+            severity: "WARNING",
+            metadata: new Dictionary<string, object>
+            {
+                { "PreviousStatus", oldStatus },
+                { "Reason", dto.Reason },
+                { "CancelledBy", userRole ?? "Unknown" },
+                { "RequestRefund", dto.RequestRefund }
+            }
+        );
+
+        // Send notification to customer (if cancelled by driver or admin)
+        if (userRole != "Customer" && !string.IsNullOrEmpty(job.CustomerId))
+        {
+            _ = _notificationService.SendJobNotificationAsync(
+                job.CustomerId,
+                job.Id,
+                job.JobNumber,
+                "job_cancelled",
+                $"Your job {job.JobNumber} has been cancelled. Reason: {dto.Reason}",
+                new Dictionary<string, object>
+                {
+                    { "reason", dto.Reason },
+                    { "cancelledBy", userRole ?? "Unknown" }
+                }
+            );
+        }
+
+        // Send notification to driver (if cancelled by customer or admin and driver is assigned)
+        if (userRole != "Driver" && job.Driver != null && !string.IsNullOrEmpty(job.Driver.UserId))
+        {
+            _ = _notificationService.SendJobNotificationAsync(
+                job.Driver.UserId,
+                job.Id,
+                job.JobNumber,
+                "job_cancelled",
+                $"Job {job.JobNumber} has been cancelled. Reason: {dto.Reason}",
+                new Dictionary<string, object>
+                {
+                    { "reason", dto.Reason },
+                    { "cancelledBy", userRole ?? "Unknown" }
+                }
+            );
+        }
+
+        return Ok(MapJobToDto(job));
+    }
+
+    /// <summary>
+    /// Create bulk jobs (Admin or Customer creating multiple jobs at once)
+    /// </summary>
+    [HttpPost("bulk")]
+    [Authorize(AuthenticationSchemes = OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme,
+        Roles = "Admin,SuperAdmin,Customer")]
+    [ProducesResponseType(typeof(BulkJobCreationResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<BulkJobCreationResponse>> CreateBulkJobs([FromBody] BulkJobCreationDto dto)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrEmpty(userId))
+            return Unauthorized();
+
+        var user = await _context.Users.FindAsync(userId);
+        if (user == null)
+            return NotFound("User not found");
+
+        var createdJobs = new List<Job>();
+        var errors = new List<string>();
+
+        foreach (var jobRequest in dto.Jobs)
+        {
+            try
+            {
+                var jobNumber = $"JOB-{DateTime.UtcNow:yyyyMMdd}-{Guid.NewGuid().ToString()[..8].ToUpper()}";
+
+                var job = new Job
+                {
+                    JobNumber = jobNumber,
+                    CustomerId = dto.CustomerId ?? userId,
+                    CustomerName = jobRequest.CustomerName ?? user.DisplayName ?? user.UserName ?? "Unknown",
+                    CustomerEmail = jobRequest.CustomerEmail ?? user.Email ?? "",
+                    CustomerPhone = jobRequest.CustomerPhone ?? user.PhoneNumber ?? "",
+                    JobType = jobRequest.JobType,
+                    VehicleTypeRequired = jobRequest.VehicleTypeRequired,
+                    Priority = jobRequest.Priority ?? "normal",
+                    ScheduledDate = jobRequest.ScheduledDate,
+                    ScheduledTime = jobRequest.ScheduledTime,
+                    EstimatedDuration = jobRequest.EstimatedDuration ?? 0,
+                    PickupLocation = jobRequest.PickupLocation,
+                    DeliveryLocation = jobRequest.DeliveryLocation,
+                    Distance = (decimal?)jobRequest.Distance,
+                    Items = jobRequest.Items != null ? System.Text.Json.JsonSerializer.Serialize(jobRequest.Items) : null,
+                    SpecialInstructions = jobRequest.SpecialInstructions,
+                    CustomerNotes = jobRequest.CustomerNotes,
+                    Status = "pending"
+                };
+
+                AddStatusHistory(job, "pending", userId, $"Job created via bulk import");
+
+                _context.Jobs.Add(job);
+                createdJobs.Add(job);
+            }
+            catch (Exception ex)
+            {
+                errors.Add($"Error creating job: {ex.Message}");
+            }
+        }
+
+        await _context.SaveChangesAsync();
+
+        await _activityLogService.LogActivityAsync(
+            userId,
+            "jobs.bulk_created",
+            "Job",
+            "bulk",
+            $"{createdJobs.Count} jobs",
+            $"Created {createdJobs.Count} jobs via bulk import"
+        );
+
+        return Ok(new BulkJobCreationResponse
+        {
+            SuccessCount = createdJobs.Count,
+            TotalRequested = dto.Jobs.Count,
+            CreatedJobs = createdJobs.Select(j => new BulkJobResult
+            {
+                JobId = j.Id,
+                JobNumber = j.JobNumber
+            }).ToList(),
+            Errors = errors
+        });
+    }
+
+    /// <summary>
+    /// Get job stops for a multi-stop delivery
+    /// </summary>
+    [HttpGet("{id}/stops")]
+    [ProducesResponseType(typeof(List<JobStop>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<List<JobStop>>> GetJobStops(Guid id)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrEmpty(userId))
+            return Unauthorized();
+
+        var job = await _context.Jobs.FindAsync(id);
+        if (job == null)
+            return NotFound("Job not found");
+
+        var stops = await _context.JobStops
+            .Where(s => s.JobId == id)
+            .OrderBy(s => s.StopOrder)
+            .ToListAsync();
+
+        return Ok(stops);
+    }
+
+    /// <summary>
+    /// Add a stop to a multi-stop job
+    /// </summary>
+    [HttpPost("{id}/stops")]
+    [Authorize(AuthenticationSchemes = OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme,
+        Roles = "Admin,SuperAdmin,Customer")]
+    [ProducesResponseType(typeof(JobStop), StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<JobStop>> AddJobStop(Guid id, [FromBody] CreateJobStopDto dto)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrEmpty(userId))
+            return Unauthorized();
+
+        var job = await _context.Jobs.FindAsync(id);
+        if (job == null)
+            return NotFound("Job not found");
+
+        // Check permissions
+        var userRoles = User.Claims.Where(c => c.Type == System.Security.Claims.ClaimTypes.Role).Select(c => c.Value).ToList();
+        var isAdmin = userRoles.Contains("Admin") || userRoles.Contains("SuperAdmin");
+
+        if (!isAdmin && job.CustomerId != userId)
+            return Forbid("You can only add stops to your own jobs");
+
+        var stop = new JobStop
+        {
+            JobId = id,
+            StopOrder = dto.StopOrder,
+            StopType = dto.StopType,
+            Location = dto.Location,
+            Latitude = dto.Latitude,
+            Longitude = dto.Longitude,
+            ContactName = dto.ContactName,
+            ContactPhone = dto.ContactPhone,
+            SpecialInstructions = dto.SpecialInstructions,
+            Items = dto.Items != null ? System.Text.Json.JsonSerializer.Serialize(dto.Items) : null,
+            ScheduledArrival = dto.ScheduledArrival,
+            Status = "pending"
+        };
+
+        _context.JobStops.Add(stop);
+        await _context.SaveChangesAsync();
+
+        await _activityLogService.LogActivityAsync(
+            userId,
+            "job.stop_added",
+            "Job",
+            id.ToString(),
+            job.JobNumber,
+            $"Added stop #{dto.StopOrder} to job {job.JobNumber}"
+        );
+
+        return CreatedAtAction(nameof(GetJobStops), new { id = id }, stop);
+    }
+
+    /// <summary>
+    /// Update a job stop (mark as completed, add photos, etc.)
+    /// </summary>
+    [HttpPatch("{jobId}/stops/{stopId}")]
+    [Authorize(AuthenticationSchemes = OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme,
+        Roles = "Admin,SuperAdmin,Driver")]
+    [ProducesResponseType(typeof(JobStop), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<JobStop>> UpdateJobStop(Guid jobId, Guid stopId, [FromBody] UpdateJobStopDto dto)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrEmpty(userId))
+            return Unauthorized();
+
+        var stop = await _context.JobStops
+            .Include(s => s.Job)
+            .FirstOrDefaultAsync(s => s.Id == stopId && s.JobId == jobId);
+
+        if (stop == null)
+            return NotFound("Stop not found");
+
+        // Update status
+        if (!string.IsNullOrEmpty(dto.Status))
+        {
+            stop.Status = dto.Status;
+
+            if (dto.Status == "arrived")
+                stop.ActualArrival = DateTime.UtcNow;
+            else if (dto.Status == "completed")
+                stop.ActualDeparture = DateTime.UtcNow;
+        }
+
+        // Update photos
+        if (dto.Photos != null)
+            stop.Photos = System.Text.Json.JsonSerializer.Serialize(dto.Photos);
+
+        // Update signature
+        if (!string.IsNullOrEmpty(dto.Signature))
+            stop.Signature = dto.Signature;
+
+        // Update notes
+        if (!string.IsNullOrEmpty(dto.Notes))
+            stop.Notes = dto.Notes;
+
+        stop.UpdatedAt = DateTime.UtcNow;
+        await _context.SaveChangesAsync();
+
+        await _activityLogService.LogActivityAsync(
+            userId,
+            "job.stop_updated",
+            "JobStop",
+            stop.Id.ToString(),
+            $"Stop #{stop.StopOrder}",
+            $"Updated stop #{stop.StopOrder} for job {stop.Job?.JobNumber}"
+        );
+
+        return Ok(stop);
     }
 
     #region Helper Methods
@@ -594,5 +1291,68 @@ public class StatusHistoryItem
     public required string Status { get; set; }
     public required string ChangedBy { get; set; }
     public DateTime ChangedAt { get; set; }
+    public string? Notes { get; set; }
+}
+
+// Bulk job creation DTOs
+public class BulkJobCreationDto
+{
+    public string? CustomerId { get; set; } // Optional - for admin creating jobs for a customer
+    public required List<BulkJobRequestItem> Jobs { get; set; }
+}
+
+public class BulkJobRequestItem
+{
+    public string? CustomerName { get; set; }
+    public string? CustomerEmail { get; set; }
+    public string? CustomerPhone { get; set; }
+    public required string JobType { get; set; }
+    public string? VehicleTypeRequired { get; set; }
+    public string? Priority { get; set; }
+    public required DateTime ScheduledDate { get; set; }
+    public required string ScheduledTime { get; set; }
+    public int? EstimatedDuration { get; set; }
+    public required string PickupLocation { get; set; }
+    public required string DeliveryLocation { get; set; }
+    public double? Distance { get; set; }
+    public List<object>? Items { get; set; }
+    public string? SpecialInstructions { get; set; }
+    public string? CustomerNotes { get; set; }
+}
+
+public class BulkJobCreationResponse
+{
+    public int SuccessCount { get; set; }
+    public int TotalRequested { get; set; }
+    public List<BulkJobResult> CreatedJobs { get; set; } = new();
+    public List<string> Errors { get; set; } = new();
+}
+
+public class BulkJobResult
+{
+    public Guid JobId { get; set; }
+    public required string JobNumber { get; set; }
+}
+
+// Multi-stop DTOs
+public class CreateJobStopDto
+{
+    public required int StopOrder { get; set; }
+    public required string StopType { get; set; } // pickup, delivery, waypoint
+    public required string Location { get; set; }
+    public double? Latitude { get; set; }
+    public double? Longitude { get; set; }
+    public string? ContactName { get; set; }
+    public string? ContactPhone { get; set; }
+    public string? SpecialInstructions { get; set; }
+    public List<object>? Items { get; set; }
+    public DateTime? ScheduledArrival { get; set; }
+}
+
+public class UpdateJobStopDto
+{
+    public string? Status { get; set; } // pending, arrived, completed, skipped, failed
+    public List<string>? Photos { get; set; }
+    public string? Signature { get; set; }
     public string? Notes { get; set; }
 }
