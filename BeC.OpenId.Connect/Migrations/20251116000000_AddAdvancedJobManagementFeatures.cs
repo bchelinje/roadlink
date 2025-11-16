@@ -32,41 +32,6 @@ namespace BeC.OpenId.Connect.Migrations
                 type: "datetime2",
                 nullable: true);
 
-            // Add moderation columns to Reviews table
-            migrationBuilder.AddColumn<string>(
-                name: "RespondedBy",
-                table: "Reviews",
-                type: "nvarchar(100)",
-                maxLength: 100,
-                nullable: true);
-
-            migrationBuilder.AddColumn<string>(
-                name: "ModeratorNotes",
-                table: "Reviews",
-                type: "nvarchar(1000)",
-                maxLength: 1000,
-                nullable: true);
-
-            migrationBuilder.AddColumn<bool>(
-                name: "IsHidden",
-                table: "Reviews",
-                type: "bit",
-                nullable: false,
-                defaultValue: false);
-
-            migrationBuilder.AddColumn<string>(
-                name: "ModeratedBy",
-                table: "Reviews",
-                type: "nvarchar(100)",
-                maxLength: 100,
-                nullable: true);
-
-            migrationBuilder.AddColumn<DateTime>(
-                name: "ModeratedDate",
-                table: "Reviews",
-                type: "datetime2",
-                nullable: true);
-
             // Create NotificationPreferences table
             migrationBuilder.CreateTable(
                 name: "NotificationPreferences",
@@ -343,13 +308,6 @@ namespace BeC.OpenId.Connect.Migrations
             migrationBuilder.DropColumn(name: "SendSms", table: "Notifications");
             migrationBuilder.DropColumn(name: "SmsSent", table: "Notifications");
             migrationBuilder.DropColumn(name: "SmsSentAt", table: "Notifications");
-
-            // Drop columns from Reviews
-            migrationBuilder.DropColumn(name: "RespondedBy", table: "Reviews");
-            migrationBuilder.DropColumn(name: "ModeratorNotes", table: "Reviews");
-            migrationBuilder.DropColumn(name: "IsHidden", table: "Reviews");
-            migrationBuilder.DropColumn(name: "ModeratedBy", table: "Reviews");
-            migrationBuilder.DropColumn(name: "ModeratedDate", table: "Reviews");
         }
     }
 }
