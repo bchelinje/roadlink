@@ -256,6 +256,18 @@ public class UserService : IUserService
             user.PhoneNumber = model.PhoneNumber;
         }
 
+        if (model.EmailConfirmed.HasValue && model.EmailConfirmed.Value != user.EmailConfirmed)
+        {
+            changes.Add($"EmailConfirmed: {user.EmailConfirmed} → {model.EmailConfirmed.Value}");
+            user.EmailConfirmed = model.EmailConfirmed.Value;
+        }
+
+        if (model.PhoneNumberConfirmed.HasValue && model.PhoneNumberConfirmed.Value != user.PhoneNumberConfirmed)
+        {
+            changes.Add($"PhoneNumberConfirmed: {user.PhoneNumberConfirmed} → {model.PhoneNumberConfirmed.Value}");
+            user.PhoneNumberConfirmed = model.PhoneNumberConfirmed.Value;
+        }
+
         user.UpdatedAt = DateTime.UtcNow;
 
         var result = await _userManager.UpdateAsync(user);
