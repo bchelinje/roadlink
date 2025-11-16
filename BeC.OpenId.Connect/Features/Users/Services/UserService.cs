@@ -256,6 +256,50 @@ public class UserService : IUserService
             user.PhoneNumber = model.PhoneNumber;
         }
 
+        if (model.EmailConfirmed.HasValue && model.EmailConfirmed.Value != user.EmailConfirmed)
+        {
+            changes.Add($"EmailConfirmed: {user.EmailConfirmed} → {model.EmailConfirmed.Value}");
+            user.EmailConfirmed = model.EmailConfirmed.Value;
+        }
+
+        if (model.PhoneNumberConfirmed.HasValue && model.PhoneNumberConfirmed.Value != user.PhoneNumberConfirmed)
+        {
+            changes.Add($"PhoneNumberConfirmed: {user.PhoneNumberConfirmed} → {model.PhoneNumberConfirmed.Value}");
+            user.PhoneNumberConfirmed = model.PhoneNumberConfirmed.Value;
+        }
+
+        // Handle role updates
+        if (model.Roles != null)
+        {
+            var currentRoles = await _userManager.GetRolesAsync(user);
+            var currentRolesList = currentRoles.ToList();
+            var newRoles = model.Roles;
+
+            // Find roles to remove (in current but not in new)
+            var rolesToRemove = currentRolesList.Except(newRoles).ToList();
+            if (rolesToRemove.Any())
+            {
+                var removeResult = await _userManager.RemoveFromRolesAsync(user, rolesToRemove);
+                if (!removeResult.Succeeded)
+                {
+                    return (false, null, string.Join(", ", removeResult.Errors.Select(e => e.Description)));
+                }
+                changes.Add($"Removed roles: {string.Join(", ", rolesToRemove)}");
+            }
+
+            // Find roles to add (in new but not in current)
+            var rolesToAdd = newRoles.Except(currentRolesList).ToList();
+            if (rolesToAdd.Any())
+            {
+                var addResult = await _userManager.AddToRolesAsync(user, rolesToAdd);
+                if (!addResult.Succeeded)
+                {
+                    return (false, null, string.Join(", ", addResult.Errors.Select(e => e.Description)));
+                }
+                changes.Add($"Added roles: {string.Join(", ", rolesToAdd)}");
+            }
+        }
+
         user.UpdatedAt = DateTime.UtcNow;
 
         var result = await _userManager.UpdateAsync(user);
