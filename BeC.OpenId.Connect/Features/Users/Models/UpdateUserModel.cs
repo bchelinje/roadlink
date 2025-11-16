@@ -10,4 +10,5 @@ public class UpdateUserModel
     public string? PhoneNumber { get; set; }
     public bool? EmailConfirmed { get; set; }
     public bool? PhoneNumberConfirmed { get; set; }
+    public List<string>? Roles { get; set; }
 }
