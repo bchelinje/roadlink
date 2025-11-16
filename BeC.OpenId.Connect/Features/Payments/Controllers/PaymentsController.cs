@@ -247,53 +247,6 @@ public class PaymentsController : ControllerBase
     #region Driver Endpoints
 
     /// <summary>
-    /// Get my earnings (Driver)
-    /// </summary>
-    [HttpGet("~/api/drivers/me/earnings")]
-    [Authorize(Roles = Infrastructure.Authorization.Roles.Driver)]
-    [ProducesResponseType(typeof(EarningsDto), StatusCodes.Status200OK)]
-    public async Task<ActionResult<EarningsDto>> GetMyEarnings(
-        [FromQuery] DateTime? startDate = null,
-        [FromQuery] DateTime? endDate = null)
-    {
-        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        if (string.IsNullOrEmpty(userId))
-            return Unauthorized();
-
-        var driver = await _context.Drivers.FirstOrDefaultAsync(d => d.UserId == userId);
-        if (driver == null)
-            return NotFound("Driver profile not found");
-
-        var query = _context.Payments
-            .Where(p => p.DriverId == driver.Id && p.Status == "completed")
-            .AsQueryable();
-
-        if (startDate.HasValue)
-        {
-            query = query.Where(p => p.PaidAt >= startDate.Value);
-        }
-
-        if (endDate.HasValue)
-        {
-            query = query.Where(p => p.PaidAt <= endDate.Value);
-        }
-
-        var payments = await query.ToListAsync();
-
-        var earnings = new EarningsDto
-        {
-            TotalEarnings = payments.Sum(p => p.DriverEarnings),
-            TotalTips = payments.Sum(p => p.TipAmount ?? 0),
-            TotalJobs = payments.Count,
-            AverageEarningsPerJob = payments.Any() ? payments.Average(p => p.DriverEarnings) : 0,
-            PeriodStart = startDate ?? payments.MinBy(p => p.CreatedAt)?.CreatedAt,
-            PeriodEnd = endDate ?? payments.MaxBy(p => p.CreatedAt)?.CreatedAt
-        };
-
-        return Ok(earnings);
-    }
-
-    /// <summary>
     /// Get my payout history (Driver)
     /// </summary>
     [HttpGet("~/api/drivers/me/payouts")]
