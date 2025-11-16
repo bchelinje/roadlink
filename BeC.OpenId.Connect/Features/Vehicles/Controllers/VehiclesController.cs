@@ -83,32 +83,6 @@ public class VehiclesController : ControllerBase
     }
 
     /// <summary>
-    /// Get my vehicles (Driver)
-    /// </summary>
-    [HttpGet("~/api/drivers/me/vehicles")]
-    [Authorize(Roles = AuthRoles.Driver)]
-    [ProducesResponseType(typeof(List<VehicleViewModel>), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    public async Task<ActionResult<List<VehicleViewModel>>> GetMyVehicles()
-    {
-        try
-        {
-            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            if (string.IsNullOrEmpty(userId))
-                return this.Unauthorized();
-
-            var result = await _vehicleService.GetVehiclesByDriverUserIdAsync(userId);
-
-            return this.Ok(result);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error getting my vehicles");
-            return this.StatusCode(StatusCodes.Status500InternalServerError, ex.Message);
-        }
-    }
-
-    /// <summary>
     /// Create a new vehicle
     /// </summary>
     [HttpPost]
@@ -143,20 +117,6 @@ public class VehiclesController : ControllerBase
             _logger.LogError(ex, "Error creating vehicle");
             return this.StatusCode(StatusCodes.Status500InternalServerError, ex.Message);
         }
-    }
-
-    /// <summary>
-    /// Add my vehicle (Driver shorthand endpoint)
-    /// </summary>
-    [HttpPost("~/api/drivers/me/vehicles")]
-    [Authorize(Roles = AuthRoles.Driver)]
-    [ProducesResponseType(typeof(VehicleViewModel), StatusCodes.Status201Created)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    public async Task<ActionResult<VehicleViewModel>> AddMyVehicle([FromBody] CreateVehicleModel request)
-    {
-        // Ensure DriverId is not set (will be determined automatically)
-        request.DriverId = null;
-        return await CreateVehicle(request);
     }
 
     /// <summary>
