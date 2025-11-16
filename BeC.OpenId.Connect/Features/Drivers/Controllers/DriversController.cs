@@ -217,8 +217,9 @@ public class DriversController : ControllerBase
             UpdatedAt = DateTime.UtcNow
         };
 
-        // Using Repository: InsertEntity
-        await _repository.InsertEntity(driver);
+        // Add driver to context and save
+        _context.Drivers.Add(driver);
+        await _context.SaveChangesAsync();
 
         await _activityLogService.LogActivityAsync(
             action: "driver.created",
