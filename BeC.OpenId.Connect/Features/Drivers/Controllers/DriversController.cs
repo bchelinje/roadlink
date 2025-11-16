@@ -14,6 +14,7 @@ using BeC.OpenId.Connect.Features.Drivers.Dtos;
 using BeC.OpenId.Connect.Features.Users.Dtos;
 using OpenIddict.Validation.AspNetCore;
 using BeC.Common.Data.Repositories.Interfaces;
+using BeC.OpenId.Connect.Features.Jobs.Dtos;
 
 namespace BeC.OpenId.Connect.Features.Drivers.Controllers;
 
