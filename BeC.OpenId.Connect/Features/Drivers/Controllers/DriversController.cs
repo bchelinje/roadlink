@@ -150,7 +150,7 @@ public class DriversController : ControllerBase
         }
 
         // Build query with filters (using DbContext for Include support)
-        var query = _context.Drivers.Include(d => d.Vehicles);
+        IQueryable<Driver> query = _context.Drivers.Include(d => d.Vehicles);
 
         // Apply filters if predicate was built
         if (predicate != null)
