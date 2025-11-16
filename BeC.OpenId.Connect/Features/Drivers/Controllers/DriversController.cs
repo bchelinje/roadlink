@@ -122,57 +122,39 @@ public class DriversController : ControllerBase
 
         if (!string.IsNullOrEmpty(search))
         {
-            if (predicate == null)
-                predicate = d => (d.FirstName != null && d.FirstName.Contains(search)) ||
-                               (d.LastName != null && d.LastName.Contains(search)) ||
-                               (d.Email != null && d.Email.Contains(search)) ||
-                               (d.Phone != null && d.Phone.Contains(search));
-            else
-            {
-                var searchPredicate = predicate;
-                predicate = d => searchPredicate.Compile()(d) &&
-                               ((d.FirstName != null && d.FirstName.Contains(search)) ||
-                                (d.LastName != null && d.LastName.Contains(search)) ||
-                                (d.Email != null && d.Email.Contains(search)) ||
-                                (d.Phone != null && d.Phone.Contains(search)));
-            }
+            System.Linq.Expressions.Expression<Func<Driver, bool>> searchPred = d =>
+                (d.FirstName != null && d.FirstName.Contains(search)) ||
+                (d.LastName != null && d.LastName.Contains(search)) ||
+                (d.Email != null && d.Email.Contains(search)) ||
+                (d.Phone != null && d.Phone.Contains(search));
+
+            predicate = predicate == null ? searchPred : CombinePredicates(predicate, searchPred);
         }
 
         if (!string.IsNullOrEmpty(vehicleType))
         {
-            if (predicate == null)
-                predicate = d => d.VehicleType == vehicleType;
-            else
-            {
-                var vtPredicate = predicate;
-                predicate = d => vtPredicate.Compile()(d) && d.VehicleType == vehicleType;
-            }
+            System.Linq.Expressions.Expression<Func<Driver, bool>> vtPred = d => d.VehicleType == vehicleType;
+            predicate = predicate == null ? vtPred : CombinePredicates(predicate, vtPred);
         }
 
         if (!string.IsNullOrEmpty(location))
         {
-            if (predicate == null)
-                predicate = d => d.Address != null && d.Address.Contains(location);
-            else
-            {
-                var locPredicate = predicate;
-                predicate = d => locPredicate.Compile()(d) && d.Address != null && d.Address.Contains(location);
-            }
+            System.Linq.Expressions.Expression<Func<Driver, bool>> locPred = d => d.Address != null && d.Address.Contains(location);
+            predicate = predicate == null ? locPred : CombinePredicates(predicate, locPred);
         }
 
         if (minRating.HasValue)
         {
-            if (predicate == null)
-                predicate = d => d.Rating >= (decimal)minRating.Value;
-            else
-            {
-                var ratingPredicate = predicate;
-                predicate = d => ratingPredicate.Compile()(d) && d.Rating >= (decimal)minRating.Value;
-            }
+            System.Linq.Expressions.Expression<Func<Driver, bool>> ratingPred = d => d.Rating >= (decimal)minRating.Value;
+            predicate = predicate == null ? ratingPred : CombinePredicates(predicate, ratingPred);
         }
 
         // Build query with filters (using DbContext for Include support)
-        var query = _context.Drivers.Include(d => d.Vehicles).Where(predicate);
+        var query = _context.Drivers.Include(d => d.Vehicles);
+
+        // Apply filters if predicate was built
+        if (predicate != null)
+            query = query.Where(predicate);
 
         var totalCount = await query.CountAsync();
         var drivers = await query
@@ -1295,6 +1277,36 @@ public async Task<ActionResult<JobDto>> UploadJobPhoto(
             Address = driver.Address,
             EmergencyContact = driver.EmergencyContact
         };
+    }
+
+    private static System.Linq.Expressions.Expression<Func<Driver, bool>> CombinePredicates(
+        System.Linq.Expressions.Expression<Func<Driver, bool>> first,
+        System.Linq.Expressions.Expression<Func<Driver, bool>> second)
+    {
+        var parameter = first.Parameters[0];
+        var visitor = new ReplaceParameterVisitor(second.Parameters[0], parameter);
+        var secondBody = visitor.Visit(second.Body);
+        var combined = System.Linq.Expressions.Expression.AndAlso(first.Body, secondBody);
+        return System.Linq.Expressions.Expression.Lambda<Func<Driver, bool>>(combined, parameter);
+    }
+
+    private class ReplaceParameterVisitor : System.Linq.Expressions.ExpressionVisitor
+    {
+        private readonly System.Linq.Expressions.ParameterExpression _oldParameter;
+        private readonly System.Linq.Expressions.ParameterExpression _newParameter;
+
+        public ReplaceParameterVisitor(
+            System.Linq.Expressions.ParameterExpression oldParameter,
+            System.Linq.Expressions.ParameterExpression newParameter)
+        {
+            _oldParameter = oldParameter;
+            _newParameter = newParameter;
+        }
+
+        protected override System.Linq.Expressions.Expression VisitParameter(System.Linq.Expressions.ParameterExpression node)
+        {
+            return node == _oldParameter ? _newParameter : base.VisitParameter(node);
+        }
     }
 
     private static JobDto MapJobToDto(Job job)
