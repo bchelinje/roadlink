@@ -288,8 +288,8 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
         builder.Entity<JobTemplate>(entity =>
         {
             entity.HasKey(e => e.Id);
-            entity.HasIndex(e => e.CreatedById);
-            entity.HasIndex(e => e.IsActive);
+            entity.HasIndex(e => e.CustomerId);
+            entity.HasIndex(e => e.Status);
             entity.HasIndex(e => e.CreatedAt);
 
             entity.Property(e => e.BasePrice)
