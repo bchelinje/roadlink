@@ -1,4 +1,5 @@
 using BeC.Common.Data;
+using BeC.Common.Data.Repositories.Interfaces;
 using BeC.OpenId.Connect.Features.Drivers.Dtos;
 using BeC.OpenId.Connect.Features.Payments.Dtos;
 using Microsoft.EntityFrameworkCore;
