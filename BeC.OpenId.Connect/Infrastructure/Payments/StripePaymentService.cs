@@ -1,10 +1,12 @@
 using BeC.Common.Data;
+using BeC.Common.Data.Repositories.Interfaces;
 using BeC.OpenId.Connect.Features.Drivers.Dtos;
 using BeC.OpenId.Connect.Features.Payments.Dtos;
 using BeC.OpenId.Connect.Dto;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Stripe;
+using PayoutDto = BeC.OpenId.Connect.Features.Payments.Dtos.Payout;
 
 namespace BeC.OpenId.Connect.Infrastructure.Payments;
 
@@ -16,7 +18,7 @@ public class StripePaymentService : IStripePaymentService
 {
     private readonly StripeSettings _settings;
     private readonly IRepository<Payment, Guid> _paymentRepository;
-    private readonly IRepository<Payout, Guid> _payoutRepository;
+    private readonly IRepository<PayoutDto, Guid> _payoutRepository;
     private readonly IRepository<Earning, Guid> _earningRepository;
     private readonly IRepository<Job, Guid> _jobRepository;
     private readonly ILogger<StripePaymentService> _logger;
@@ -24,7 +26,7 @@ public class StripePaymentService : IStripePaymentService
     public StripePaymentService(
         IOptions<StripeSettings> settings,
         IRepository<Payment, Guid> paymentRepository,
-        IRepository<Payout, Guid> payoutRepository,
+        IRepository<PayoutDto, Guid> payoutRepository,
         IRepository<Earning, Guid> earningRepository,
         IRepository<Job, Guid> jobRepository,
         ILogger<StripePaymentService> logger)
@@ -291,7 +293,7 @@ public class StripePaymentService : IStripePaymentService
 
             // NOTE: In production, you would create a Stripe Connect transfer here
             // For now, we'll create a payout record in our system
-            var payout = new Payout
+            var payout = new PayoutDto
             {
                 PayoutNumber = GeneratePayoutNumber(),
                 DriverId = driverId,
