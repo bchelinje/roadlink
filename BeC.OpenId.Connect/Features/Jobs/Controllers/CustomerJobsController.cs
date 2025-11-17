@@ -178,13 +178,16 @@ public class CustomerJobsController : ControllerBase
 
             // 6. Log activity
             await _activityLogService.LogActivityAsync(
-                userId,
                 "job.booked_with_payment",
                 "Job",
                 job.Id.ToString(),
                 job.JobNumber,
                 $"Job {job.JobNumber} booked by {userName} with payment ${jobAmount}",
-                metadata: new Dictionary<string, object>
+                "INFO",
+                userId,
+                userName,
+                userEmail,
+                new Dictionary<string, object>
                 {
                     { "Amount", jobAmount },
                     { "PlatformFee", platformFee },
@@ -312,6 +315,8 @@ public class CustomerJobsController : ControllerBase
     public async Task<ActionResult> CancelBookedJob(Guid id, [FromBody] CancelJobDto dto)
     {
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        var userName = User.FindFirstValue(ClaimTypes.Name) ?? "Customer";
+        var userEmail = User.FindFirstValue(ClaimTypes.Email);
 
         var job = await _context.Jobs.FirstOrDefaultAsync(j => j.Id == id && j.CustomerId == userId);
 
@@ -351,13 +356,16 @@ public class CustomerJobsController : ControllerBase
         }
 
         await _activityLogService.LogActivityAsync(
-            userId,
             "job.cancelled_by_customer",
             "Job",
             job.Id.ToString(),
             job.JobNumber,
             $"Job {job.JobNumber} cancelled by customer: {dto.Reason}",
-            metadata: new Dictionary<string, object>
+            "WARNING",
+            userId,
+            userName,
+            userEmail,
+            new Dictionary<string, object>
             {
                 { "OldStatus", oldStatus },
                 { "CancellationReason", dto.Reason ?? "Not specified" },
