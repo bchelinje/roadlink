@@ -283,5 +283,17 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
                 .HasForeignKey(e => e.JobId)
                 .OnDelete(DeleteBehavior.Restrict);
         });
+
+        // JobTemplate configuration
+        builder.Entity<JobTemplate>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.CreatedById);
+            entity.HasIndex(e => e.IsActive);
+            entity.HasIndex(e => e.CreatedAt);
+
+            entity.Property(e => e.BasePrice)
+                .HasPrecision(10, 2);
+        });
     }
 }
