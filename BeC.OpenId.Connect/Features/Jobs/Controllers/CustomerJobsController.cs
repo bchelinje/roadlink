@@ -76,12 +76,12 @@ public class CustomerJobsController : ControllerBase
         try
         {
             // 1. Calculate pricing
-            var pricingResult = await _pricingCalculator.CalculatePriceAsync(new Features.Pricing.Dtos.PricingRequestDto
+            var pricingResult = await _pricingCalculator.CalculatePriceAsync(new Features.Pricing.Services.PricingCalculationRequest
             {
                 JobType = dto.JobType,
                 VehicleType = dto.VehicleTypeRequired ?? "van",
-                Distance = dto.Distance,
-                Duration = dto.EstimatedDuration,
+                Distance = (double?)dto.Distance ?? 0,
+                Duration = dto.EstimatedDuration ?? 60,
                 ScheduledDate = dto.ScheduledDate
             });
 
@@ -106,13 +106,19 @@ public class CustomerJobsController : ControllerBase
                 Priority = dto.Priority ?? "normal",
                 ScheduledDate = dto.ScheduledDate,
                 ScheduledTime = dto.ScheduledTime,
-                EstimatedDuration = dto.EstimatedDuration,
-                PickupLocation = dto.PickupLocation,
-                PickupLatitude = dto.PickupLatitude,
-                PickupLongitude = dto.PickupLongitude,
-                DeliveryLocation = dto.DeliveryLocation,
-                DeliveryLatitude = dto.DeliveryLatitude,
-                DeliveryLongitude = dto.DeliveryLongitude,
+                EstimatedDuration = dto.EstimatedDuration ?? 60,
+                PickupLocation = System.Text.Json.JsonSerializer.Serialize(new
+                {
+                    Address = dto.PickupLocation,
+                    Latitude = dto.PickupLatitude,
+                    Longitude = dto.PickupLongitude
+                }),
+                DeliveryLocation = System.Text.Json.JsonSerializer.Serialize(new
+                {
+                    Address = dto.DeliveryLocation,
+                    Latitude = dto.DeliveryLatitude,
+                    Longitude = dto.DeliveryLongitude
+                }),
                 Distance = dto.Distance,
                 Items = dto.Items != null ? System.Text.Json.JsonSerializer.Serialize(dto.Items) : null,
                 SpecialInstructions = dto.SpecialInstructions,
@@ -134,12 +140,14 @@ public class CustomerJobsController : ControllerBase
             await _context.SaveChangesAsync();
 
             // 4. Create Stripe payment intent (captures card immediately)
-            var (paymentIntentId, clientSecret) = await _stripePaymentService.CreatePaymentIntentAsync(
+            var paymentResult = await _stripePaymentService.CreatePaymentIntentAsync(
                 job.Id,
                 jobAmount,
                 userId,
                 $"Delivery from {dto.PickupLocation} to {dto.DeliveryLocation}"
             );
+            var paymentIntentId = paymentResult.Item1;
+            var clientSecret = paymentResult.Item2;
 
             // 5. Create payment record
             var payment = new Payment
@@ -185,12 +193,13 @@ public class CustomerJobsController : ControllerBase
             );
 
             // 7. Send notification to admins
-            await _notificationService.CreateNotificationAsync(
+            await _notificationService.SendNotificationAsync(
                 userId: "admin", // TODO: Send to all admins
-                type: "new_job_booking",
+                title: "New Job Booking",
                 message: $"New job booking: {job.JobNumber} - {dto.JobType} - ${jobAmount}",
-                relatedEntityType: "Job",
-                relatedEntityId: job.Id.ToString()
+                type: "new_job_booking",
+                entityType: "Job",
+                entityId: job.Id.ToString()
             );
 
             // 8. Return response with client secret for frontend payment confirmation
@@ -224,13 +233,13 @@ public class CustomerJobsController : ControllerBase
         catch (Exception ex)
         {
             await _activityLogService.LogActivityAsync(
-                userId,
                 "job.booking_failed",
                 "Job",
                 null,
                 null,
                 $"Job booking failed: {ex.Message}",
-                severity: "ERROR"
+                "ERROR",
+                userId
             );
 
             return BadRequest(new { error = "Failed to book job with payment", details = ex.Message });
@@ -395,15 +404,12 @@ public class CustomerJobsController : ControllerBase
             ActualStartTime = job.ActualStartTime,
             ActualEndTime = job.ActualEndTime,
             PickupLocation = job.PickupLocation,
-            PickupLatitude = job.PickupLatitude,
-            PickupLongitude = job.PickupLongitude,
             DeliveryLocation = job.DeliveryLocation,
-            DeliveryLatitude = job.DeliveryLatitude,
-            DeliveryLongitude = job.DeliveryLongitude,
             Distance = job.Distance,
             Items = job.Items,
             SpecialInstructions = job.SpecialInstructions,
             InternalNotes = job.InternalNotes,
+            StatusHistory = job.StatusHistory,
             CreatedAt = job.CreatedAt,
             UpdatedAt = job.UpdatedAt,
             CompletedAt = job.CompletedAt
@@ -485,14 +491,6 @@ public class PricingBreakdownDto
     public decimal VehicleTypeCharge { get; set; }
     public decimal SurgeMultiplier { get; set; }
     public decimal TotalPrice { get; set; }
-}
-
-/// <summary>
-/// Cancel job request
-/// </summary>
-public class CancelJobDto
-{
-    public string? Reason { get; set; }
 }
 
 #endregion

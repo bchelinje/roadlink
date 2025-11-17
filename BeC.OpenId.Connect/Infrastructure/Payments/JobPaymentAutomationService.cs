@@ -64,6 +64,13 @@ public class JobPaymentAutomationService : IJobPaymentAutomationService
                 throw new InvalidOperationException($"Job {jobId} not found");
             }
 
+            // Look up customer information
+            var customer = await _context.Users.FindAsync(customerId);
+            if (customer == null)
+            {
+                throw new InvalidOperationException($"Customer {customerId} not found");
+            }
+
             // Create Stripe payment intent
             var (paymentIntentId, clientSecret) = await _stripePaymentService.CreatePaymentIntentAsync(
                 jobId,
@@ -81,6 +88,8 @@ public class JobPaymentAutomationService : IJobPaymentAutomationService
                 PaymentNumber = GeneratePaymentNumber(),
                 JobId = jobId,
                 CustomerId = customerId,
+                CustomerName = customer.UserName ?? "Unknown",
+                CustomerEmail = customer.Email ?? "unknown@example.com",
                 Amount = amount,
                 TipAmount = 0m,
                 PlatformFee = platformFee, // 15% commission

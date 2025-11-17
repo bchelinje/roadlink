@@ -236,7 +236,7 @@ public class StripePaymentService : IStripePaymentService
                 Metadata = new Dictionary<string, string>
                 {
                     { "payment_id", paymentId.ToString() },
-                    { "job_id", payment.JobId.ToString() }
+                    { "job_id", payment.JobId?.ToString() ?? "N/A" }
                 }
             };
 
@@ -382,23 +382,23 @@ public class StripePaymentService : IStripePaymentService
 
             switch (stripeEvent.Type)
             {
-                case Events.PaymentIntentSucceeded:
+                case "payment_intent.succeeded":
                     await HandlePaymentSucceededAsync(stripeEvent);
                     break;
 
-                case Events.PaymentIntentPaymentFailed:
+                case "payment_intent.payment_failed":
                     await HandlePaymentFailedAsync(stripeEvent);
                     break;
 
-                case Events.ChargeRefunded:
+                case "charge.refunded":
                     await HandleChargeRefundedAsync(stripeEvent);
                     break;
 
-                case Events.PayoutPaid:
+                case "payout.paid":
                     await HandlePayoutPaidAsync(stripeEvent);
                     break;
 
-                case Events.PayoutFailed:
+                case "payout.failed":
                     await HandlePayoutFailedAsync(stripeEvent);
                     break;
 

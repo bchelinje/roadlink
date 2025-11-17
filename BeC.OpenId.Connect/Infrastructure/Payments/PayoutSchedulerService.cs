@@ -1,4 +1,4 @@
-using BeC.Common.Data;
+using BeC.OpenId.Connect.Dto;
 using BeC.OpenId.Connect.Features.Drivers.Dtos;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
