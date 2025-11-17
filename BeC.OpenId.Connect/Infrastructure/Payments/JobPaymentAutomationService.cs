@@ -1,7 +1,6 @@
-using BeC.Common.Data;
-using BeC.Common.Data.Repositories.Interfaces;
 using BeC.OpenId.Connect.Features.Drivers.Dtos;
 using BeC.OpenId.Connect.Features.Payments.Dtos;
+using BeC.OpenId.Connect.Dto;
 using Microsoft.EntityFrameworkCore;
 
 namespace BeC.OpenId.Connect.Infrastructure.Payments;
@@ -38,19 +37,16 @@ public interface IJobPaymentAutomationService
 
 public class JobPaymentAutomationService : IJobPaymentAutomationService
 {
-    private readonly IRepository<Payment, Guid> _paymentRepository;
-    private readonly IRepository<Job, Guid> _jobRepository;
+    private readonly ApplicationDbContext _context;
     private readonly IStripePaymentService _stripePaymentService;
     private readonly ILogger<JobPaymentAutomationService> _logger;
 
     public JobPaymentAutomationService(
-        IRepository<Payment, Guid> paymentRepository,
-        IRepository<Job, Guid> jobRepository,
+        ApplicationDbContext context,
         IStripePaymentService stripePaymentService,
         ILogger<JobPaymentAutomationService> logger)
     {
-        _paymentRepository = paymentRepository;
-        _jobRepository = jobRepository;
+        _context = context;
         _stripePaymentService = stripePaymentService;
         _logger = logger;
     }
@@ -62,7 +58,7 @@ public class JobPaymentAutomationService : IJobPaymentAutomationService
     {
         try
         {
-            var job = await _jobRepository.GetByIdAsync(jobId);
+            var job = await _context.Jobs.FindAsync(jobId);
             if (job == null)
             {
                 throw new InvalidOperationException($"Job {jobId} not found");
@@ -98,7 +94,8 @@ public class JobPaymentAutomationService : IJobPaymentAutomationService
                 UpdatedAt = DateTime.UtcNow
             };
 
-            await _paymentRepository.AddAsync(payment);
+            _context.Payments.Add(payment);
+            await _context.SaveChangesAsync();
 
             _logger.LogInformation(
                 "Created payment {PaymentNumber} for job {JobId}: ${Amount} (Platform: ${PlatformFee}, Driver: ${DriverEarnings})",
@@ -121,8 +118,7 @@ public class JobPaymentAutomationService : IJobPaymentAutomationService
     {
         try
         {
-            var payment = await _paymentRepository
-                .AsQueryable()
+            var payment = await _context.Payments
                 .FirstOrDefaultAsync(p => p.JobId == jobId && p.Status == "pending");
 
             if (payment == null)
@@ -156,21 +152,20 @@ public class JobPaymentAutomationService : IJobPaymentAutomationService
     {
         try
         {
-            var job = await _jobRepository.GetByIdAsync(jobId);
+            var job = await _context.Jobs.FindAsync(jobId);
             if (job == null)
             {
                 _logger.LogWarning("Job {JobId} not found", jobId);
                 return;
             }
 
-            if (string.IsNullOrEmpty(job.DriverId))
+            if (!job.DriverId.HasValue)
             {
                 _logger.LogWarning("Job {JobId} has no assigned driver", jobId);
                 return;
             }
 
-            var payment = await _paymentRepository
-                .AsQueryable()
+            var payment = await _context.Payments
                 .FirstOrDefaultAsync(p => p.JobId == jobId && p.Status == "processing");
 
             if (payment == null)
@@ -183,7 +178,7 @@ public class JobPaymentAutomationService : IJobPaymentAutomationService
             var success = await _stripePaymentService.ReleaseFundsFromEscrowAsync(
                 payment.Id,
                 jobId,
-                job.DriverId);
+                job.DriverId.Value);
 
             if (success)
             {
@@ -206,8 +201,7 @@ public class JobPaymentAutomationService : IJobPaymentAutomationService
     {
         try
         {
-            var payment = await _paymentRepository
-                .AsQueryable()
+            var payment = await _context.Payments
                 .FirstOrDefaultAsync(p => p.JobId == jobId &&
                     (p.Status == "pending" || p.Status == "processing"));
 
