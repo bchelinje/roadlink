@@ -35,6 +35,7 @@
         <PackageReference Include="OpenIddict.EntityFrameworkCore" Version="7.1.0" />
         <PackageReference Include="OpenIddict.Validation.AspNetCore" Version="7.1.0" />
         <PackageReference Include="Scrutor" Version="6.1.0" />
+        <PackageReference Include="Stripe.net" Version="47.7.0" />
         <PackageReference Include="Swashbuckle.AspNetCore" Version="9.0.6" />
         <PackageReference Include="System.Linq" Version="4.3.0" />
     </ItemGroup>

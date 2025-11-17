@@ -53,6 +53,17 @@ builder.Services.AddScoped<BeC.OpenId.Connect.Features.Location.Services.Interfa
 builder.Services.AddScoped<BeC.OpenId.Connect.Features.Users.Services.Interfaces.IUserService, BeC.OpenId.Connect.Features.Users.Services.UserService>();
 builder.Services.AddScoped<BeC.OpenId.Connect.Features.Notifications.Services.Interfaces.INotificationService, BeC.OpenId.Connect.Features.Notifications.Services.NotificationService>();
 
+// Payment & Stripe services
+builder.Services.Configure<BeC.OpenId.Connect.Infrastructure.Payments.StripeSettings>(
+    builder.Configuration.GetSection("Stripe"));
+builder.Services.AddScoped<BeC.OpenId.Connect.Infrastructure.Payments.IStripePaymentService,
+    BeC.OpenId.Connect.Infrastructure.Payments.StripePaymentService>();
+builder.Services.AddScoped<BeC.OpenId.Connect.Infrastructure.Payments.IJobPaymentAutomationService,
+    BeC.OpenId.Connect.Infrastructure.Payments.JobPaymentAutomationService>();
+
+// Automated payout scheduler (background service)
+builder.Services.AddHostedService<BeC.OpenId.Connect.Infrastructure.Payments.PayoutSchedulerService>();
+
 // Register BeC.Common.Data Repository
 builder.Services.AddScoped<IRepository, Repository>();
 
