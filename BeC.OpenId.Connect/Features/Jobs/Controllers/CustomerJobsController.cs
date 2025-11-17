@@ -76,13 +76,14 @@ public class CustomerJobsController : ControllerBase
         try
         {
             // 1. Calculate pricing
-            var pricingResult = await _pricingCalculator.CalculatePriceAsync(new Features.Pricing.Services.PricingCalculationRequest
+            var pricingResult = await _pricingCalculator.CalculatePriceAsync(new Features.Pricing.Dtos.PricingCalculationRequest
             {
-                JobType = dto.JobType,
+                PickupAddress = dto.PickupLocation,
+                DeliveryAddress = dto.DeliveryLocation,
                 VehicleType = dto.VehicleTypeRequired ?? "van",
-                Distance = (double?)dto.Distance ?? 0,
-                Duration = dto.EstimatedDuration ?? 60,
-                ScheduledDate = dto.ScheduledDate
+                ScheduledDate = dto.ScheduledDate,
+                DistanceInMiles = (double?)dto.Distance,
+                EstimatedDurationMinutes = dto.EstimatedDuration
             });
 
             var jobAmount = pricingResult.TotalPrice;
