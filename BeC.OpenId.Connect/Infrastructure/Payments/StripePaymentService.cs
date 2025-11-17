@@ -1,5 +1,3 @@
-using BeC.Common.Data;
-using BeC.Common.Data.Repositories.Interfaces;
 using BeC.OpenId.Connect.Features.Drivers.Dtos;
 using BeC.OpenId.Connect.Features.Payments.Dtos;
 using BeC.OpenId.Connect.Dto;
@@ -17,25 +15,16 @@ namespace BeC.OpenId.Connect.Infrastructure.Payments;
 public class StripePaymentService : IStripePaymentService
 {
     private readonly StripeSettings _settings;
-    private readonly IRepository<Payment, Guid> _paymentRepository;
-    private readonly IRepository<PayoutDto, Guid> _payoutRepository;
-    private readonly IRepository<Earning, Guid> _earningRepository;
-    private readonly IRepository<Job, Guid> _jobRepository;
+    private readonly ApplicationDbContext _context;
     private readonly ILogger<StripePaymentService> _logger;
 
     public StripePaymentService(
         IOptions<StripeSettings> settings,
-        IRepository<Payment, Guid> paymentRepository,
-        IRepository<PayoutDto, Guid> payoutRepository,
-        IRepository<Earning, Guid> earningRepository,
-        IRepository<Job, Guid> jobRepository,
+        ApplicationDbContext context,
         ILogger<StripePaymentService> logger)
     {
         _settings = settings.Value;
-        _paymentRepository = paymentRepository;
-        _payoutRepository = payoutRepository;
-        _earningRepository = earningRepository;
-        _jobRepository = jobRepository;
+        _context = context;
         _logger = logger;
 
         // Configure Stripe API key
@@ -113,7 +102,7 @@ public class StripePaymentService : IStripePaymentService
     {
         try
         {
-            var payment = await _paymentRepository.GetByIdAsync(paymentId);
+            var payment = await _context.Payments.FindAsync(paymentId);
             if (payment == null)
             {
                 _logger.LogWarning("Payment {PaymentId} not found", paymentId);
@@ -124,7 +113,8 @@ public class StripePaymentService : IStripePaymentService
             payment.Status = "processing"; // Processing = funds in escrow
             payment.UpdatedAt = DateTime.UtcNow;
 
-            await _paymentRepository.UpdateAsync(payment);
+            _context.Payments.Update(payment);
+            await _context.SaveChangesAsync();
 
             _logger.LogInformation(
                 "Payment {PaymentId} funds held in escrow (status: processing)",
@@ -147,7 +137,7 @@ public class StripePaymentService : IStripePaymentService
     {
         try
         {
-            var payment = await _paymentRepository.GetByIdAsync(paymentId);
+            var payment = await _context.Payments.FindAsync(paymentId);
             if (payment == null)
             {
                 _logger.LogWarning("Payment {PaymentId} not found", paymentId);
@@ -174,24 +164,30 @@ public class StripePaymentService : IStripePaymentService
             payment.PaidAt = DateTime.UtcNow;
             payment.UpdatedAt = DateTime.UtcNow;
 
-            await _paymentRepository.UpdateAsync(payment);
+            _context.Payments.Update(payment);
+
+            // Get job to find job number
+            var job = await _context.Jobs.FindAsync(jobId);
 
             // Create earning record for driver
             var earning = new Earning
             {
                 DriverId = driverId,
                 JobId = jobId,
+                JobNumber = job?.JobNumber ?? $"JOB-{jobId.ToString()[..8]}",
                 PaymentId = paymentId,
                 BaseAmount = payment.Amount,
                 BonusAmount = 0m,
                 TipAmount = payment.TipAmount ?? 0m,
                 NetAmount = driverEarnings,
+                JobCompletedDate = DateTime.UtcNow,
                 PaymentStatus = "pending", // Will be paid out in batch
                 EarnedAt = DateTime.UtcNow,
                 CreatedAt = DateTime.UtcNow
             };
 
-            await _earningRepository.AddAsync(earning);
+            _context.Earnings.Add(earning);
+            await _context.SaveChangesAsync();
 
             _logger.LogInformation(
                 "Released funds from escrow for payment {PaymentId}: Platform fee ${PlatformFee}, Driver earnings ${DriverEarnings}",
@@ -213,7 +209,7 @@ public class StripePaymentService : IStripePaymentService
     {
         try
         {
-            var payment = await _paymentRepository.GetByIdAsync(paymentId);
+            var payment = await _context.Payments.FindAsync(paymentId);
             if (payment == null)
             {
                 throw new InvalidOperationException($"Payment {paymentId} not found");
@@ -254,7 +250,8 @@ public class StripePaymentService : IStripePaymentService
             payment.UpdatedAt = DateTime.UtcNow;
             payment.StripeRefundId = refund.Id;
 
-            await _paymentRepository.UpdateAsync(payment);
+            _context.Payments.Update(payment);
+            await _context.SaveChangesAsync();
 
             _logger.LogInformation(
                 "Processed refund {RefundId} for payment {PaymentId}, amount ${Amount}",
@@ -278,8 +275,7 @@ public class StripePaymentService : IStripePaymentService
         try
         {
             // Get all pending earnings for this driver
-            var pendingEarnings = await _earningRepository
-                .AsQueryable()
+            var pendingEarnings = await _context.Earnings
                 .Where(e => e.DriverId == driverId && e.PaymentStatus == "pending")
                 .ToListAsync();
 
@@ -291,24 +287,30 @@ public class StripePaymentService : IStripePaymentService
 
             var totalAmount = pendingEarnings.Sum(e => e.NetAmount);
 
+            // Get driver info
+            var driver = await _context.Drivers.FindAsync(driverId);
+
             // NOTE: In production, you would create a Stripe Connect transfer here
             // For now, we'll create a payout record in our system
             var payout = new PayoutDto
             {
                 PayoutNumber = GeneratePayoutNumber(),
                 DriverId = driverId,
+                DriverName = driver != null ? $"{driver.FirstName} {driver.LastName}" : "Unknown Driver",
                 Amount = totalAmount,
                 Currency = _settings.Currency,
                 Status = "pending",
-                PeriodStart = pendingEarnings.Min(e => e.EarnedAt),
-                PeriodEnd = pendingEarnings.Max(e => e.EarnedAt),
+                PaymentMethod = "bank_transfer",
+                PeriodStart = pendingEarnings.Min(e => e.EarnedAt) ?? DateTime.UtcNow,
+                PeriodEnd = pendingEarnings.Max(e => e.EarnedAt) ?? DateTime.UtcNow,
                 TotalJobs = pendingEarnings.Count,
                 PaymentIds = System.Text.Json.JsonSerializer.Serialize(
                     pendingEarnings.Select(e => e.PaymentId).ToList()),
                 CreatedAt = DateTime.UtcNow
             };
 
-            await _payoutRepository.AddAsync(payout);
+            _context.Payouts.Add(payout);
+            await _context.SaveChangesAsync();
 
             // Mark earnings as paid
             foreach (var earning in pendingEarnings)
@@ -316,8 +318,9 @@ public class StripePaymentService : IStripePaymentService
                 earning.PaymentStatus = "paid";
                 earning.PaidAt = DateTime.UtcNow;
                 earning.PayoutId = payout.Id;
-                await _earningRepository.UpdateAsync(earning);
+                _context.Earnings.Update(earning);
             }
+            await _context.SaveChangesAsync();
 
             _logger.LogInformation(
                 "Created payout {PayoutNumber} for driver {DriverId}, amount ${Amount} ({Count} jobs)",
@@ -422,8 +425,7 @@ public class StripePaymentService : IStripePaymentService
         if (string.IsNullOrEmpty(jobId)) return;
 
         // Find payment by Stripe payment intent ID
-        var payment = await _paymentRepository
-            .AsQueryable()
+        var payment = await _context.Payments
             .FirstOrDefaultAsync(p => p.StripePaymentIntentId == paymentIntent.Id);
 
         if (payment != null)
@@ -433,7 +435,8 @@ public class StripePaymentService : IStripePaymentService
             payment.PaidAt = DateTime.UtcNow;
             payment.UpdatedAt = DateTime.UtcNow;
 
-            await _paymentRepository.UpdateAsync(payment);
+            _context.Payments.Update(payment);
+            await _context.SaveChangesAsync();
 
             _logger.LogInformation(
                 "Payment {PaymentId} marked as completed via webhook",
@@ -446,8 +449,7 @@ public class StripePaymentService : IStripePaymentService
         var paymentIntent = stripeEvent.Data.Object as PaymentIntent;
         if (paymentIntent == null) return;
 
-        var payment = await _paymentRepository
-            .AsQueryable()
+        var payment = await _context.Payments
             .FirstOrDefaultAsync(p => p.StripePaymentIntentId == paymentIntent.Id);
 
         if (payment != null)
@@ -455,7 +457,8 @@ public class StripePaymentService : IStripePaymentService
             payment.Status = "failed";
             payment.UpdatedAt = DateTime.UtcNow;
 
-            await _paymentRepository.UpdateAsync(payment);
+            _context.Payments.Update(payment);
+            await _context.SaveChangesAsync();
 
             _logger.LogWarning(
                 "Payment {PaymentId} marked as failed via webhook",
@@ -468,8 +471,7 @@ public class StripePaymentService : IStripePaymentService
         var charge = stripeEvent.Data.Object as Charge;
         if (charge == null) return;
 
-        var payment = await _paymentRepository
-            .AsQueryable()
+        var payment = await _context.Payments
             .FirstOrDefaultAsync(p => p.StripeChargeId == charge.Id);
 
         if (payment != null)
@@ -479,7 +481,8 @@ public class StripePaymentService : IStripePaymentService
             payment.RefundedAt = DateTime.UtcNow;
             payment.UpdatedAt = DateTime.UtcNow;
 
-            await _paymentRepository.UpdateAsync(payment);
+            _context.Payments.Update(payment);
+            await _context.SaveChangesAsync();
 
             _logger.LogInformation(
                 "Payment {PaymentId} refund processed via webhook, amount ${Amount}",
@@ -493,8 +496,7 @@ public class StripePaymentService : IStripePaymentService
         var stripePayout = stripeEvent.Data.Object as Stripe.Payout;
         if (stripePayout == null) return;
 
-        var payout = await _payoutRepository
-            .AsQueryable()
+        var payout = await _context.Payouts
             .FirstOrDefaultAsync(p => p.StripePayoutId == stripePayout.Id);
 
         if (payout != null)
@@ -502,7 +504,8 @@ public class StripePaymentService : IStripePaymentService
             payout.Status = "paid";
             payout.PaidAt = DateTime.UtcNow;
 
-            await _payoutRepository.UpdateAsync(payout);
+            _context.Payouts.Update(payout);
+            await _context.SaveChangesAsync();
 
             _logger.LogInformation(
                 "Payout {PayoutId} marked as paid via webhook",
@@ -515,15 +518,15 @@ public class StripePaymentService : IStripePaymentService
         var stripePayout = stripeEvent.Data.Object as Stripe.Payout;
         if (stripePayout == null) return;
 
-        var payout = await _payoutRepository
-            .AsQueryable()
+        var payout = await _context.Payouts
             .FirstOrDefaultAsync(p => p.StripePayoutId == stripePayout.Id);
 
         if (payout != null)
         {
             payout.Status = "failed";
 
-            await _payoutRepository.UpdateAsync(payout);
+            _context.Payouts.Update(payout);
+            await _context.SaveChangesAsync();
 
             _logger.LogWarning(
                 "Payout {PayoutId} failed via webhook",

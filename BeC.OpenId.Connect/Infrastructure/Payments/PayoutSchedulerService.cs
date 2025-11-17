@@ -1,5 +1,4 @@
 using BeC.Common.Data;
-using BeC.Common.Data.Repositories.Interfaces;
 using BeC.OpenId.Connect.Features.Drivers.Dtos;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
@@ -67,14 +66,13 @@ public class PayoutSchedulerService : BackgroundService
     private async Task ProcessScheduledPayoutsAsync()
     {
         using var scope = _serviceProvider.CreateScope();
-        var earningRepository = scope.ServiceProvider.GetRequiredService<IRepository<Earning, Guid>>();
+        var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
         var paymentService = scope.ServiceProvider.GetRequiredService<IStripePaymentService>();
 
         try
         {
             // Get all drivers with pending earnings
-            var driversWithPendingEarnings = await earningRepository
-                .AsQueryable()
+            var driversWithPendingEarnings = await context.Earnings
                 .Where(e => e.PaymentStatus == "pending")
                 .GroupBy(e => e.DriverId)
                 .Select(g => new
