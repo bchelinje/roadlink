@@ -411,7 +411,7 @@ public class JobsController : ControllerBase
             return NotFound("Driver not found");
 
         // Check if driver is available
-        if (driver.Status != "active" && driver.Status != "available")
+        if (driver.Status != "Active" && driver.Status != "Available")
             return BadRequest($"Driver is not available. Current status: {driver.Status}");
 
         // Unassign from previous driver if needed
