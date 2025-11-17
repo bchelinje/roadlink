@@ -26,6 +26,12 @@ public class Earning
     [MaxLength(50)]
     public required string JobNumber { get; set; }
 
+    // Payment tracking
+    public Guid? PaymentId { get; set; }
+    public Guid? PayoutId { get; set; }
+    public DateTime? PaidAt { get; set; }
+    public DateTime? EarnedAt { get; set; }
+
     // Earning Details
     [Required]
     [Column(TypeName = "decimal(10,2)")]

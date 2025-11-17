@@ -8,6 +8,7 @@ using BeC.OpenId.Connect.Features.Jobs.Dtos;
 using BeC.OpenId.Connect.Features.ActivityLogs.Services.Interfaces;
 using BeC.OpenId.Connect.Features.Notifications.Services.Interfaces;
 using BeC.OpenId.Connect.Infrastructure.Authorization;
+using BeC.OpenId.Connect.Infrastructure.Payments;
 using OpenIddict.Validation.AspNetCore;
 using OpenIddict.Abstractions;
 using System.Security.Claims;
@@ -23,12 +24,18 @@ public class JobsController : ControllerBase
     private readonly ApplicationDbContext _context;
     private readonly IActivityLogService _activityLogService;
     private readonly INotificationService _notificationService;
+    private readonly IJobPaymentAutomationService _paymentAutomationService;
 
-    public JobsController(ApplicationDbContext context, IActivityLogService activityLogService, INotificationService notificationService)
+    public JobsController(
+        ApplicationDbContext context,
+        IActivityLogService activityLogService,
+        INotificationService notificationService,
+        IJobPaymentAutomationService paymentAutomationService)
     {
         _context = context;
         _activityLogService = activityLogService;
         _notificationService = notificationService;
+        _paymentAutomationService = paymentAutomationService;
     }
 
     /// <summary>
@@ -632,6 +639,38 @@ public class JobsController : ControllerBase
         AddStatusHistory(job, dto.Status, userId!, dto.Notes ?? $"Status changed from {oldStatus} to {dto.Status}");
 
         await _context.SaveChangesAsync();
+
+        // ESCROW MARKETPLACE AUTOMATION: Trigger payment actions based on job status changes
+        try
+        {
+            if (dto.Status == "in_progress" && oldStatus != "in_progress")
+            {
+                // Job started → Hold funds in escrow
+                await _paymentAutomationService.HandleJobStartedAsync(id);
+            }
+            else if (dto.Status == "completed" && oldStatus != "completed")
+            {
+                // Job completed → Release funds from escrow (15% platform, 85% driver)
+                await _paymentAutomationService.HandleJobCompletedAsync(id);
+            }
+            else if (dto.Status == "cancelled" && oldStatus != "cancelled")
+            {
+                // Job cancelled → Process refund to customer
+                await _paymentAutomationService.HandleJobCancelledAsync(id, dto.Notes ?? "Job cancelled");
+            }
+        }
+        catch (Exception ex)
+        {
+            // Log payment automation errors but don't fail the status update
+            await _activityLogService.LogActivityAsync(
+                action: "job.payment_automation_error",
+                entityType: "Job",
+                entityId: id.ToString(),
+                entityName: job.JobNumber,
+                description: $"Payment automation error for job {job.JobNumber}: {ex.Message}",
+                severity: "ERROR"
+            );
+        }
 
         await _activityLogService.LogActivityAsync(
             action: "job.status_updated",
