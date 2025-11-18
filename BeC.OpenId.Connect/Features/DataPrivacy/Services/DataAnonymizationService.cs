@@ -87,7 +87,6 @@ public class DataAnonymizationService : IDataAnonymizationService
                     driver.LicenseNumber = $"ANON-{anonymizedId}";
                     driver.Address = null;
                     driver.EmergencyContact = null;
-                    driver.BankDetails = null;
                     driver.AdminNotes = $"[ANONYMIZED ON {DateTime.UtcNow:yyyy-MM-dd}]";
                     driver.VettingNotes = $"[ANONYMIZED ON {DateTime.UtcNow:yyyy-MM-dd}]";
                     affectedRecords["Drivers"] = 1;
@@ -129,8 +128,8 @@ public class DataAnonymizationService : IDataAnonymizationService
                 foreach (var review in reviews)
                 {
                     review.ReviewerName = anonymizedName;
-                    if (review.ReviewerType == "customer")
-                        review.CustomerEmail = anonymizedEmail;
+                    // CustomerEmail field exists in Review entity
+                    review.CustomerEmail = anonymizedEmail;
                 }
                 affectedRecords["Reviews"] = reviews.Count;
 
@@ -150,7 +149,8 @@ public class DataAnonymizationService : IDataAnonymizationService
                     {
                         payment.DriverName = anonymizedName;
                     }
-                    payment.BillingDetails = null;
+                    payment.PaymentMethodDetails = null;
+                    payment.Notes = null;
                 }
                 affectedRecords["Payments"] = payments.Count;
 
@@ -270,31 +270,31 @@ public class DataAnonymizationService : IDataAnonymizationService
 
                 // 15. Delete saved addresses and favorites
                 var savedAddresses = await _context.SavedAddresses
-                    .Where(sa => sa.CustomerId == (customer != null ? customer.Id : Guid.Empty))
+                    .Where(sa => sa.CustomerId == userId)
                     .ToListAsync();
                 _context.SavedAddresses.RemoveRange(savedAddresses);
                 affectedRecords["SavedAddresses"] = savedAddresses.Count;
 
-                if (customer != null)
-                {
-                    var favoriteDrivers = await _context.FavoriteDrivers
-                        .Where(fd => fd.CustomerId == customer.Id)
-                        .ToListAsync();
-                    _context.FavoriteDrivers.RemoveRange(favoriteDrivers);
-                    affectedRecords["FavoriteDrivers"] = favoriteDrivers.Count;
-                }
+                var favoriteDrivers = await _context.FavoriteDrivers
+                    .Where(fd => fd.CustomerId == userId)
+                    .ToListAsync();
+                _context.FavoriteDrivers.RemoveRange(favoriteDrivers);
+                affectedRecords["FavoriteDrivers"] = favoriteDrivers.Count;
 
                 await _context.SaveChangesAsync();
                 await transaction.CommitAsync();
 
                 // Log the anonymization
                 await _activityLogService.LogActivityAsync(
-                    userId: "SYSTEM",
                     action: "user_data_anonymized",
                     entityType: "User",
                     entityId: userId,
+                    entityName: user?.UserName ?? user?.Email ?? userId,
                     description: $"User data anonymized (GDPR compliance)",
                     severity: "WARNING",
+                    userId: "SYSTEM",
+                    userName: "System",
+                    userEmail: "system@platform.com",
                     metadata: new Dictionary<string, object>
                     {
                         ["AnonymizedEmail"] = anonymizedEmail,
@@ -348,12 +348,12 @@ public class DataAnonymizationService : IDataAnonymizationService
                 exportData["CustomerProfile"] = customer;
 
                 var savedAddresses = await _context.SavedAddresses
-                    .Where(sa => sa.CustomerId == customer.Id)
+                    .Where(sa => sa.CustomerId == userId)
                     .ToListAsync();
                 exportData["SavedAddresses"] = savedAddresses;
 
                 var favoriteDrivers = await _context.FavoriteDrivers
-                    .Where(fd => fd.CustomerId == customer.Id)
+                    .Where(fd => fd.CustomerId == userId)
                     .ToListAsync();
                 exportData["FavoriteDrivers"] = favoriteDrivers;
             }
@@ -467,10 +467,10 @@ public class DataAnonymizationService : IDataAnonymizationService
                 // Delete saved addresses, favorites
                 if (customer != null)
                 {
-                    var savedAddresses = await _context.SavedAddresses.Where(sa => sa.CustomerId == customer.Id).ToListAsync();
+                    var savedAddresses = await _context.SavedAddresses.Where(sa => sa.CustomerId == userId).ToListAsync();
                     _context.SavedAddresses.RemoveRange(savedAddresses);
 
-                    var favoriteDrivers = await _context.FavoriteDrivers.Where(fd => fd.CustomerId == customer.Id).ToListAsync();
+                    var favoriteDrivers = await _context.FavoriteDrivers.Where(fd => fd.CustomerId == userId).ToListAsync();
                     _context.FavoriteDrivers.RemoveRange(favoriteDrivers);
 
                     _context.Customers.Remove(customer);
@@ -539,8 +539,8 @@ public class DataAnonymizationService : IDataAnonymizationService
 
         if (customer != null)
         {
-            summary["SavedAddresses"] = await _context.SavedAddresses.CountAsync(sa => sa.CustomerId == customer.Id);
-            summary["FavoriteDrivers"] = await _context.FavoriteDrivers.CountAsync(fd => fd.CustomerId == customer.Id);
+            summary["SavedAddresses"] = await _context.SavedAddresses.CountAsync(sa => sa.CustomerId == userId);
+            summary["FavoriteDrivers"] = await _context.FavoriteDrivers.CountAsync(fd => fd.CustomerId == userId);
         }
 
         if (driver != null)
