@@ -352,8 +352,7 @@ public class AdminDashboardController : ControllerBase
             .ToListAsync();
 
         var peakHours = await _context.Jobs
-            .Where(j => j.ScheduledDate.HasValue)
-            .GroupBy(j => j.ScheduledDate!.Value.Hour)
+            .GroupBy(j => j.ScheduledDate.Hour)
             .Select(g => new { hour = g.Key, count = g.Count() })
             .OrderByDescending(x => x.count)
             .Take(5)
@@ -416,7 +415,9 @@ public class AdminDashboardController : ControllerBase
         {
             revenueTrend,
             paymentMethodBreakdown,
-            refunds = refundStats ?? new { totalRefunds = 0, totalRefundAmount = 0m }
+            refunds = refundStats != null
+                ? new { refundStats.totalRefunds, refundStats.totalRefundAmount }
+                : new { totalRefunds = 0, totalRefundAmount = (decimal?)0 }
         });
     }
 
@@ -522,7 +523,7 @@ public class AdminDashboardController : ControllerBase
                 entityType = a.EntityType,
                 entityId = a.EntityId,
                 description = a.Description,
-                details = a.Details,
+                metadata = a.MetadataJson,
                 severity = a.Severity,
                 timestamp = a.Timestamp
             })
