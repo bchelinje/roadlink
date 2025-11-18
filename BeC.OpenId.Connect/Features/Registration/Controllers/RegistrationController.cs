@@ -11,8 +11,8 @@ using BeC.OpenId.Connect.Features.Drivers.Dtos;
 using BeC.OpenId.Connect.Features.Customers.Dtos;
 using BeC.OpenId.Connect.Features.Registration.Dtos;
 using BeC.OpenId.Connect.Features.ActivityLogs.Services.Interfaces;
-using BeC.OpenId.Connect.Infrastructure.Authorization;
 using BeC.Common.Data.Repositories.Interfaces;
+using AuthRoles = BeC.OpenId.Connect.Infrastructure.Authorization.Roles;
 
 namespace BeC.OpenId.Connect.Features.Registration.Controllers;
 
@@ -90,7 +90,7 @@ public class RegistrationController : ControllerBase
         }
 
         // Assign Customer role
-        await _userManager.AddToRoleAsync(user, Roles.Customer);
+        await _userManager.AddToRoleAsync(user, AuthRoles.Customer);
 
         // Create Customer profile
         var customer = new Customer
@@ -202,7 +202,7 @@ public class RegistrationController : ControllerBase
         }
 
         // Assign Driver role
-        await _userManager.AddToRoleAsync(user, Roles.Driver);
+        await _userManager.AddToRoleAsync(user, AuthRoles.Driver);
 
         // Create Driver profile
         var driver = new Driver
@@ -265,7 +265,7 @@ public class RegistrationController : ControllerBase
     /// </summary>
     [HttpPost("driver/vehicle")]
     [Authorize(AuthenticationSchemes = OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme)]
-    [Authorize(Roles = Roles.Driver)]
+    [Authorize(Roles = AuthRoles.Driver)]
     [ProducesResponseType(typeof(Vehicle), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
@@ -383,7 +383,7 @@ public class RegistrationController : ControllerBase
     /// </summary>
     [HttpGet("driver/vehicle/{id}")]
     [Authorize(AuthenticationSchemes = OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme)]
-    [Authorize(Roles = Roles.Driver)]
+    [Authorize(Roles = AuthRoles.Driver)]
     [ProducesResponseType(typeof(Vehicle), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<Vehicle>> GetVehicle(Guid id)
@@ -414,7 +414,7 @@ public class RegistrationController : ControllerBase
     /// </summary>
     [HttpPost("driver/documents")]
     [Authorize(AuthenticationSchemes = OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme)]
-    [Authorize(Roles = Roles.Driver)]
+    [Authorize(Roles = AuthRoles.Driver)]
     [ProducesResponseType(typeof(DriverDocument), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<DriverDocument>> UploadDocument([FromBody] DocumentUploadRequest request)
@@ -500,7 +500,7 @@ public class RegistrationController : ControllerBase
     /// </summary>
     [HttpGet("driver/documents")]
     [Authorize(AuthenticationSchemes = OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme)]
-    [Authorize(Roles = Roles.Driver)]
+    [Authorize(Roles = AuthRoles.Driver)]
     [ProducesResponseType(typeof(List<DriverDocument>), StatusCodes.Status200OK)]
     public async Task<ActionResult<List<DriverDocument>>> GetMyDocuments()
     {
@@ -526,7 +526,7 @@ public class RegistrationController : ControllerBase
     /// </summary>
     [HttpGet("driver/documents/{id}")]
     [Authorize(AuthenticationSchemes = OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme)]
-    [Authorize(Roles = Roles.Driver)]
+    [Authorize(Roles = AuthRoles.Driver)]
     [ProducesResponseType(typeof(DriverDocument), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<DriverDocument>> GetDocument(Guid id)
@@ -565,7 +565,7 @@ public class RegistrationController : ControllerBase
         var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
         // Users can only check their own status unless they're an admin
-        if (currentUserId != userId && !User.IsInRole(Roles.Admin) && !User.IsInRole(Roles.SuperAdmin))
+        if (currentUserId != userId && !User.IsInRole(AuthRoles.Admin) && !User.IsInRole(AuthRoles.SuperAdmin))
         {
             return Forbid();
         }
@@ -588,13 +588,13 @@ public class RegistrationController : ControllerBase
             Driver = (object?)null
         };
 
-        if (roles.Contains(Roles.Customer))
+        if (roles.Contains(AuthRoles.Customer))
         {
             var customer = await _repository.GetEntity<Customer>(c => c.UserId == userId);
             response = response with { Customer = customer };
         }
 
-        if (roles.Contains(Roles.Driver))
+        if (roles.Contains(AuthRoles.Driver))
         {
             var driver = await _context.Drivers
                 .Include(d => d.Vehicles)

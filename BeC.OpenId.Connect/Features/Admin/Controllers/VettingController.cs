@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -7,8 +8,8 @@ using BeC.OpenId.Connect.Dto;
 using BeC.OpenId.Connect.Features.Drivers.Dtos;
 using BeC.OpenId.Connect.Features.Customers.Dtos;
 using BeC.OpenId.Connect.Features.ActivityLogs.Services.Interfaces;
-using BeC.OpenId.Connect.Infrastructure.Authorization;
 using BeC.Common.Data.Repositories.Interfaces;
+using AuthRoles = BeC.OpenId.Connect.Infrastructure.Authorization.Roles;
 
 namespace BeC.OpenId.Connect.Features.Admin.Controllers;
 
@@ -19,7 +20,7 @@ namespace BeC.OpenId.Connect.Features.Admin.Controllers;
 [ApiController]
 [Route("api/admin/[controller]")]
 [Authorize(AuthenticationSchemes = OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme)]
-[Authorize(Roles = $"{Roles.Admin},{Roles.SuperAdmin}")]
+[Authorize(Roles = $"{AuthRoles.Admin},{AuthRoles.SuperAdmin}")]
 [Produces("application/json")]
 public class VettingController : ControllerBase
 {
