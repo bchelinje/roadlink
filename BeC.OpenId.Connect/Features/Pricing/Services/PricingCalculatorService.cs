@@ -171,6 +171,85 @@ public class PricingCalculatorService : IPricingCalculatorService
             }
         }
 
+        // 7a. Calculate stairs/floor charges
+        var stairsFloorCharges = 0m;
+
+        // Pickup floor charge (if no elevator and above ground floor)
+        if (request.PickupFloorNumber.HasValue && request.PickupFloorNumber > 1 &&
+            request.PickupHasElevator == false)
+        {
+            var floorRule = rules.FirstOrDefault(r => r.Type == "service_addon" &&
+                r.ServiceAddonType == "floor_charge");
+            if (floorRule?.FixedAmount != null)
+            {
+                var floorCharge = floorRule.FixedAmount.Value * (request.PickupFloorNumber.Value - 1);
+                stairsFloorCharges += floorCharge;
+                breakdown.Add(new PriceBreakdownItem
+                {
+                    Description = $"Pickup Floor Charge (Floor {request.PickupFloorNumber}, No Elevator)",
+                    Amount = floorCharge,
+                    Details = $"{request.PickupFloorNumber.Value - 1} floors @ ${floorRule.FixedAmount:F2}/floor"
+                });
+            }
+        }
+
+        // Delivery floor charge (if no elevator and above ground floor)
+        if (request.DeliveryFloorNumber.HasValue && request.DeliveryFloorNumber > 1 &&
+            request.DeliveryHasElevator == false)
+        {
+            var floorRule = rules.FirstOrDefault(r => r.Type == "service_addon" &&
+                r.ServiceAddonType == "floor_charge");
+            if (floorRule?.FixedAmount != null)
+            {
+                var floorCharge = floorRule.FixedAmount.Value * (request.DeliveryFloorNumber.Value - 1);
+                stairsFloorCharges += floorCharge;
+                breakdown.Add(new PriceBreakdownItem
+                {
+                    Description = $"Delivery Floor Charge (Floor {request.DeliveryFloorNumber}, No Elevator)",
+                    Amount = floorCharge,
+                    Details = $"{request.DeliveryFloorNumber.Value - 1} floors @ ${floorRule.FixedAmount:F2}/floor"
+                });
+            }
+        }
+
+        // Additional stairs charge
+        if (request.NumberOfStairFlights.HasValue && request.NumberOfStairFlights > 0)
+        {
+            var stairsRule = rules.FirstOrDefault(r => r.Type == "service_addon" &&
+                r.ServiceAddonType == "stairs_charge");
+            if (stairsRule?.FixedAmount != null)
+            {
+                var stairsCharge = stairsRule.FixedAmount.Value * request.NumberOfStairFlights.Value;
+                stairsFloorCharges += stairsCharge;
+                breakdown.Add(new PriceBreakdownItem
+                {
+                    Description = $"Stairs Charge",
+                    Amount = stairsCharge,
+                    Details = $"{request.NumberOfStairFlights} flight(s) @ ${stairsRule.FixedAmount:F2}/flight"
+                });
+            }
+        }
+
+        result.ServiceAddonsCharge += stairsFloorCharges;
+
+        // 7b. Calculate waiting time charges
+        if (request.WaitingTimeMinutes.HasValue && request.WaitingTimeMinutes > 0)
+        {
+            var waitingRule = rules.FirstOrDefault(r => r.Type == "service_addon" &&
+                r.ServiceAddonType == "waiting_time");
+            if (waitingRule?.PerMinuteRate != null)
+            {
+                var waitingCharge = waitingRule.PerMinuteRate.Value * request.WaitingTimeMinutes.Value;
+                result.ServiceAddonsCharge += waitingCharge;
+                breakdown.Add(new PriceBreakdownItem
+                {
+                    Description = $"Waiting Time Charge",
+                    Amount = waitingCharge,
+                    Details = $"{request.WaitingTimeMinutes} min @ ${waitingRule.PerMinuteRate:F4}/min"
+                });
+            }
+        }
+
         // 8. Calculate subtotal
         result.SubTotal = result.BaseFare + result.DistanceCharge + result.TimeCharge +
                          result.VehicleTypeCharge + result.ServiceAddonsCharge;

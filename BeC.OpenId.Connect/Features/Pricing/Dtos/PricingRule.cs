@@ -79,6 +79,16 @@ public class PricingCalculationRequest
     public List<string>? ServiceAddons { get; set; }
     public int? NumberOfHelpers { get; set; }
 
+    // Stairs and floor charges
+    public int? PickupFloorNumber { get; set; }
+    public int? DeliveryFloorNumber { get; set; }
+    public bool? PickupHasElevator { get; set; }
+    public bool? DeliveryHasElevator { get; set; }
+    public int? NumberOfStairFlights { get; set; }
+
+    // Waiting time charges
+    public int? WaitingTimeMinutes { get; set; }
+
     // Optional: if already calculated
     public double? DistanceInMiles { get; set; }
     public int? EstimatedDurationMinutes { get; set; }

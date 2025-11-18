@@ -229,6 +229,55 @@ public class Job
     public DateTime? CompletedAt { get; set; }
 }
 
+// Models/JobBid.cs
+[Table("JobBids")]
+public class JobBid
+{
+    [Key]
+    public Guid Id { get; set; } = Guid.NewGuid();
+
+    [Required]
+    public Guid JobId { get; set; }
+
+    [ForeignKey(nameof(JobId))]
+    public virtual Job Job { get; set; } = null!;
+
+    [Required]
+    public Guid DriverId { get; set; }
+
+    [ForeignKey(nameof(DriverId))]
+    public virtual Driver Driver { get; set; } = null!;
+
+    // Bid Details
+    [Required]
+    [Column(TypeName = "decimal(10,2)")]
+    public decimal BidAmount { get; set; }
+
+    [Column(TypeName = "nvarchar(max)")]
+    public string? Message { get; set; }
+
+    public int? EstimatedDuration { get; set; } // minutes
+
+    public DateTime? ProposedPickupTime { get; set; }
+
+    // Status
+    [Required]
+    [MaxLength(20)]
+    public string Status { get; set; } = "pending"; // pending, accepted, rejected, withdrawn, expired
+
+    // Accepted/Rejected info
+    public string? ResponseMessage { get; set; }
+    public DateTime? RespondedAt { get; set; }
+    public string? RespondedBy { get; set; } // Customer user ID
+
+    // Expiry
+    public DateTime? ExpiresAt { get; set; }
+
+    // Audit
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+}
+
 // Models/DriverDocument.cs
 [Table("DriverDocuments")]
 public class DriverDocument

@@ -716,6 +716,64 @@ public class DriversController : ControllerBase
     }
 
     /// <summary>
+    /// Decline a job assignment
+    /// </summary>
+    [HttpPost("me/jobs/{jobId}/decline")]
+    [Authorize(AuthenticationSchemes = OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme, Roles = "Driver")]
+    [ProducesResponseType(typeof(JobDto), StatusCodes.Status200OK)]
+    public async Task<ActionResult<JobDto>> DeclineJob(Guid jobId, [FromBody] DeclineJobDto? dto)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        var driver = await _context.Drivers.FirstOrDefaultAsync(d => d.UserId == userId);
+
+        if (driver == null)
+            return NotFound("Driver profile not found");
+
+        var job = await _context.Jobs.FirstOrDefaultAsync(j => j.Id == jobId && j.DriverId == driver.Id);
+
+        if (job == null)
+            return NotFound("Job not found or not assigned to you");
+
+        if (job.Status != "assigned" && job.Status != "accepted")
+            return BadRequest($"Job cannot be declined in current status: {job.Status}");
+
+        // Unassign job and return to marketplace
+        job.DriverId = null;
+        job.DriverName = null;
+        job.Status = "pending";
+        job.UpdatedAt = DateTime.UtcNow;
+
+        // Update driver stats
+        driver.TotalJobs = Math.Max(0, driver.TotalJobs - 1);
+        driver.ActiveJobs = Math.Max(0, driver.ActiveJobs - 1);
+
+        // Add to status history
+        var reason = dto?.Reason ?? "Driver declined job";
+        AddStatusHistory(job, "declined", userId!, reason);
+
+        await _context.SaveChangesAsync();
+
+        await _activityLogService.LogActivityAsync(
+            action: "job.declined",
+            entityType: "Job",
+            entityId: jobId.ToString(),
+            entityName: job.JobNumber,
+            description: $"Driver declined job {job.JobNumber}",
+            severity: "INFO",
+            metadata: new Dictionary<string, object>
+            {
+                { "DriverId", driver.Id },
+                { "DriverName", $"{driver.FirstName} {driver.LastName}" },
+                { "CustomerId", job.CustomerId },
+                { "CustomerName", job.CustomerName },
+                { "Reason", reason }
+            }
+        );
+
+        return Ok(MapJobToDto(job));
+    }
+
+    /// <summary>
     /// Start a job
     /// </summary>
     [HttpPost("me/jobs/{jobId}/start")]
@@ -1759,6 +1817,11 @@ public class UploadJobPhotoRequest
     public string Type { get; set; }
 
     public string? Caption { get; set; }
+}
+
+public class DeclineJobDto
+{
+    public string? Reason { get; set; }
 }
 
 #endregion
