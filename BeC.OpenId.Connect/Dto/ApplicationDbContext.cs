@@ -9,6 +9,10 @@ using BeC.OpenId.Connect.Features.Location.Dtos;
 using BeC.OpenId.Connect.Features.Customers.Dtos;
 using BeC.OpenId.Connect.Features.Jobs.Dtos;
 using BeC.OpenId.Connect.Features.Settings.Dtos;
+using BeC.OpenId.Connect.Features.Support.Dtos;
+using BeC.OpenId.Connect.Features.Messages.Dtos;
+using BeC.OpenId.Connect.Features.Complaints.Dtos;
+using BeC.OpenId.Connect.Features.HelpCenter.Dtos;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 
@@ -41,6 +45,13 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     public DbSet<DriverSettings> DriverSettings { get; set; }
     public DbSet<CustomerSettings> CustomerSettings { get; set; }
     public DbSet<PlatformSettings> PlatformSettings { get; set; }
+    public DbSet<SupportTicket> SupportTickets { get; set; }
+    public DbSet<TicketMessage> TicketMessages { get; set; }
+    public DbSet<ChatMessage> ChatMessages { get; set; }
+    public DbSet<Conversation> Conversations { get; set; }
+    public DbSet<Complaint> Complaints { get; set; }
+    public DbSet<FAQ> FAQs { get; set; }
+    public DbSet<HelpArticle> HelpArticles { get; set; }
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -366,6 +377,89 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             entity.HasIndex(e => e.SettingKey).IsUnique();
             entity.HasIndex(e => e.Category);
             entity.HasIndex(e => e.IsPublic);
+        });
+
+        // SupportTicket configuration
+        builder.Entity<SupportTicket>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.TicketNumber).IsUnique();
+            entity.HasIndex(e => e.UserId);
+            entity.HasIndex(e => e.Status);
+            entity.HasIndex(e => e.Priority);
+            entity.HasIndex(e => e.Category);
+            entity.HasIndex(e => e.AssignedToId);
+            entity.HasIndex(e => e.CreatedAt);
+        });
+
+        // TicketMessage configuration
+        builder.Entity<TicketMessage>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.TicketId);
+            entity.HasIndex(e => e.SenderId);
+            entity.HasIndex(e => e.CreatedAt);
+        });
+
+        // ChatMessage configuration
+        builder.Entity<ChatMessage>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.ConversationId);
+            entity.HasIndex(e => e.SenderId);
+            entity.HasIndex(e => e.RecipientId);
+            entity.HasIndex(e => e.JobId);
+            entity.HasIndex(e => e.IsRead);
+            entity.HasIndex(e => e.CreatedAt);
+        });
+
+        // Conversation configuration
+        builder.Entity<Conversation>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.User1Id);
+            entity.HasIndex(e => e.User2Id);
+            entity.HasIndex(e => e.JobId);
+            entity.HasIndex(e => e.Status);
+            entity.HasIndex(e => new { e.User1Id, e.User2Id }).IsUnique();
+        });
+
+        // Complaint configuration
+        builder.Entity<Complaint>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.ComplaintNumber).IsUnique();
+            entity.HasIndex(e => e.ComplainantId);
+            entity.HasIndex(e => e.SubjectId);
+            entity.HasIndex(e => e.Status);
+            entity.HasIndex(e => e.Severity);
+            entity.HasIndex(e => e.Category);
+            entity.HasIndex(e => e.JobId);
+            entity.HasIndex(e => e.AssignedToId);
+            entity.HasIndex(e => e.CreatedAt);
+        });
+
+        // FAQ configuration
+        builder.Entity<FAQ>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.Slug).IsUnique();
+            entity.HasIndex(e => e.Category);
+            entity.HasIndex(e => e.TargetAudience);
+            entity.HasIndex(e => e.IsPublished);
+            entity.HasIndex(e => e.DisplayOrder);
+        });
+
+        // HelpArticle configuration
+        builder.Entity<HelpArticle>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.Slug).IsUnique();
+            entity.HasIndex(e => e.Category);
+            entity.HasIndex(e => e.TargetAudience);
+            entity.HasIndex(e => e.IsPublished);
+            entity.HasIndex(e => e.ArticleType);
+            entity.HasIndex(e => e.DisplayOrder);
         });
     }
 }
