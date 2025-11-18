@@ -1,426 +1,428 @@
+using System.Security.Claims;
+using System.Text.Json;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using OpenIddict.Validation.AspNetCore;
 using BeC.OpenId.Connect.Dto;
 using BeC.OpenId.Connect.Features.Messages.Dtos;
-using System.Security.Claims;
+using BeC.OpenId.Connect.Features.Messages.Models;
+using BeC.OpenId.Connect.Features.Users.Dtos;
 using BeC.OpenId.Connect.Features.ActivityLogs.Services.Interfaces;
-using OpenIddict.Validation.AspNetCore;
+using AuthRoles = BeC.OpenId.Connect.Infrastructure.Authorization.Roles;
 
 namespace BeC.OpenId.Connect.Features.Messages.Controllers;
 
+/// <summary>
+/// In-app messaging between customers and drivers
+/// </summary>
 [ApiController]
 [Route("api/[controller]")]
 [Authorize(AuthenticationSchemes = OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme)]
+[Produces("application/json")]
 public class MessagesController : ControllerBase
 {
     private readonly ApplicationDbContext _context;
-    private readonly ILogger<MessagesController> _logger;
+    private readonly UserManager<ApplicationUser> _userManager;
     private readonly IActivityLogService _activityLogService;
+    private readonly ILogger<MessagesController> _logger;
 
     public MessagesController(
         ApplicationDbContext context,
-        ILogger<MessagesController> logger,
-        IActivityLogService activityLogService)
+        UserManager<ApplicationUser> userManager,
+        IActivityLogService activityLogService,
+        ILogger<MessagesController> logger)
     {
         _context = context;
-        _logger = logger;
+        _userManager = userManager;
         _activityLogService = activityLogService;
+        _logger = logger;
     }
 
     /// <summary>
-    /// Send a message in a job conversation
+    /// Send a message to another user
     /// </summary>
-    [HttpPost]
-    [ProducesResponseType(typeof(MessageDto), StatusCodes.Status201Created)]
+    [HttpPost("send")]
+    [ProducesResponseType(typeof(ChatMessage), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<MessageDto>> SendMessage([FromBody] SendMessageDto dto)
+    public async Task<ActionResult<ChatMessage>> SendMessage([FromBody] SendMessageDto request)
     {
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
         if (string.IsNullOrEmpty(userId))
             return Unauthorized();
 
-        // Get the job
-        var job = await _context.Jobs.FirstOrDefaultAsync(j => j.Id == dto.JobId);
-        if (job == null)
-            return NotFound("Job not found");
+        var user = await _userManager.FindByIdAsync(userId);
+        if (user == null)
+            return NotFound("User not found");
 
-        // Determine sender and receiver
-        string senderType;
-        string receiverId;
-        string receiverType;
-        string? senderName = null;
-        string? receiverName = null;
+        var recipient = await _userManager.FindByIdAsync(request.RecipientId);
+        if (recipient == null)
+            return NotFound("Recipient not found");
 
-        var driver = await _context.Drivers.FirstOrDefaultAsync(d => d.UserId == userId);
-        bool isDriver = driver != null && job.DriverId == driver.Id;
-        bool isCustomer = job.CustomerId == userId;
+        var userRoles = await _userManager.GetRolesAsync(user);
+        var recipientRoles = await _userManager.GetRolesAsync(recipient);
 
-        if (isDriver)
+        var senderType = userRoles.Contains(AuthRoles.Driver) ? "driver" :
+                         userRoles.Contains(AuthRoles.Admin) ? "admin" : "customer";
+        var recipientType = recipientRoles.Contains(AuthRoles.Driver) ? "driver" :
+                           recipientRoles.Contains(AuthRoles.Admin) ? "admin" : "customer";
+
+        // Find or create conversation
+        var conversation = await _context.Conversations
+            .FirstOrDefaultAsync(c =>
+                (c.User1Id == userId && c.User2Id == request.RecipientId) ||
+                (c.User1Id == request.RecipientId && c.User2Id == userId));
+
+        if (conversation == null)
         {
-            senderType = "driver";
-            receiverId = job.CustomerId;
-            receiverType = "customer";
-            senderName = $"{driver!.FirstName} {driver.LastName}";
-            receiverName = job.CustomerName;
-        }
-        else if (isCustomer)
-        {
-            senderType = "customer";
-            if (job.DriverId == null)
-                return BadRequest("Job does not have an assigned driver yet");
-
-            receiverId = _context.Drivers
-                .Where(d => d.Id == job.DriverId)
-                .Select(d => d.UserId)
-                .FirstOrDefault() ?? "";
-
-            if (string.IsNullOrEmpty(receiverId))
-                return BadRequest("Could not find driver user ID");
-
-            receiverType = "driver";
-            senderName = job.CustomerName;
-            receiverName = job.DriverName;
-        }
-        else
-        {
-            return Forbid("You are not authorized to send messages for this job");
+            conversation = new Conversation
+            {
+                User1Id = userId,
+                User1Name = user.DisplayName ?? user.UserName ?? "Unknown",
+                User1Type = senderType,
+                User2Id = request.RecipientId,
+                User2Name = recipient.DisplayName ?? recipient.UserName ?? "Unknown",
+                User2Type = recipientType,
+                JobId = request.JobId
+            };
+            _context.Conversations.Add(conversation);
+            await _context.SaveChangesAsync();
         }
 
-        // Create the message
-        var message = new Message
+        var message = new ChatMessage
         {
-            JobId = dto.JobId,
+            ConversationId = conversation.Id,
             SenderId = userId,
-            SenderName = senderName,
+            SenderName = user.DisplayName ?? user.UserName ?? "Unknown",
             SenderType = senderType,
-            ReceiverId = receiverId,
-            ReceiverName = receiverName,
-            ReceiverType = receiverType,
-            Content = dto.Content,
-            MessageType = dto.MessageType ?? "text",
-            Attachments = dto.Attachments,
-            Status = "sent",
-            CreatedAt = DateTime.UtcNow,
-            UpdatedAt = DateTime.UtcNow
+            RecipientId = request.RecipientId,
+            RecipientName = recipient.DisplayName ?? recipient.UserName ?? "Unknown",
+            RecipientType = recipientType,
+            Message = request.Message,
+            MessageType = request.MessageType,
+            JobId = request.JobId,
+            Attachment = request.Attachment != null ? JsonSerializer.Serialize(request.Attachment) : null,
+            LocationData = request.LocationData != null ? JsonSerializer.Serialize(request.LocationData) : null
         };
 
-        _context.Messages.Add(message);
+        _context.ChatMessages.Add(message);
+
+        // Update conversation
+        conversation.LastMessage = request.Message.Length > 100 ? request.Message.Substring(0, 100) + "..." : request.Message;
+        conversation.LastMessageAt = DateTime.UtcNow;
+        conversation.LastMessageSenderId = userId;
+        conversation.UpdatedAt = DateTime.UtcNow;
+
+        // Increment unread count for recipient
+        if (conversation.User1Id == request.RecipientId)
+            conversation.User1UnreadCount++;
+        else
+            conversation.User2UnreadCount++;
+
         await _context.SaveChangesAsync();
 
         await _activityLogService.LogActivityAsync(
-            action: "message.sent",
-            entityType: "Message",
-            entityId: message.Id.ToString(),
-            entityName: $"Message for Job {job.JobNumber}",
-            description: $"{senderType} sent a message for job {job.JobNumber}",
-            severity: "INFO",
-            metadata: new Dictionary<string, object>
-            {
-                { "JobId", job.Id },
-                { "JobNumber", job.JobNumber },
-                { "SenderType", senderType },
-                { "ReceiverType", receiverType }
-            }
+            userId,
+            "message_sent",
+            "ChatMessage",
+            message.Id.ToString(),
+            $"To: {recipient.DisplayName ?? recipient.UserName}",
+            $"Sent message"
         );
 
-        // TODO: Send push notification to receiver
-
-        return CreatedAtAction(nameof(GetMessage), new { id = message.Id }, MapToDto(message));
+        return CreatedAtAction(nameof(GetMessage), new { id = message.Id }, message);
     }
 
     /// <summary>
     /// Get a specific message
     /// </summary>
     [HttpGet("{id}")]
-    [ProducesResponseType(typeof(MessageDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ChatMessage), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<MessageDto>> GetMessage(Guid id)
+    public async Task<ActionResult<ChatMessage>> GetMessage(Guid id)
     {
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
         if (string.IsNullOrEmpty(userId))
             return Unauthorized();
 
-        var message = await _context.Messages.FirstOrDefaultAsync(m => m.Id == id);
+        var message = await _context.ChatMessages.FindAsync(id);
         if (message == null)
             return NotFound();
 
-        // Authorization: only sender or receiver can view
-        if (message.SenderId != userId && message.ReceiverId != userId &&
-            !User.IsInRole("Admin") && !User.IsInRole("SuperAdmin"))
+        // Verify user is part of conversation
+        if (message.SenderId != userId && message.RecipientId != userId)
             return Forbid();
 
-        // Mark as read if the user is the receiver and it's not already read
-        if (message.ReceiverId == userId && !message.IsRead)
+        // Mark as read if recipient is viewing
+        if (message.RecipientId == userId && !message.IsRead)
         {
             message.IsRead = true;
             message.ReadAt = DateTime.UtcNow;
-            message.Status = "read";
-            message.UpdatedAt = DateTime.UtcNow;
             await _context.SaveChangesAsync();
         }
 
-        return Ok(MapToDto(message));
-    }
-
-    /// <summary>
-    /// Get all messages for a job (conversation)
-    /// </summary>
-    [HttpGet("job/{jobId}")]
-    [ProducesResponseType(typeof(ConversationDto), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<ConversationDto>> GetJobConversation(
-        Guid jobId,
-        [FromQuery] int? limit = 50,
-        [FromQuery] DateTime? before = null)
-    {
-        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        if (string.IsNullOrEmpty(userId))
-            return Unauthorized();
-
-        var job = await _context.Jobs.FirstOrDefaultAsync(j => j.Id == jobId);
-        if (job == null)
-            return NotFound("Job not found");
-
-        // Authorization: only customer or assigned driver can view
-        var driver = await _context.Drivers.FirstOrDefaultAsync(d => d.UserId == userId);
-        bool isDriver = driver != null && job.DriverId == driver.Id;
-        bool isCustomer = job.CustomerId == userId;
-
-        if (!isDriver && !isCustomer && !User.IsInRole("Admin") && !User.IsInRole("SuperAdmin"))
-            return Forbid();
-
-        // Get messages
-        var query = _context.Messages.Where(m => m.JobId == jobId);
-
-        if (before.HasValue)
-            query = query.Where(m => m.CreatedAt < before.Value);
-
-        var messages = await query
-            .OrderByDescending(m => m.CreatedAt)
-            .Take(limit ?? 50)
-            .ToListAsync();
-
-        // Mark unread messages as read
-        var unreadMessages = messages.Where(m => m.ReceiverId == userId && !m.IsRead).ToList();
-        foreach (var msg in unreadMessages)
-        {
-            msg.IsRead = true;
-            msg.ReadAt = DateTime.UtcNow;
-            msg.Status = "read";
-            msg.UpdatedAt = DateTime.UtcNow;
-        }
-
-        if (unreadMessages.Any())
-            await _context.SaveChangesAsync();
-
-        // Reverse to chronological order
-        messages.Reverse();
-
-        var unreadCount = await _context.Messages
-            .CountAsync(m => m.JobId == jobId && m.ReceiverId == userId && !m.IsRead);
-
-        return Ok(new ConversationDto
-        {
-            JobId = jobId,
-            JobNumber = job.JobNumber,
-            Messages = messages.Select(MapToDto).ToList(),
-            TotalMessages = await _context.Messages.CountAsync(m => m.JobId == jobId),
-            UnreadCount = unreadCount
-        });
+        return Ok(message);
     }
 
     /// <summary>
     /// Get all conversations for the current user
     /// </summary>
     [HttpGet("conversations")]
-    [ProducesResponseType(typeof(List<ConversationSummaryDto>), StatusCodes.Status200OK)]
-    public async Task<ActionResult<List<ConversationSummaryDto>>> GetUserConversations()
+    [ProducesResponseType(typeof(List<Conversation>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<List<Conversation>>> GetConversations(
+        [FromQuery] string? status = null,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 20)
     {
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
         if (string.IsNullOrEmpty(userId))
             return Unauthorized();
 
-        // Get all jobs where user is customer or driver
-        var driver = await _context.Drivers.FirstOrDefaultAsync(d => d.UserId == userId);
+        var query = _context.Conversations
+            .Where(c => c.User1Id == userId || c.User2Id == userId);
 
-        var jobIds = await _context.Jobs
-            .Where(j => j.CustomerId == userId || (driver != null && j.DriverId == driver.Id))
-            .Select(j => j.Id)
+        if (!string.IsNullOrEmpty(status))
+            query = query.Where(c => c.Status == status);
+
+        var conversations = await query
+            .OrderByDescending(c => c.LastMessageAt)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
             .ToListAsync();
 
-        // Get conversations (jobs with messages)
-        var conversations = await _context.Messages
-            .Where(m => jobIds.Contains(m.JobId))
-            .GroupBy(m => m.JobId)
-            .Select(g => new
-            {
-                JobId = g.Key,
-                LastMessage = g.OrderByDescending(m => m.CreatedAt).FirstOrDefault(),
-                UnreadCount = g.Count(m => m.ReceiverId == userId && !m.IsRead),
-                TotalMessages = g.Count()
-            })
-            .ToListAsync();
-
-        var result = new List<ConversationSummaryDto>();
-
-        foreach (var conv in conversations)
-        {
-            var job = await _context.Jobs.FirstOrDefaultAsync(j => j.Id == conv.JobId);
-            if (job == null) continue;
-
-            result.Add(new ConversationSummaryDto
-            {
-                JobId = conv.JobId,
-                JobNumber = job.JobNumber,
-                JobStatus = job.Status,
-                OtherPartyName = driver != null && job.DriverId == driver.Id
-                    ? job.CustomerName
-                    : job.DriverName ?? "Unassigned",
-                LastMessage = conv.LastMessage != null ? MapToDto(conv.LastMessage) : null,
-                UnreadCount = conv.UnreadCount,
-                TotalMessages = conv.TotalMessages,
-                LastMessageAt = conv.LastMessage?.CreatedAt
-            });
-        }
-
-        return Ok(result.OrderByDescending(c => c.LastMessageAt).ToList());
+        return Ok(conversations);
     }
 
     /// <summary>
-    /// Mark message(s) as read
+    /// Get messages for a specific conversation
     /// </summary>
-    [HttpPost("{id}/mark-read")]
-    [ProducesResponseType(StatusCodes.Status200OK)]
+    [HttpGet("conversations/{conversationId}/messages")]
+    [ProducesResponseType(typeof(List<ChatMessage>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult> MarkAsRead(Guid id)
+    public async Task<ActionResult<List<ChatMessage>>> GetConversationMessages(
+        Guid conversationId,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 50)
     {
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
         if (string.IsNullOrEmpty(userId))
             return Unauthorized();
 
-        var message = await _context.Messages.FirstOrDefaultAsync(m => m.Id == id);
-        if (message == null)
-            return NotFound();
+        var conversation = await _context.Conversations.FindAsync(conversationId);
+        if (conversation == null)
+            return NotFound("Conversation not found");
 
-        if (message.ReceiverId != userId)
+        // Verify user is part of conversation
+        if (conversation.User1Id != userId && conversation.User2Id != userId)
             return Forbid();
 
-        if (!message.IsRead)
+        var messages = await _context.ChatMessages
+            .Where(m => m.ConversationId == conversationId && !m.IsDeleted)
+            .OrderByDescending(m => m.CreatedAt)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync();
+
+        // Mark messages as read
+        var unreadMessages = messages.Where(m => m.RecipientId == userId && !m.IsRead).ToList();
+        foreach (var message in unreadMessages)
         {
             message.IsRead = true;
             message.ReadAt = DateTime.UtcNow;
-            message.Status = "read";
-            message.UpdatedAt = DateTime.UtcNow;
+        }
+
+        // Update unread count in conversation
+        if (unreadMessages.Any())
+        {
+            if (conversation.User1Id == userId)
+                conversation.User1UnreadCount = Math.Max(0, conversation.User1UnreadCount - unreadMessages.Count);
+            else
+                conversation.User2UnreadCount = Math.Max(0, conversation.User2UnreadCount - unreadMessages.Count);
+
             await _context.SaveChangesAsync();
         }
 
-        return Ok();
+        // Return in chronological order (oldest first)
+        messages.Reverse();
+
+        return Ok(messages);
     }
 
     /// <summary>
-    /// Mark all messages in a conversation as read
+    /// Mark conversation messages as read
     /// </summary>
-    [HttpPost("job/{jobId}/mark-all-read")]
+    [HttpPost("conversations/{conversationId}/mark-read")]
     [ProducesResponseType(StatusCodes.Status200OK)]
-    public async Task<ActionResult> MarkAllAsRead(Guid jobId)
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult> MarkConversationAsRead(Guid conversationId)
     {
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
         if (string.IsNullOrEmpty(userId))
             return Unauthorized();
 
-        var unreadMessages = await _context.Messages
-            .Where(m => m.JobId == jobId && m.ReceiverId == userId && !m.IsRead)
+        var conversation = await _context.Conversations.FindAsync(conversationId);
+        if (conversation == null)
+            return NotFound("Conversation not found");
+
+        // Verify user is part of conversation
+        if (conversation.User1Id != userId && conversation.User2Id != userId)
+            return Forbid();
+
+        var unreadMessages = await _context.ChatMessages
+            .Where(m => m.ConversationId == conversationId && m.RecipientId == userId && !m.IsRead)
             .ToListAsync();
 
         foreach (var message in unreadMessages)
         {
             message.IsRead = true;
             message.ReadAt = DateTime.UtcNow;
-            message.Status = "read";
-            message.UpdatedAt = DateTime.UtcNow;
         }
 
-        if (unreadMessages.Any())
-            await _context.SaveChangesAsync();
+        // Reset unread count
+        if (conversation.User1Id == userId)
+            conversation.User1UnreadCount = 0;
+        else
+            conversation.User2UnreadCount = 0;
 
-        return Ok(new { MarkedRead = unreadMessages.Count });
+        await _context.SaveChangesAsync();
+
+        return Ok(new { markedRead = unreadMessages.Count });
     }
 
-    private static MessageDto MapToDto(Message message)
+    /// <summary>
+    /// Get unread message count for current user
+    /// </summary>
+    [HttpGet("unread-count")]
+    [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
+    public async Task<ActionResult<object>> GetUnreadCount()
     {
-        return new MessageDto
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrEmpty(userId))
+            return Unauthorized();
+
+        var totalUnread = await _context.ChatMessages
+            .CountAsync(m => m.RecipientId == userId && !m.IsRead && !m.IsDeleted);
+
+        var conversationsWithUnread = await _context.Conversations
+            .Where(c => c.User1Id == userId || c.User2Id == userId)
+            .Where(c => (c.User1Id == userId && c.User1UnreadCount > 0) ||
+                       (c.User2Id == userId && c.User2UnreadCount > 0))
+            .CountAsync();
+
+        return Ok(new
         {
-            Id = message.Id,
-            JobId = message.JobId,
-            SenderId = message.SenderId,
-            SenderName = message.SenderName,
-            SenderType = message.SenderType,
-            ReceiverId = message.ReceiverId,
-            ReceiverName = message.ReceiverName,
-            ReceiverType = message.ReceiverType,
-            Content = message.Content,
-            MessageType = message.MessageType,
-            Attachments = message.Attachments,
-            IsRead = message.IsRead,
-            ReadAt = message.ReadAt,
-            Status = message.Status,
-            IsSystemMessage = message.IsSystemMessage,
-            CreatedAt = message.CreatedAt
-        };
+            totalUnreadMessages = totalUnread,
+            conversationsWithUnread
+        });
+    }
+
+    /// <summary>
+    /// Archive a conversation
+    /// </summary>
+    [HttpPost("conversations/{conversationId}/archive")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult> ArchiveConversation(Guid conversationId)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrEmpty(userId))
+            return Unauthorized();
+
+        var conversation = await _context.Conversations.FindAsync(conversationId);
+        if (conversation == null)
+            return NotFound("Conversation not found");
+
+        // Verify user is part of conversation
+        if (conversation.User1Id != userId && conversation.User2Id != userId)
+            return Forbid();
+
+        conversation.Status = "archived";
+        conversation.UpdatedAt = DateTime.UtcNow;
+
+        await _context.SaveChangesAsync();
+
+        await _activityLogService.LogActivityAsync(
+            userId,
+            "conversation_archived",
+            "Conversation",
+            conversation.Id.ToString(),
+            $"Conversation archived",
+            $"Archived conversation"
+        );
+
+        return Ok(new { message = "Conversation archived successfully" });
+    }
+
+    /// <summary>
+    /// Delete a message (soft delete)
+    /// </summary>
+    [HttpDelete("{id}")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult> DeleteMessage(Guid id)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrEmpty(userId))
+            return Unauthorized();
+
+        var message = await _context.ChatMessages.FindAsync(id);
+        if (message == null)
+            return NotFound();
+
+        // Only sender can delete their message
+        if (message.SenderId != userId)
+            return Forbid();
+
+        message.IsDeleted = true;
+        message.DeletedAt = DateTime.UtcNow;
+        message.UpdatedAt = DateTime.UtcNow;
+
+        await _context.SaveChangesAsync();
+
+        return Ok(new { message = "Message deleted successfully" });
+    }
+
+    /// <summary>
+    /// Get messages for a specific job (Admin, Customer, or assigned Driver)
+    /// </summary>
+    [HttpGet("job/{jobId}")]
+    [ProducesResponseType(typeof(List<ChatMessage>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<List<ChatMessage>>> GetJobMessages(Guid jobId)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrEmpty(userId))
+            return Unauthorized();
+
+        var user = await _userManager.FindByIdAsync(userId);
+        if (user == null)
+            return NotFound("User not found");
+
+        var userRoles = await _userManager.GetRolesAsync(user);
+        var isAdmin = userRoles.Contains(AuthRoles.Admin) || userRoles.Contains(AuthRoles.SuperAdmin);
+
+        // Verify access to job
+        var job = await _context.Jobs.FindAsync(jobId);
+        if (job == null)
+            return NotFound("Job not found");
+
+        var hasAccess = isAdmin || job.CustomerId == userId;
+
+        if (!hasAccess)
+        {
+            var driver = await _context.Drivers.FirstOrDefaultAsync(d => d.Id == job.DriverId);
+            if (driver?.UserId == userId)
+                hasAccess = true;
+        }
+
+        if (!hasAccess)
+            return Forbid();
+
+        var messages = await _context.ChatMessages
+            .Where(m => m.JobId == jobId && !m.IsDeleted)
+            .OrderBy(m => m.CreatedAt)
+            .ToListAsync();
+
+        return Ok(messages);
     }
 }
-
-#region DTOs
-
-public class SendMessageDto
-{
-    public Guid JobId { get; set; }
-    public required string Content { get; set; }
-    public string? MessageType { get; set; }
-    public string? Attachments { get; set; }
-}
-
-public class MessageDto
-{
-    public Guid Id { get; set; }
-    public Guid JobId { get; set; }
-    public string SenderId { get; set; } = "";
-    public string? SenderName { get; set; }
-    public string SenderType { get; set; } = "";
-    public string ReceiverId { get; set; } = "";
-    public string? ReceiverName { get; set; }
-    public string ReceiverType { get; set; } = "";
-    public string Content { get; set; } = "";
-    public string MessageType { get; set; } = "";
-    public string? Attachments { get; set; }
-    public bool IsRead { get; set; }
-    public DateTime? ReadAt { get; set; }
-    public string Status { get; set; } = "";
-    public bool IsSystemMessage { get; set; }
-    public DateTime CreatedAt { get; set; }
-}
-
-public class ConversationDto
-{
-    public Guid JobId { get; set; }
-    public string JobNumber { get; set; } = "";
-    public List<MessageDto> Messages { get; set; } = new();
-    public int TotalMessages { get; set; }
-    public int UnreadCount { get; set; }
-}
-
-public class ConversationSummaryDto
-{
-    public Guid JobId { get; set; }
-    public string JobNumber { get; set; } = "";
-    public string JobStatus { get; set; } = "";
-    public string OtherPartyName { get; set; } = "";
-    public MessageDto? LastMessage { get; set; }
-    public int UnreadCount { get; set; }
-    public int TotalMessages { get; set; }
-    public DateTime? LastMessageAt { get; set; }
-}
-
-#endregion
