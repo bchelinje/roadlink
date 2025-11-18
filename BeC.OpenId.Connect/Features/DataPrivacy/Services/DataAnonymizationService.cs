@@ -120,16 +120,21 @@ public class DataAnonymizationService : IDataAnonymizationService
                 }
                 affectedRecords["Jobs_Driver"] = driverJobs.Count;
 
-                // 6. Anonymize Reviews (as reviewer)
+                // 6. Anonymize Reviews (as reviewer or reviewee)
                 var reviews = await _context.Reviews
-                    .Where(r => r.ReviewerId == userId)
+                    .Where(r => r.ReviewerId == userId || r.RevieweeId == userId)
                     .ToListAsync();
 
                 foreach (var review in reviews)
                 {
-                    review.ReviewerName = anonymizedName;
-                    // CustomerEmail field exists in Review entity
-                    review.CustomerEmail = anonymizedEmail;
+                    if (review.ReviewerId == userId)
+                    {
+                        review.ReviewerName = anonymizedName;
+                    }
+                    if (review.RevieweeId == userId)
+                    {
+                        review.RevieweeName = anonymizedName;
+                    }
                 }
                 affectedRecords["Reviews"] = reviews.Count;
 
