@@ -8,6 +8,7 @@ using BeC.OpenId.Connect.Features.Pricing.Dtos;
 using BeC.OpenId.Connect.Features.Location.Dtos;
 using BeC.OpenId.Connect.Features.Customers.Dtos;
 using BeC.OpenId.Connect.Features.Jobs.Dtos;
+using BeC.OpenId.Connect.Features.Settings.Dtos;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 
@@ -35,6 +36,10 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     public DbSet<JobStop> JobStops { get; set; }
     public DbSet<RecurringJob> RecurringJobs { get; set; }
     public DbSet<JobTemplate> JobTemplates { get; set; }
+    public DbSet<UserSettings> UserSettings { get; set; }
+    public DbSet<DriverSettings> DriverSettings { get; set; }
+    public DbSet<CustomerSettings> CustomerSettings { get; set; }
+    public DbSet<PlatformSettings> PlatformSettings { get; set; }
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -294,6 +299,54 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
 
             entity.Property(e => e.BasePrice)
                 .HasPrecision(10, 2);
+        });
+
+        // UserSettings configuration
+        builder.Entity<UserSettings>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.UserId).IsUnique();
+        });
+
+        // DriverSettings configuration
+        builder.Entity<DriverSettings>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.UserId).IsUnique();
+
+            entity.Property(e => e.MaxServiceRadiusMiles)
+                .HasPrecision(10, 2);
+
+            entity.Property(e => e.MinimumJobValue)
+                .HasPrecision(10, 2);
+
+            entity.Property(e => e.MaximumJobDistanceMiles)
+                .HasPrecision(10, 2);
+
+            entity.Property(e => e.MinimumPayoutAmount)
+                .HasPrecision(5, 2);
+        });
+
+        // CustomerSettings configuration
+        builder.Entity<CustomerSettings>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.UserId).IsUnique();
+
+            entity.Property(e => e.PreferredMaxDistance)
+                .HasPrecision(10, 2);
+
+            entity.Property(e => e.DefaultTipPercentage)
+                .HasPrecision(5, 2);
+        });
+
+        // PlatformSettings configuration
+        builder.Entity<PlatformSettings>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.SettingKey).IsUnique();
+            entity.HasIndex(e => e.Category);
+            entity.HasIndex(e => e.IsPublic);
         });
     }
 }
