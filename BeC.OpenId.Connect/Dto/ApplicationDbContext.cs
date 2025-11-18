@@ -9,6 +9,7 @@ using BeC.OpenId.Connect.Features.Location.Dtos;
 using BeC.OpenId.Connect.Features.Customers.Dtos;
 using BeC.OpenId.Connect.Features.Jobs.Dtos;
 using BeC.OpenId.Connect.Features.Settings.Dtos;
+using BeC.OpenId.Connect.Features.Messages.Dtos;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 
@@ -20,6 +21,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     public virtual DbSet<ActivityLog> ActivityLogs { get; set; }
     public DbSet<Driver> Drivers { get; set; }
     public DbSet<Job> Jobs { get; set; }
+    public DbSet<JobBid> JobBids { get; set; }
     public DbSet<DriverDocument> DriverDocuments { get; set; }
     public DbSet<Vehicle> Vehicles { get; set; }
     public DbSet<Review> Reviews { get; set; }
@@ -28,6 +30,8 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     public DbSet<Payout> Payouts { get; set; }
     public DbSet<PricingRule> PricingRules { get; set; }
     public DbSet<PricingHistory> PricingHistory { get; set; }
+    public DbSet<PromotionCode> PromotionCodes { get; set; }
+    public DbSet<PromotionCodeUsage> PromotionCodeUsages { get; set; }
     public DbSet<DriverLocation> DriverLocations { get; set; }
     public DbSet<Earning> Earnings { get; set; }
     public DbSet<SavedAddress> SavedAddresses { get; set; }
@@ -40,6 +44,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     public DbSet<DriverSettings> DriverSettings { get; set; }
     public DbSet<CustomerSettings> CustomerSettings { get; set; }
     public DbSet<PlatformSettings> PlatformSettings { get; set; }
+    public DbSet<Message> Messages { get; set; }
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -85,6 +90,29 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
 
             entity.Property(e => e.Distance)
                 .HasPrecision(10, 2);
+        });
+
+        // JobBid configuration
+        builder.Entity<JobBid>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.JobId);
+            entity.HasIndex(e => e.DriverId);
+            entity.HasIndex(e => e.Status);
+            entity.HasIndex(e => e.CreatedAt);
+
+            entity.Property(e => e.BidAmount)
+                .HasPrecision(10, 2);
+
+            entity.HasOne(e => e.Job)
+                .WithMany()
+                .HasForeignKey(e => e.JobId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(e => e.Driver)
+                .WithMany()
+                .HasForeignKey(e => e.DriverId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
 
         // DriverDocument configuration
@@ -240,6 +268,49 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
                 .HasPrecision(10, 2);
         });
 
+        // PromotionCode configuration
+        builder.Entity<PromotionCode>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.Code).IsUnique();
+            entity.HasIndex(e => e.IsActive);
+            entity.HasIndex(e => e.ValidFrom);
+            entity.HasIndex(e => e.ValidUntil);
+
+            entity.Property(e => e.DiscountValue)
+                .HasPrecision(10, 2);
+
+            entity.Property(e => e.MaxDiscountAmount)
+                .HasPrecision(10, 2);
+
+            entity.Property(e => e.MinOrderValue)
+                .HasPrecision(10, 2);
+        });
+
+        // PromotionCodeUsage configuration
+        builder.Entity<PromotionCodeUsage>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.PromotionCodeId);
+            entity.HasIndex(e => e.CustomerId);
+            entity.HasIndex(e => e.JobId);
+            entity.HasIndex(e => e.UsedAt);
+
+            entity.Property(e => e.OriginalAmount)
+                .HasPrecision(10, 2);
+
+            entity.Property(e => e.DiscountAmount)
+                .HasPrecision(10, 2);
+
+            entity.Property(e => e.FinalAmount)
+                .HasPrecision(10, 2);
+
+            entity.HasOne(e => e.PromotionCode)
+                .WithMany()
+                .HasForeignKey(e => e.PromotionCodeId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
         // DriverLocation configuration
         builder.Entity<DriverLocation>(entity =>
         {
@@ -347,6 +418,18 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             entity.HasIndex(e => e.SettingKey).IsUnique();
             entity.HasIndex(e => e.Category);
             entity.HasIndex(e => e.IsPublic);
+        });
+
+        // Message configuration
+        builder.Entity<Message>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.JobId);
+            entity.HasIndex(e => e.SenderId);
+            entity.HasIndex(e => e.ReceiverId);
+            entity.HasIndex(e => e.IsRead);
+            entity.HasIndex(e => e.CreatedAt);
+            entity.HasIndex(e => new { e.JobId, e.CreatedAt }); // Composite index for conversation queries
         });
     }
 }
