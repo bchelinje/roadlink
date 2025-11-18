@@ -13,6 +13,7 @@ using BeC.OpenId.Connect.Features.Support.Dtos;
 using BeC.OpenId.Connect.Features.Messages.Dtos;
 using BeC.OpenId.Connect.Features.Complaints.Dtos;
 using BeC.OpenId.Connect.Features.HelpCenter.Dtos;
+using BeC.OpenId.Connect.Features.DataPrivacy.Dtos;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 
@@ -52,6 +53,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     public DbSet<Complaint> Complaints { get; set; }
     public DbSet<FAQ> FAQs { get; set; }
     public DbSet<HelpArticle> HelpArticles { get; set; }
+    public DbSet<DataDeletionRequest> DataDeletionRequests { get; set; }
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -460,6 +462,17 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             entity.HasIndex(e => e.IsPublished);
             entity.HasIndex(e => e.ArticleType);
             entity.HasIndex(e => e.DisplayOrder);
+        });
+
+        // DataDeletionRequest configuration
+        builder.Entity<DataDeletionRequest>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.UserId);
+            entity.HasIndex(e => e.Status);
+            entity.HasIndex(e => e.DeletionType);
+            entity.HasIndex(e => e.ScheduledDeletionDate);
+            entity.HasIndex(e => e.CreatedAt);
         });
     }
 }
