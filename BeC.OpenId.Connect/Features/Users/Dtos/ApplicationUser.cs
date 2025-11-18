@@ -23,4 +23,24 @@ public class ApplicationUser : IdentityUser
     /// Date when profile was last updated
     /// </summary>
     public DateTime? UpdatedAt { get; set; }
+
+    /// <summary>
+    /// Soft delete flag - user account is anonymized/deleted
+    /// </summary>
+    public bool IsDeleted { get; set; } = false;
+
+    /// <summary>
+    /// Date when account was deleted/anonymized
+    /// </summary>
+    public DateTime? DeletedAt { get; set; }
+
+    /// <summary>
+    /// Admin or system user who processed the deletion
+    /// </summary>
+    public string? DeletedBy { get; set; }
+
+    /// <summary>
+    /// Type of deletion performed (soft/hard)
+    /// </summary>
+    public string? DeletionType { get; set; }
 }
