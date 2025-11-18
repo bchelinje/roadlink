@@ -18,6 +18,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     : IdentityDbContext<ApplicationUser>(options)
 {
     public virtual DbSet<ActivityLog> ActivityLogs { get; set; }
+    public DbSet<Customer> Customers { get; set; }
     public DbSet<Driver> Drivers { get; set; }
     public DbSet<Job> Jobs { get; set; }
     public DbSet<DriverDocument> DriverDocuments { get; set; }
@@ -45,14 +46,29 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     {
         base.OnModelCreating(builder);
         builder.UseOpenIddict();
-        
-        // NEW: Driver configuration
+
+        // Customer configuration
+        builder.Entity<Customer>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.UserId).IsUnique();
+            entity.HasIndex(e => e.Email).IsUnique();
+            entity.HasIndex(e => e.ApprovalStatus);
+            entity.HasIndex(e => e.Status);
+
+            entity.Property(e => e.Rating)
+                .HasPrecision(3, 2);
+        });
+
+        // Driver configuration
         builder.Entity<Driver>(entity =>
         {
             entity.HasKey(e => e.Id);
             entity.HasIndex(e => e.UserId);
             entity.HasIndex(e => e.Email).IsUnique();
+            entity.HasIndex(e => e.LicenseNumber).IsUnique();
             entity.HasIndex(e => e.Status);
+            entity.HasIndex(e => e.ApprovalStatus);
 
             entity.Property(e => e.Rating)
                 .HasPrecision(3, 2);
@@ -94,6 +110,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             entity.HasIndex(e => e.DriverId);
             entity.HasIndex(e => e.Type);
             entity.HasIndex(e => e.Status);
+            entity.HasIndex(e => e.VehicleId);
         });
 
         // Vehicle configuration
@@ -101,7 +118,9 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
         {
             entity.HasKey(e => e.Id);
             entity.HasIndex(e => e.DriverId);
+            entity.HasIndex(e => e.RegistrationNumber).IsUnique();
             entity.HasIndex(e => e.Status);
+            entity.HasIndex(e => e.ApprovalStatus);
 
             entity.Property(e => e.MaxPayloadWeight)
                 .HasPrecision(10, 2);
