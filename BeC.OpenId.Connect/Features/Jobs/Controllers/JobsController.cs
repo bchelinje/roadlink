@@ -1292,8 +1292,17 @@ public class JobsController : ControllerBase
 
     private static void AddStatusHistory(Job job, string status, string userId, string notes)
     {
-        var history = System.Text.Json.JsonSerializer.Deserialize<List<StatusHistoryItem>>(job.StatusHistory ?? "[]")
-            ?? new List<StatusHistoryItem>();
+        List<StatusHistoryItem> history;
+        try
+        {
+            history = System.Text.Json.JsonSerializer.Deserialize<List<StatusHistoryItem>>(job.StatusHistory ?? "[]")
+                ?? new List<StatusHistoryItem>();
+        }
+        catch (System.Text.Json.JsonException)
+        {
+            // Handle legacy data that may not have required properties
+            history = new List<StatusHistoryItem>();
+        }
 
         history.Add(new StatusHistoryItem
         {
