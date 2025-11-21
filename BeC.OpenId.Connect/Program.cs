@@ -330,13 +330,13 @@ else
     app.UseHttpsRedirection();
 }
 
-// ✅ CORS must come early in the pipeline
+// ✅ CORS must come BEFORE UseRouting to handle preflight requests
 app.UseCors("AllowAngularApp");
 
 app.UseRouting();
 app.UseStaticFiles();
 
-app.UseAuthentication(); 
+app.UseAuthentication();
 app.UseAuthorization(); 
 
 app.MapStaticAssets();
