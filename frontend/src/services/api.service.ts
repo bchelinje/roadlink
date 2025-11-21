@@ -46,19 +46,66 @@ export class ApiService {
   // ==================== Authentication ====================
 
   static async login(credentials: LoginRequest): Promise<AuthResponse> {
-    return apiClient.post<AuthResponse>('/connect/token', {
-      grant_type: 'password',
-      username: credentials.email,
-      password: credentials.password,
-      scope: 'openid profile email roles',
+    // OpenIddict token endpoint expects form-urlencoded data
+    const formData = new URLSearchParams();
+    formData.append('grant_type', 'password');
+    formData.append('username', credentials.email);
+    formData.append('password', credentials.password);
+    formData.append('scope', 'openid profile email roles');
+
+    const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5128'}/connect/token`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: formData.toString(),
     });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ error_description: 'Login failed' }));
+      throw new Error(error.error_description || 'Invalid credentials');
+    }
+
+    const data = await response.json();
+    return {
+      token: data.access_token,
+      refreshToken: data.refresh_token,
+      expiresIn: data.expires_in,
+      userId: data.sub || '',
+      email: credentials.email,
+      role: data.role || 'Customer',
+      fullName: data.name || '',
+    };
   }
 
   static async refreshToken(refreshToken: string): Promise<AuthResponse> {
-    return apiClient.post<AuthResponse>('/connect/token', {
-      grant_type: 'refresh_token',
-      refresh_token: refreshToken,
+    // OpenIddict token endpoint expects form-urlencoded data
+    const formData = new URLSearchParams();
+    formData.append('grant_type', 'refresh_token');
+    formData.append('refresh_token', refreshToken);
+
+    const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5128'}/connect/token`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: formData.toString(),
     });
+
+    if (!response.ok) {
+      throw new Error('Failed to refresh token');
+    }
+
+    const data = await response.json();
+    return {
+      token: data.access_token,
+      refreshToken: data.refresh_token,
+      expiresIn: data.expires_in,
+      userId: data.sub || '',
+      email: data.email || '',
+      role: data.role || 'Customer',
+      fullName: data.name || '',
+    };
   }
 
   static async logout(): Promise<void> {

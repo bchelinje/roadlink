@@ -290,7 +290,9 @@ builder.Services.AddCors(options =>
     {
         policy.WithOrigins(
                 "http://localhost:4200",    // Angular HTTP
-                "https://localhost:4200"    // Angular HTTPS
+                "https://localhost:4200",   // Angular HTTPS
+                "http://localhost:3000",    // Next.js HTTP
+                "https://localhost:3000"    // Next.js HTTPS
             )
             .AllowAnyHeader()
             .AllowAnyMethod()
