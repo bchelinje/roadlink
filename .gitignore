@@ -2,6 +2,12 @@
 bin/
 obj/
 
+## Configuration files with secrets
+**/appsettings.json
+**/appsettings.*.json
+!**/appsettings.Development.json
+!**/appsettings.json.example
+
 ## VSCode
 .vscode/
 

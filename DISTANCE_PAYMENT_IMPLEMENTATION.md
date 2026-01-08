@@ -200,7 +200,7 @@ Frontend will start at: `http://localhost:4200`
 ```json
 {
   "GoogleMaps": {
-    "ApiKey": "AIzaSyASSq8GZ60dxKwM2bhkCEShx1qWSfL3gIE"
+    "ApiKey": "YOUR_GOOGLE_MAPS_API_KEY"
   },
   "Stripe": {
     "SecretKey": "sk_test_...",

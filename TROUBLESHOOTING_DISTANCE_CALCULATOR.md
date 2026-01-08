@@ -197,7 +197,7 @@ If everything is set up correctly, this should work:
 Test the API key directly:
 ```bash
 # Replace YOUR_API_KEY with your actual key
-curl "https://maps.googleapis.com/maps/api/distancematrix/json?origins=New+York&destinations=Los+Angeles&key=AIzaSyASSq8GZ60dxKwM2bhkCEShx1qWSfL3gIE"
+curl "https://maps.googleapis.com/maps/api/distancematrix/json?origins=New+York&destinations=Los+Angeles&key=YOUR_API_KEY"
 ```
 
 If this returns `"status": "OK"`, your API key works and the issue is elsewhere.
