@@ -11,6 +11,9 @@ using BeC.OpenId.Connect.Infrastructure.Payments;
 using BeC.OpenId.Connect.Features.Pricing.Services.Interfaces;
 using OpenIddict.Validation.AspNetCore;
 using System.Security.Claims;
+using System.Text.Json;
+using BeC.OpenId.Connect.Features.Drivers.Controllers;
+using BeC.OpenId.Connect.Features.Pricing.Dtos;
 using static OpenIddict.Abstractions.OpenIddictConstants;
 
 namespace BeC.OpenId.Connect.Features.Jobs.Controllers;
@@ -29,19 +32,22 @@ public class CustomerJobsController : ControllerBase
     private readonly INotificationService _notificationService;
     private readonly IStripePaymentService _stripePaymentService;
     private readonly IPricingCalculatorService _pricingCalculator;
+    private readonly IConfiguration _configuration;
 
     public CustomerJobsController(
         ApplicationDbContext context,
         IActivityLogService activityLogService,
         INotificationService notificationService,
         IStripePaymentService stripePaymentService,
-        IPricingCalculatorService pricingCalculator)
+        IPricingCalculatorService pricingCalculator,
+        IConfiguration configuration)
     {
         _context = context;
         _activityLogService = activityLogService;
         _notificationService = notificationService;
         _stripePaymentService = stripePaymentService;
         _pricingCalculator = pricingCalculator;
+        _configuration = configuration;
     }
 
     /// <summary>
@@ -76,7 +82,7 @@ public class CustomerJobsController : ControllerBase
         try
         {
             // 1. Calculate pricing
-            var pricingResult = await _pricingCalculator.CalculatePriceAsync(new Features.Pricing.Dtos.PricingCalculationRequest
+            var pricingResult = await _pricingCalculator.CalculatePriceAsync(new PricingCalculationRequest
             {
                 PickupAddress = dto.PickupLocation,
                 DeliveryAddress = dto.DeliveryLocation,
@@ -121,7 +127,7 @@ public class CustomerJobsController : ControllerBase
                     Longitude = dto.DeliveryLongitude
                 }),
                 Distance = dto.Distance,
-                Items = dto.Items != null ? System.Text.Json.JsonSerializer.Serialize(dto.Items) : null,
+                Items = dto.Items != null ? JsonSerializer.Serialize(dto.Items) : null,
                 SpecialInstructions = dto.SpecialInstructions,
                 StatusHistory = System.Text.Json.JsonSerializer.Serialize(new[]
                 {
@@ -164,7 +170,7 @@ public class CustomerJobsController : ControllerBase
                 PlatformFee = platformFee,
                 DriverEarnings = driverEarnings,
                 TotalAmount = jobAmount,
-                Currency = "usd",
+                Currency = _configuration["Stripe:Currency"] ?? "gbp",
                 Status = "pending", // Will change to "completed" via webhook
                 PaymentMethod = "card",
                 StripePaymentIntentId = paymentIntentId,
@@ -217,11 +223,11 @@ public class CustomerJobsController : ControllerBase
                     Amount = jobAmount,
                     PlatformFee = platformFee,
                     DriverEarnings = driverEarnings,
-                    Currency = "usd",
+                    Currency = _configuration["Stripe:Currency"] ?? "gbp",
                     PaymentId = payment.Id,
                     PaymentNumber = payment.PaymentNumber,
                     ClientSecret = clientSecret, // Frontend uses this to confirm payment
-                    PublishableKey = "pk_test_...", // TODO: Get from settings
+                    PublishableKey = _configuration["Stripe:PublishableKey"] ?? throw new InvalidOperationException("Stripe PublishableKey not configured"),
                     Job = MapJobToDto(job),
                     PricingBreakdown = new PricingBreakdownDto
                     {
@@ -393,6 +399,30 @@ public class CustomerJobsController : ControllerBase
 
     private JobDto MapJobToDto(Job job)
     {
+        // Parse location JSON to extract address strings
+        string? pickupAddress = null;
+        string? deliveryAddress = null;
+
+        try
+        {
+            if (!string.IsNullOrEmpty(job.PickupLocation))
+            {
+                var pickupJson = JsonSerializer.Deserialize<JsonElement>(job.PickupLocation);
+                pickupAddress = pickupJson.GetProperty("Address").GetString();
+            }
+        }
+        catch { /* Fallback to raw value */ pickupAddress = job.PickupLocation; }
+
+        try
+        {
+            if (!string.IsNullOrEmpty(job.DeliveryLocation))
+            {
+                var deliveryJson = JsonSerializer.Deserialize<JsonElement>(job.DeliveryLocation);
+                deliveryAddress = deliveryJson.GetProperty("Address").GetString();
+            }
+        }
+        catch { /* Fallback to raw value */ deliveryAddress = job.DeliveryLocation; }
+
         return new JobDto
         {
             Id = job.Id,
@@ -412,8 +442,8 @@ public class CustomerJobsController : ControllerBase
             EstimatedDuration = job.EstimatedDuration,
             ActualStartTime = job.ActualStartTime,
             ActualEndTime = job.ActualEndTime,
-            PickupLocation = job.PickupLocation,
-            DeliveryLocation = job.DeliveryLocation,
+            PickupLocation = pickupAddress ?? "N/A", // Use parsed address
+            DeliveryLocation = deliveryAddress ?? "N/A", // Use parsed address
             Distance = job.Distance,
             Items = job.Items,
             SpecialInstructions = job.SpecialInstructions,

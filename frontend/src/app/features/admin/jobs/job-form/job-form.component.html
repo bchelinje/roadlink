@@ -1,0 +1,394 @@
+<div class="min-h-screen bg-gray-50 py-8">
+  <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+
+    <app-header
+      [title]="isEditMode ? 'Edit Job' : 'Create New Job'"
+      [description]="isEditMode ? 'Update job details and assignment' : 'Create a new job and assign to a driver'"
+      icon="briefcase"
+      iconColorClass="from-blue-500 to-blue-600"
+      [breadcrumbs]="[
+        { label: 'Dashboard', route: '/dashboard', icon: 'home' },
+        { label: 'Jobs', route: '/jobs', icon: 'briefcase' },
+        { label: isEditMode ? 'Edit' : 'Create' }
+      ]"
+      [showBackButton]="true"
+    >
+    </app-header>
+
+    <!-- Success Message -->
+    <div *ngIf="successMessage" class="mb-6 bg-green-50 border-l-4 border-green-500 p-4 rounded-md">
+      <div class="flex">
+        <svg class="h-5 w-5 text-green-400" fill="currentColor" viewBox="0 0 20 20">
+          <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+        </svg>
+        <p class="ml-3 text-sm text-green-700">{{ successMessage }}</p>
+      </div>
+    </div>
+
+    <!-- Error Message -->
+    <div *ngIf="errorMessage" class="mb-6 bg-red-50 border-l-4 border-red-500 p-4 rounded-md">
+      <div class="flex">
+        <svg class="h-5 w-5 text-red-400" fill="currentColor" viewBox="0 0 20 20">
+          <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
+        </svg>
+        <p class="ml-3 text-sm text-red-700">{{ errorMessage }}</p>
+      </div>
+    </div>
+
+    <!-- Form Card -->
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200">
+      <form [formGroup]="jobForm" (ngSubmit)="onSubmit()" class="p-6 space-y-8">
+
+        <!-- Customer Information Section -->
+        <div>
+          <h2 class="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+            <svg class="h-5 w-5 mr-2 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+            </svg>
+            Customer Information
+          </h2>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="md:col-span-2">
+              <label for="customerName" class="block text-sm font-medium text-gray-700 mb-1">
+                Customer Name <span class="text-red-500">*</span>
+              </label>
+              <input
+                type="text"
+                id="customerName"
+                formControlName="customerName"
+                class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                [class.border-red-500]="isFieldInvalid('customerName')"
+                placeholder="John Doe"
+              />
+              <p *ngIf="isFieldInvalid('customerName')" class="mt-1 text-sm text-red-600">
+                {{ getFieldError('customerName') }}
+              </p>
+            </div>
+
+            <div>
+              <label for="customerPhone" class="block text-sm font-medium text-gray-700 mb-1">
+                Phone Number <span class="text-red-500">*</span>
+              </label>
+              <input
+                type="tel"
+                id="customerPhone"
+                formControlName="customerPhone"
+                class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                [class.border-red-500]="isFieldInvalid('customerPhone')"
+                placeholder="+1234567890"
+              />
+              <p *ngIf="isFieldInvalid('customerPhone')" class="mt-1 text-sm text-red-600">
+                {{ getFieldError('customerPhone') }}
+              </p>
+            </div>
+
+            <div>
+              <label for="customerEmail" class="block text-sm font-medium text-gray-700 mb-1">
+                Email Address <span class="text-red-500">*</span>
+              </label>
+              <input
+                type="email"
+                id="customerEmail"
+                formControlName="customerEmail"
+                class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                [class.border-red-500]="isFieldInvalid('customerEmail')"
+                placeholder="john@example.com"
+              />
+              <p *ngIf="isFieldInvalid('customerEmail')" class="mt-1 text-sm text-red-600">
+                {{ getFieldError('customerEmail') }}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Job Details Section -->
+        <div class="border-t pt-6">
+          <h2 class="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+            <svg class="h-5 w-5 mr-2 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            Job Details
+          </h2>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label for="jobType" class="block text-sm font-medium text-gray-700 mb-1">
+                Job Type <span class="text-red-500">*</span>
+              </label>
+              <select
+                id="jobType"
+                formControlName="jobType"
+                class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+              >
+                <option *ngFor="let type of jobTypes" [value]="type">
+                  {{ type | titlecase }}
+                </option>
+              </select>
+            </div>
+
+            <div>
+              <label for="vehicleTypeRequired" class="block text-sm font-medium text-gray-700 mb-1">
+                Vehicle Type Required
+              </label>
+              <select
+                id="vehicleTypeRequired"
+                formControlName="vehicleTypeRequired"
+                class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+              >
+                <option value="">Any Vehicle</option>
+                <option *ngFor="let vehicle of vehicleTypes" [value]="vehicle">
+                  {{ vehicle | titlecase }}
+                </option>
+              </select>
+            </div>
+
+            <div>
+              <label for="priority" class="block text-sm font-medium text-gray-700 mb-1">
+                Priority <span class="text-red-500">*</span>
+              </label>
+              <select
+                id="priority"
+                formControlName="priority"
+                class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+              >
+                <option *ngFor="let priority of priorities" [value]="priority">
+                  {{ priority | titlecase }}
+                </option>
+              </select>
+            </div>
+
+            <div>
+              <label for="distance" class="block text-sm font-medium text-gray-700 mb-1">
+                Distance (miles)
+              </label>
+              <input
+                type="number"
+                id="distance"
+                formControlName="distance"
+                min="0"
+                step="0.1"
+                class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                placeholder="0.0"
+              />
+            </div>
+          </div>
+        </div>
+
+        <!-- Schedule Section -->
+        <div class="border-t pt-6">
+          <h2 class="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+            <svg class="h-5 w-5 mr-2 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            </svg>
+            Schedule
+          </h2>
+
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <label for="scheduledDate" class="block text-sm font-medium text-gray-700 mb-1">
+                Scheduled Date <span class="text-red-500">*</span>
+              </label>
+              <input
+                type="date"
+                id="scheduledDate"
+                formControlName="scheduledDate"
+                class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                [class.border-red-500]="isFieldInvalid('scheduledDate')"
+              />
+              <p *ngIf="isFieldInvalid('scheduledDate')" class="mt-1 text-sm text-red-600">
+                {{ getFieldError('scheduledDate') }}
+              </p>
+            </div>
+
+            <div>
+              <label for="scheduledTime" class="block text-sm font-medium text-gray-700 mb-1">
+                Scheduled Time <span class="text-red-500">*</span>
+              </label>
+              <input
+                type="time"
+                id="scheduledTime"
+                formControlName="scheduledTime"
+                class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                [class.border-red-500]="isFieldInvalid('scheduledTime')"
+              />
+              <p *ngIf="isFieldInvalid('scheduledTime')" class="mt-1 text-sm text-red-600">
+                {{ getFieldError('scheduledTime') }}
+              </p>
+            </div>
+
+            <div>
+              <label for="estimatedDuration" class="block text-sm font-medium text-gray-700 mb-1">
+                Estimated Duration (minutes)
+              </label>
+              <input
+                type="number"
+                id="estimatedDuration"
+                formControlName="estimatedDuration"
+                min="15"
+                step="15"
+                class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                placeholder="60"
+              />
+            </div>
+          </div>
+        </div>
+
+        <!-- Locations Section -->
+        <div class="border-t pt-6">
+          <h2 class="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+            <svg class="h-5 w-5 mr-2 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+            Locations
+          </h2>
+
+          <div class="space-y-4">
+            <div>
+              <label for="pickupLocation" class="block text-sm font-medium text-gray-700 mb-1">
+                Pickup Location <span class="text-red-500">*</span>
+              </label>
+              <textarea
+                id="pickupLocation"
+                formControlName="pickupLocation"
+                rows="3"
+                class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                [class.border-red-500]="isFieldInvalid('pickupLocation')"
+                placeholder="Enter full pickup address..."
+              ></textarea>
+              <p *ngIf="isFieldInvalid('pickupLocation')" class="mt-1 text-sm text-red-600">
+                {{ getFieldError('pickupLocation') }}
+              </p>
+            </div>
+
+            <div>
+              <label for="deliveryLocation" class="block text-sm font-medium text-gray-700 mb-1">
+                Delivery Location <span class="text-red-500">*</span>
+              </label>
+              <textarea
+                id="deliveryLocation"
+                formControlName="deliveryLocation"
+                rows="3"
+                class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                [class.border-red-500]="isFieldInvalid('deliveryLocation')"
+                placeholder="Enter full delivery address..."
+              ></textarea>
+              <p *ngIf="isFieldInvalid('deliveryLocation')" class="mt-1 text-sm text-red-600">
+                {{ getFieldError('deliveryLocation') }}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Items & Instructions Section -->
+        <div class="border-t pt-6">
+          <h2 class="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+            <svg class="h-5 w-5 mr-2 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
+            </svg>
+            Items & Instructions
+          </h2>
+
+          <div class="space-y-4">
+            <div>
+              <label for="items" class="block text-sm font-medium text-gray-700 mb-1">
+                Items to Transport <span class="text-red-500">*</span>
+              </label>
+              <textarea
+                id="items"
+                formControlName="items"
+                rows="4"
+                class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                [class.border-red-500]="isFieldInvalid('items')"
+                placeholder="List items, quantities, dimensions, etc..."
+              ></textarea>
+              <p *ngIf="isFieldInvalid('items')" class="mt-1 text-sm text-red-600">
+                {{ getFieldError('items') }}
+              </p>
+            </div>
+
+            <div>
+              <label for="specialInstructions" class="block text-sm font-medium text-gray-700 mb-1">
+                Special Instructions (for driver)
+              </label>
+              <textarea
+                id="specialInstructions"
+                formControlName="specialInstructions"
+                rows="3"
+                class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                placeholder="Any special handling requirements..."
+              ></textarea>
+            </div>
+
+            <div>
+              <label for="internalNotes" class="block text-sm font-medium text-gray-700 mb-1">
+                Internal Notes (admin only)
+              </label>
+              <textarea
+                id="internalNotes"
+                formControlName="internalNotes"
+                rows="3"
+                class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                placeholder="Internal notes not visible to customer or driver..."
+              ></textarea>
+            </div>
+          </div>
+        </div>
+
+        <!-- Driver Assignment Section (Create Only) -->
+        <div *ngIf="!isEditMode" class="border-t pt-6">
+          <h2 class="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+            <svg class="h-5 w-5 mr-2 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+            </svg>
+            Driver Assignment (Optional)
+          </h2>
+
+          <div>
+            <label for="driverId" class="block text-sm font-medium text-gray-700 mb-1">
+              Assign to Driver
+            </label>
+            <select
+              id="driverId"
+              formControlName="driverId"
+              class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+            >
+              <option value="">Leave unassigned</option>
+              <option *ngFor="let driver of availableDrivers" [value]="driver.id">
+                {{ driver.firstName }} {{ driver.lastName }} - {{ driver.email }}
+              </option>
+            </select>
+            <p class="mt-1 text-sm text-gray-500">Leave empty to assign later</p>
+          </div>
+        </div>
+
+        <!-- Form Actions -->
+        <div class="border-t pt-6 flex items-center justify-end space-x-4">
+          <button
+            type="button"
+            (click)="onCancel()"
+            class="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary-500 transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            [disabled]="isLoading || jobForm.invalid"
+            class="px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            <span *ngIf="!isLoading">{{ isEditMode ? 'Update Job' : 'Create Job' }}</span>
+            <span *ngIf="isLoading" class="flex items-center">
+              <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              {{ isEditMode ? 'Updating...' : 'Creating...' }}
+            </span>
+          </button>
+        </div>
+
+      </form>
+    </div>
+  </div>
+</div>

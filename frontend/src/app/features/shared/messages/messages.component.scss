@@ -1,0 +1,7 @@
+.messages-page {
+  height: calc(100vh - 64px); // Adjust based on your header height
+}
+
+.messages-container {
+  scroll-behavior: smooth;
+}

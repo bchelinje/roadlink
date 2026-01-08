@@ -43,8 +43,11 @@ builder.Services.Scan(s => s.FromAssemblyOf<IScoped>()
     .WithScopedLifetime());
 
 builder.Services.AddScoped<IActivityLogService, ActivityLogService>();
-builder.Services.AddScoped<IGoogleMapsService, GoogleMapsService>();
+// Use DirectGoogleMapsService to avoid GoogleApi library issues
+builder.Services.AddScoped<IGoogleMapsService, DirectGoogleMapsService>();
+builder.Services.AddHttpClient(); // Required for DirectGoogleMapsService
 builder.Services.AddScoped<IPricingCalculatorService, PricingCalculatorService>();
+builder.Services.AddScoped<BeC.OpenId.Connect.Features.DataPrivacy.Services.IDataAnonymizationService, BeC.OpenId.Connect.Features.DataPrivacy.Services.DataAnonymizationService>();
 
 // Feature services
 builder.Services.AddScoped<BeC.OpenId.Connect.Features.Vehicles.Services.Interfaces.IVehicleService, BeC.OpenId.Connect.Features.Vehicles.Services.VehicleService>();
@@ -73,6 +76,14 @@ builder.Services.AddScoped<IEventEmitter, EventEmitter>();
 builder.Services.Configure<FormOptions>(options =>
 {
     options.MultipartBodyLengthLimit = 10 * 1024 * 1024; // 10MB
+});
+
+// Configure authentication with both Cookie and OpenIddict Bearer schemes
+builder.Services.AddAuthentication(options =>
+{
+    // Set OpenIddict validation as the default authentication scheme for API endpoints
+    options.DefaultAuthenticateScheme = OpenIddict.Validation.AspNetCore.OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme;
+    options.DefaultChallengeScheme = OpenIddict.Validation.AspNetCore.OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme;
 });
 
 // Configure Identity with roles
@@ -177,13 +188,13 @@ builder.Services.AddOpenIddict()
         options.SetAuthorizationEndpointUris("connect/authorize")
             .SetTokenEndpointUris("connect/token")
             .SetUserInfoEndpointUris("connect/userinfo");  // ← Fixed: Remove leading slash
-        
+
         // Enable flows
         options.AllowAuthorizationCodeFlow()
             .AllowClientCredentialsFlow()
             .AllowRefreshTokenFlow()
             .AllowPasswordFlow(); // ⚠️ For testing only - remove in production!
-        
+
         // Register scopes
         options.RegisterScopes("openid", "profile", "email", "roles", "phone", "offline_access");
 
@@ -193,17 +204,33 @@ builder.Services.AddOpenIddict()
         options.AddDevelopmentEncryptionCertificate()
             .AddDevelopmentSigningCertificate();
 
-        // ✅ ADD: Enable userinfo endpoint passthrough
+        // ✅ ADD: Enable userinfo endpoint passthrough and disable HTTPS requirement
         options.UseAspNetCore()
             .EnableAuthorizationEndpointPassthrough()
             .EnableTokenEndpointPassthrough()
-            .EnableUserInfoEndpointPassthrough();  // ← ADD THIS!
+            .EnableUserInfoEndpointPassthrough()
+            .DisableTransportSecurityRequirement();  // ← Disable HTTPS requirement for development
     })
     .AddValidation(options =>
     {
         options.UseLocalServer();
         options.UseAspNetCore();
     });
+
+// IMPORTANT: Clear default JWT claim mappings to preserve OpenIddict claim names
+// Without this, "sub" gets mapped to ClaimTypes.NameIdentifier which causes issues
+System.IdentityModel.Tokens.Jwt.JwtSecurityTokenHandler.DefaultInboundClaimTypeMap.Clear();
+System.IdentityModel.Tokens.Jwt.JwtSecurityTokenHandler.DefaultMapInboundClaims = false;
+
+// Configure authentication to use OpenIddict claim types
+builder.Services.Configure<IdentityOptions>(options =>
+{
+    // Use OpenIddict claim types instead of Microsoft claim types
+    options.ClaimsIdentity.RoleClaimType = OpenIddict.Abstractions.OpenIddictConstants.Claims.Role;
+    options.ClaimsIdentity.UserNameClaimType = OpenIddict.Abstractions.OpenIddictConstants.Claims.Name;
+    options.ClaimsIdentity.UserIdClaimType = OpenIddict.Abstractions.OpenIddictConstants.Claims.Subject;
+    options.ClaimsIdentity.EmailClaimType = OpenIddict.Abstractions.OpenIddictConstants.Claims.Email;
+});
 
 // Add Swagger/OpenAPI
 builder.Services.AddEndpointsApiExplorer();
@@ -292,7 +319,9 @@ builder.Services.AddCors(options =>
                 "http://localhost:4200",    // Angular HTTP
                 "https://localhost:4200",   // Angular HTTPS
                 "http://localhost:3000",    // Next.js HTTP
-                "https://localhost:3000"    // Next.js HTTPS
+                "https://localhost:3000",   // Next.js HTTPS
+                "http://localhost:3001",    // Next.js HTTP (alternate port)
+                "https://localhost:3001"    // Next.js HTTPS (alternate port)
             )
             .AllowAnyHeader()
             .AllowAnyMethod()

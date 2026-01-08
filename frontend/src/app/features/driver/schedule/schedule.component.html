@@ -1,0 +1,237 @@
+<div class="schedule-container">
+  <!-- Header -->
+  <div class="page-header">
+    <div>
+      <h1>Schedule</h1>
+      <p class="subtitle">View and manage your job schedule</p>
+    </div>
+    <div class="header-actions">
+      <div class="status-filter">
+        <label for="statusFilter">Filter:</label>
+        <select id="statusFilter" [(ngModel)]="statusFilter" (change)="onStatusFilterChange()">
+          <option *ngFor="let status of statuses" [value]="status.value">
+            {{ status.label }}
+          </option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <!-- Loading State -->
+  <div *ngIf="loading" class="loading-state">
+    <div class="spinner"></div>
+    <p>Loading schedule...</p>
+  </div>
+
+  <!-- Error State -->
+  <div *ngIf="error" class="error-state">
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+      <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
+    </svg>
+    <span>{{ error }}</span>
+  </div>
+
+  <!-- Calendar Content -->
+  <div *ngIf="!loading && !error" class="calendar-content">
+    <!-- Calendar Controls -->
+    <div class="calendar-controls">
+      <div class="view-switcher">
+        <button
+          [class.active]="viewMode === 'week'"
+          (click)="switchView('week')"
+          class="view-btn">
+          Week
+        </button>
+        <button
+          [class.active]="viewMode === 'month'"
+          (click)="switchView('month')"
+          class="view-btn">
+          Month
+        </button>
+      </div>
+
+      <div class="calendar-navigation">
+        <button (click)="previousPeriod()" class="nav-btn">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
+          </svg>
+        </button>
+
+        <div class="current-period">
+          <span *ngIf="viewMode === 'month'">{{ monthName }} {{ yearName }}</span>
+          <span *ngIf="viewMode === 'week'">{{ getWeekDateRange() }}</span>
+        </div>
+
+        <button (click)="nextPeriod()" class="nav-btn">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+          </svg>
+        </button>
+      </div>
+
+      <button (click)="goToToday()" class="today-btn">Today</button>
+    </div>
+
+    <!-- Week View -->
+    <div *ngIf="viewMode === 'week'" class="week-view">
+      <div class="week-grid">
+        <div *ngFor="let day of weekDays" class="day-column" [class.today]="day.isToday">
+          <div class="day-header">
+            <span class="day-name">{{ getDayName(day.date) }}</span>
+            <span class="day-number" [class.today-number]="day.isToday">{{ getDayNumber(day.date) }}</span>
+          </div>
+          <div class="day-body">
+            <div *ngIf="day.jobs.length === 0" class="no-jobs">
+              <span>No jobs</span>
+            </div>
+            <div *ngFor="let job of day.jobs"
+                 class="job-card"
+                 [class]="getStatusBadgeClass(job.status || '')"
+                 (click)="selectJob(job)">
+              <div class="job-time">{{ formatTime(job.scheduledTime) }}</div>
+              <div class="job-number">{{ job.jobNumber }}</div>
+              <div class="job-customer">{{ job.customerName }}</div>
+              <div class="job-location">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" />
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" />
+                </svg>
+                <span>{{ job.deliveryLocation }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Month View -->
+    <div *ngIf="viewMode === 'month'" class="month-view">
+      <div class="month-grid">
+        <!-- Weekday headers -->
+        <div class="weekday-headers">
+          <div class="weekday-header">Sun</div>
+          <div class="weekday-header">Mon</div>
+          <div class="weekday-header">Tue</div>
+          <div class="weekday-header">Wed</div>
+          <div class="weekday-header">Thu</div>
+          <div class="weekday-header">Fri</div>
+          <div class="weekday-header">Sat</div>
+        </div>
+
+        <!-- Calendar weeks -->
+        <div class="calendar-body">
+          <div *ngFor="let week of calendarWeeks" class="calendar-week">
+            <div *ngFor="let day of week.days"
+                 class="calendar-day"
+                 [class.other-month]="!day.isCurrentMonth"
+                 [class.today]="day.isToday"
+                 (click)="selectDate(day)">
+              <div class="day-number">{{ getDayNumber(day.date) }}</div>
+              <div class="day-jobs">
+                <div *ngFor="let job of day.jobs.slice(0, 3)"
+                     class="job-dot"
+                     [class]="getStatusBadgeClass(job.status || '')"
+                     [title]="job.jobNumber + ' - ' + job.customerName"
+                     (click)="selectJob(job); $event.stopPropagation()">
+                </div>
+                <div *ngIf="day.jobs.length > 3" class="more-jobs">
+                  +{{ day.jobs.length - 3 }}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Job Details Modal -->
+  <div *ngIf="selectedJob" class="modal-overlay" (click)="closeJobDetails()">
+    <div class="modal-content" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h2>Job Details</h2>
+        <button (click)="closeJobDetails()" class="close-btn">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+
+      <div class="modal-body">
+        <div class="detail-group">
+          <label>Job Number</label>
+          <span>{{ selectedJob.jobNumber }}</span>
+        </div>
+
+        <div class="detail-group">
+          <label>Status</label>
+          <span class="badge" [class]="getStatusBadgeClass(selectedJob.status || '')">
+            {{ formatStatus(selectedJob.status || '') }}
+          </span>
+        </div>
+
+        <div class="detail-group" *ngIf="selectedJob.priority">
+          <label>Priority</label>
+          <span class="badge" [class]="getPriorityBadgeClass(selectedJob.priority)">
+            {{ selectedJob.priority }}
+          </span>
+        </div>
+
+        <div class="detail-group">
+          <label>Customer</label>
+          <span>{{ selectedJob.customerName }}</span>
+        </div>
+
+        <div class="detail-group" *ngIf="selectedJob.customerPhone">
+          <label>Phone</label>
+          <span>{{ selectedJob.customerPhone }}</span>
+        </div>
+
+        <div class="detail-group">
+          <label>Scheduled Date</label>
+          <span>{{ formatDate(selectedJob.scheduledDate) }}</span>
+        </div>
+
+        <div class="detail-group">
+          <label>Scheduled Time</label>
+          <span>{{ formatTime(selectedJob.scheduledTime) }}</span>
+        </div>
+
+        <div class="detail-group" *ngIf="selectedJob.estimatedDuration">
+          <label>Duration</label>
+          <span>{{ selectedJob.estimatedDuration }} minutes</span>
+        </div>
+
+        <div class="detail-group">
+          <label>Pickup Location</label>
+          <span>{{ selectedJob.pickupLocation }}</span>
+        </div>
+
+        <div class="detail-group">
+          <label>Delivery Location</label>
+          <span>{{ selectedJob.deliveryLocation }}</span>
+        </div>
+
+        <div class="detail-group" *ngIf="selectedJob.distance">
+          <label>Distance</label>
+          <span>{{ selectedJob.distance }} km</span>
+        </div>
+
+        <div class="detail-group" *ngIf="selectedJob.specialInstructions">
+          <label>Special Instructions</label>
+          <span>{{ selectedJob.specialInstructions }}</span>
+        </div>
+
+        <div class="detail-group" *ngIf="selectedJob.items">
+          <label>Items</label>
+          <span>{{ selectedJob.items }}</span>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <a [routerLink]="['/driver/my-jobs']" class="btn-view-all">View All Jobs</a>
+        <button (click)="closeJobDetails()" class="btn-close">Close</button>
+      </div>
+    </div>
+  </div>
+</div>

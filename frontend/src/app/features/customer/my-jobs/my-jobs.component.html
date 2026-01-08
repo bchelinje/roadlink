@@ -1,0 +1,169 @@
+<div class="my-jobs-container">
+  <!-- Header -->
+  <div class="page-header">
+    <div>
+      <h1>My Jobs</h1>
+      <p class="subtitle">View and manage all your service requests</p>
+    </div>
+    <a routerLink="/customer/request-job" class="btn-primary">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+      </svg>
+      Request New Service
+    </a>
+  </div>
+
+  <!-- Loading State -->
+  <div *ngIf="isLoading" class="loading-state">
+    <div class="spinner"></div>
+    <p>Loading your jobs...</p>
+  </div>
+
+  <!-- Error State -->
+  <div *ngIf="errorMessage && !isLoading" class="error-state">
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+      <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+    </svg>
+    <p>{{ errorMessage }}</p>
+    <button (click)="loadJobs()" class="btn-retry">Retry</button>
+  </div>
+
+  <!-- Content -->
+  <div *ngIf="!isLoading && !errorMessage" class="content">
+    <!-- Filters Bar -->
+    <div class="filters-bar">
+      <div class="search-box">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+        </svg>
+        <input
+          type="text"
+          [(ngModel)]="searchTerm"
+          (ngModelChange)="onSearchChange()"
+          placeholder="Search by job number, name, or description..."
+          class="search-input"
+        />
+      </div>
+
+      <div class="filters">
+        <select [(ngModel)]="selectedStatus" (ngModelChange)="onStatusChange()" class="filter-select">
+          <option *ngFor="let option of statusOptions" [value]="option.value">
+            {{ option.label }}
+          </option>
+        </select>
+
+        <select [(ngModel)]="sortBy" (ngModelChange)="onSortChange()" class="filter-select">
+          <option value="date">Sort by Date</option>
+          <option value="status">Sort by Status</option>
+        </select>
+
+        <button (click)="toggleSortOrder()" class="btn-icon" [title]="sortOrder === 'desc' ? 'Descending' : 'Ascending'">
+          <svg *ngIf="sortOrder === 'desc'" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M3 4.5h14.25M3 9h9.75M3 13.5h9.75m4.5-4.5v12m0 0l-3.75-3.75M17.25 21L21 17.25" />
+          </svg>
+          <svg *ngIf="sortOrder === 'asc'" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M3 4.5h14.25M3 9h9.75M3 13.5h5.25m5.25-.75L17.25 9m0 0L21 12.75M17.25 9v12" />
+          </svg>
+        </button>
+
+        <button *ngIf="searchTerm || selectedStatus" (click)="clearFilters()" class="btn-clear">
+          Clear Filters
+        </button>
+      </div>
+    </div>
+
+    <!-- Results Summary -->
+    <div class="results-summary">
+      <p>Showing {{ paginatedJobs.length }} of {{ totalJobs }} job{{ totalJobs !== 1 ? 's' : '' }}</p>
+    </div>
+
+    <!-- Empty State -->
+    <div *ngIf="filteredJobs.length === 0" class="empty-state">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" />
+      </svg>
+      <h3>No jobs found</h3>
+      <p *ngIf="searchTerm || selectedStatus">Try adjusting your filters or search terms.</p>
+      <p *ngIf="!searchTerm && !selectedStatus">You haven't requested any services yet. Click the button above to get started!</p>
+    </div>
+
+    <!-- Jobs List -->
+    <div class="jobs-grid" *ngIf="filteredJobs.length > 0">
+      <div *ngFor="let job of paginatedJobs" class="job-card" (click)="viewJobDetails(job.id)">
+        <div class="job-header">
+          <div>
+            <h3>{{ job.jobType | titlecase }}</h3>
+            <span class="job-number">#{{ job.jobNumber }}</span>
+          </div>
+          <span class="status-badge" [ngClass]="getStatusClass(job.status)">
+            {{ getStatusLabel(job.status) }}
+          </span>
+        </div>
+
+        <div class="job-details">
+          <div class="detail-item">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" />
+            </svg>
+            <span>{{ formatDate(job.scheduledDate) }} at {{ job.scheduledTime }}</span>
+          </div>
+
+          <div class="detail-item">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" />
+              <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" />
+            </svg>
+            <span>{{ parseLocation(job.pickupLocation) }} → {{ parseLocation(job.deliveryLocation) }}</span>
+          </div>
+
+          <div class="detail-item" *ngIf="job.specialInstructions">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" />
+            </svg>
+            <span class="item-description">{{ job.specialInstructions }}</span>
+          </div>
+        </div>
+
+        <div class="job-footer">
+          <span class="view-details">View Details →</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Pagination -->
+    <div class="pagination" *ngIf="totalPages > 1">
+      <button
+        (click)="goToPage(currentPage - 1)"
+        [disabled]="currentPage === 1"
+        class="pagination-btn"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
+        </svg>
+        Previous
+      </button>
+
+      <div class="page-numbers">
+        <button
+          *ngFor="let page of pageNumbers"
+          (click)="goToPage(page)"
+          [class.active]="page === currentPage"
+          class="page-number"
+        >
+          {{ page }}
+        </button>
+      </div>
+
+      <button
+        (click)="goToPage(currentPage + 1)"
+        [disabled]="currentPage === totalPages"
+        class="pagination-btn"
+      >
+        Next
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+        </svg>
+      </button>
+    </div>
+  </div>
+</div>

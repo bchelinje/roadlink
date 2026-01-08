@@ -1,0 +1,10 @@
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "BeC.OpenId.Connect/Dockerfile"
+
+[deploy]
+startCommand = "dotnet BeC.OpenId.Connect.dll"
+healthcheckPath = "/health"
+healthcheckTimeout = 100
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 10

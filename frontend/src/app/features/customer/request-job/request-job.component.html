@@ -1,0 +1,279 @@
+<div class="request-job-container">
+  <div class="page-header">
+    <div>
+      <h1>Request a Moving Service</h1>
+      <p class="subtitle">Fill out the form below and we'll get back to you with a quote within 24 hours</p>
+    </div>
+  </div>
+
+  <div class="form-container">
+    <!-- Success Message -->
+    <div *ngIf="successMessage" class="alert alert-success">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+      </svg>
+      <span>{{ successMessage }}</span>
+    </div>
+
+    <!-- Error Message -->
+    <div *ngIf="errorMessage" class="alert alert-error">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+      </svg>
+      <span>{{ errorMessage }}</span>
+    </div>
+
+    <form [formGroup]="jobForm" (ngSubmit)="onSubmit()">
+      <!-- Customer Information -->
+      <div class="form-section">
+        <h2>Your Information</h2>
+        <div class="form-grid">
+          <div class="form-group">
+            <label for="customerName">Full Name *</label>
+            <input
+              type="text"
+              id="customerName"
+              formControlName="customerName"
+              [class.invalid]="isFieldInvalid('customerName')"
+              placeholder="John Doe">
+            <span *ngIf="isFieldInvalid('customerName')" class="error-text">
+              {{ getFieldError('customerName') }}
+            </span>
+          </div>
+
+          <div class="form-group">
+            <label for="customerEmail">Email Address *</label>
+            <input
+              type="email"
+              id="customerEmail"
+              formControlName="customerEmail"
+              [class.invalid]="isFieldInvalid('customerEmail')"
+              placeholder="john@example.com">
+            <span *ngIf="isFieldInvalid('customerEmail')" class="error-text">
+              {{ getFieldError('customerEmail') }}
+            </span>
+          </div>
+
+          <div class="form-group">
+            <label for="customerPhone">Phone Number *</label>
+            <input
+              type="tel"
+              id="customerPhone"
+              formControlName="customerPhone"
+              [class.invalid]="isFieldInvalid('customerPhone')"
+              placeholder="+44 20 7123 4567">
+            <span *ngIf="isFieldInvalid('customerPhone')" class="error-text">
+              {{ getFieldError('customerPhone') }}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Job Details -->
+      <div class="form-section">
+        <h2>Service Details</h2>
+        <div class="form-grid">
+          <div class="form-group">
+            <label for="jobType">Service Type *</label>
+            <select id="jobType" formControlName="jobType">
+              <option *ngFor="let type of jobTypes" [value]="type.value">{{ type.label }}</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="vehicleTypeRequired">Vehicle Size Needed</label>
+            <select id="vehicleTypeRequired" formControlName="vehicleTypeRequired">
+              <option value="">Not Sure</option>
+              <option *ngFor="let vehicle of vehicleTypes" [value]="vehicle.value">{{ vehicle.label }}</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="priority">Priority *</label>
+            <select id="priority" formControlName="priority">
+              <option *ngFor="let p of priorities" [value]="p.value">{{ p.label }}</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="scheduledDate">Preferred Date *</label>
+            <input
+              type="date"
+              id="scheduledDate"
+              formControlName="scheduledDate"
+              [class.invalid]="isFieldInvalid('scheduledDate')">
+          </div>
+
+          <div class="form-group">
+            <label for="scheduledTime">Preferred Time *</label>
+            <input
+              type="time"
+              id="scheduledTime"
+              formControlName="scheduledTime"
+              [class.invalid]="isFieldInvalid('scheduledTime')">
+          </div>
+
+          <div class="form-group">
+            <label for="estimatedDuration">Estimated Duration (minutes) *</label>
+            <input
+              type="number"
+              id="estimatedDuration"
+              formControlName="estimatedDuration"
+              [class.invalid]="isFieldInvalid('estimatedDuration')"
+              placeholder="120"
+              min="30">
+          </div>
+        </div>
+      </div>
+
+      <!-- Pickup Location -->
+      <div class="form-section">
+        <h2>Pickup Location</h2>
+        <div class="form-grid">
+          <div class="form-group full-width">
+            <label for="pickupAddress">Street Address *</label>
+            <input
+              type="text"
+              id="pickupAddress"
+              formControlName="pickupAddress"
+              [class.invalid]="isFieldInvalid('pickupAddress')"
+              placeholder="123 High Street">
+            <span *ngIf="isFieldInvalid('pickupAddress')" class="error-text">
+              {{ getFieldError('pickupAddress') }}
+            </span>
+          </div>
+
+          <div class="form-group">
+            <label for="pickupCity">City *</label>
+            <input
+              type="text"
+              id="pickupCity"
+              formControlName="pickupCity"
+              [class.invalid]="isFieldInvalid('pickupCity')"
+              placeholder="London">
+          </div>
+
+          <div class="form-group">
+            <label for="pickupState">County *</label>
+            <input
+              type="text"
+              id="pickupState"
+              formControlName="pickupState"
+              [class.invalid]="isFieldInvalid('pickupState')"
+              placeholder="Greater London">
+          </div>
+
+          <div class="form-group">
+            <label for="pickupZip">Postcode *</label>
+            <input
+              type="text"
+              id="pickupZip"
+              formControlName="pickupZip"
+              [class.invalid]="isFieldInvalid('pickupZip')"
+              placeholder="SW1A 1AA">
+          </div>
+        </div>
+      </div>
+
+      <!-- Delivery Location -->
+      <div class="form-section">
+        <h2>Delivery Location</h2>
+        <div class="form-grid">
+          <div class="form-group full-width">
+            <label for="deliveryAddress">Street Address *</label>
+            <input
+              type="text"
+              id="deliveryAddress"
+              formControlName="deliveryAddress"
+              [class.invalid]="isFieldInvalid('deliveryAddress')"
+              placeholder="456 King's Road">
+            <span *ngIf="isFieldInvalid('deliveryAddress')" class="error-text">
+              {{ getFieldError('deliveryAddress') }}
+            </span>
+          </div>
+
+          <div class="form-group">
+            <label for="deliveryCity">City *</label>
+            <input
+              type="text"
+              id="deliveryCity"
+              formControlName="deliveryCity"
+              [class.invalid]="isFieldInvalid('deliveryCity')"
+              placeholder="Manchester">
+          </div>
+
+          <div class="form-group">
+            <label for="deliveryState">County *</label>
+            <input
+              type="text"
+              id="deliveryState"
+              formControlName="deliveryState"
+              [class.invalid]="isFieldInvalid('deliveryState')"
+              placeholder="Greater Manchester">
+          </div>
+
+          <div class="form-group">
+            <label for="deliveryZip">Postcode *</label>
+            <input
+              type="text"
+              id="deliveryZip"
+              formControlName="deliveryZip"
+              [class.invalid]="isFieldInvalid('deliveryZip')"
+              placeholder="M1 1AA">
+          </div>
+        </div>
+      </div>
+
+      <!-- Items & Additional Information -->
+      <div class="form-section">
+        <h2>What are you moving?</h2>
+        <div class="form-grid">
+          <div class="form-group full-width">
+            <label for="itemDescription">Item Description *</label>
+            <textarea
+              id="itemDescription"
+              formControlName="itemDescription"
+              [class.invalid]="isFieldInvalid('itemDescription')"
+              placeholder="Please describe the items you need moved (e.g., 2-bedroom apartment furniture, office equipment, etc.)"
+              rows="4"></textarea>
+            <span *ngIf="isFieldInvalid('itemDescription')" class="error-text">
+              {{ getFieldError('itemDescription') }}
+            </span>
+          </div>
+
+          <div class="form-group full-width">
+            <label for="specialInstructions">Special Instructions</label>
+            <textarea
+              id="specialInstructions"
+              formControlName="specialInstructions"
+              placeholder="Any special handling requirements, access restrictions, or other important details..."
+              rows="3"></textarea>
+          </div>
+
+          <div class="form-group full-width">
+            <label for="customerNotes">Additional Notes</label>
+            <textarea
+              id="customerNotes"
+              formControlName="customerNotes"
+              placeholder="Any other information you'd like us to know..."
+              rows="3"></textarea>
+          </div>
+        </div>
+      </div>
+
+      <!-- Submit Button -->
+      <div class="form-actions">
+        <button type="submit" [disabled]="isSubmitting" class="btn-primary">
+          <span *ngIf="!isSubmitting">Submit Request</span>
+          <span *ngIf="isSubmitting">
+            <svg class="spinner" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            Submitting...
+          </span>
+        </button>
+      </div>
+    </form>
+  </div>
+</div>

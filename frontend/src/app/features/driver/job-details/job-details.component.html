@@ -1,0 +1,305 @@
+<!-- features/driver/job-details/job-details.component.html -->
+<div class="p-6 space-y-6">
+  <!-- Back Button -->
+  <div>
+    <button
+      (click)="goBack()"
+      class="inline-flex items-center text-sm text-gray-500 hover:text-gray-700"
+    >
+      <svg class="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+      </svg>
+      Back to Jobs
+    </button>
+  </div>
+
+  <!-- Loading State -->
+  <div *ngIf="loading" class="flex items-center justify-center h-64">
+    <div class="text-center">
+      <div class="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-green-600"></div>
+      <p class="mt-4 text-gray-600">Loading job details...</p>
+    </div>
+  </div>
+
+  <!-- Error State -->
+  <div *ngIf="error && !loading" class="rounded-md bg-red-50 p-4">
+    <div class="flex">
+      <svg class="h-5 w-5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+      </svg>
+      <div class="ml-3">
+        <h3 class="text-sm font-medium text-red-800">{{ error }}</h3>
+      </div>
+    </div>
+  </div>
+
+  <!-- Job Details -->
+  <div *ngIf="!loading && !error && job" class="space-y-6">
+    <!-- Header -->
+    <div class="bg-white shadow rounded-lg p-6">
+      <div class="flex items-start justify-between">
+        <div class="flex-1">
+          <h1 class="text-3xl font-bold text-gray-900">Job #{{ job.jobNumber }}</h1>
+          <div class="mt-2 flex items-center space-x-3">
+            <span [class]="getStatusBadgeClass(job.status || '')" class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium">
+              {{ formatStatus(job.status || '') }}
+            </span>
+            <span [class]="getPriorityBadgeClass(job.priority || '')" class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium">
+              {{ formatPriority(job.priority || '') }}
+            </span>
+            <span class="text-sm text-gray-500">{{ job.jobType }}</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="mt-6 flex flex-wrap gap-3">
+        <button
+          *ngIf="canAcceptJob()"
+          (click)="acceptJob()"
+          [disabled]="actionLoading"
+          class="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          Accept Job
+        </button>
+
+        <button
+          *ngIf="canStartJob()"
+          (click)="startJob()"
+          [disabled]="actionLoading"
+          class="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          Start Job
+        </button>
+
+        <button
+          *ngIf="canCompleteJob()"
+          (click)="openCompletionModal()"
+          [disabled]="actionLoading"
+          class="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          Complete Job
+        </button>
+
+        <button
+          (click)="openNoteModal()"
+          class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+        >
+          <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+          </svg>
+          Add Note
+        </button>
+
+        <label class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 cursor-pointer">
+          <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+          </svg>
+          Upload Photo
+          <input type="file" accept="image/*" (change)="onFileSelected($event)" class="hidden" />
+        </label>
+      </div>
+
+      <!-- Action Error -->
+      <div *ngIf="actionError" class="mt-4 rounded-md bg-red-50 p-4">
+        <div class="flex">
+          <svg class="h-5 w-5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <div class="ml-3">
+            <h3 class="text-sm font-medium text-red-800">{{ actionError }}</h3>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Job Information Grid -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <!-- Customer Information -->
+      <div class="bg-white shadow rounded-lg p-6">
+        <h3 class="text-lg font-medium text-gray-900 mb-4">Customer Information</h3>
+        <dl class="space-y-3">
+          <div>
+            <dt class="text-sm font-medium text-gray-500">Name</dt>
+            <dd class="mt-1 text-sm text-gray-900">{{ job.customerName }}</dd>
+          </div>
+          <div>
+            <dt class="text-sm font-medium text-gray-500">Phone</dt>
+            <dd class="mt-1 text-sm text-gray-900">{{ job.customerPhone }}</dd>
+          </div>
+          <div>
+            <dt class="text-sm font-medium text-gray-500">Email</dt>
+            <dd class="mt-1 text-sm text-gray-900">{{ job.customerEmail }}</dd>
+          </div>
+        </dl>
+      </div>
+
+      <!-- Schedule Information -->
+      <div class="bg-white shadow rounded-lg p-6">
+        <h3 class="text-lg font-medium text-gray-900 mb-4">Schedule</h3>
+        <dl class="space-y-3">
+          <div>
+            <dt class="text-sm font-medium text-gray-500">Scheduled Date</dt>
+            <dd class="mt-1 text-sm text-gray-900">{{ formatDate(job.scheduledDate) }}</dd>
+          </div>
+          <div>
+            <dt class="text-sm font-medium text-gray-500">Scheduled Time</dt>
+            <dd class="mt-1 text-sm text-gray-900">{{ formatTime(job.scheduledTime) }}</dd>
+          </div>
+          <div *ngIf="job.estimatedDuration">
+            <dt class="text-sm font-medium text-gray-500">Estimated Duration</dt>
+            <dd class="mt-1 text-sm text-gray-900">{{ job.estimatedDuration }} hours</dd>
+          </div>
+          <div *ngIf="job.actualStartTime">
+            <dt class="text-sm font-medium text-gray-500">Started At</dt>
+            <dd class="mt-1 text-sm text-gray-900">{{ formatDateTime(job.actualStartTime) }}</dd>
+          </div>
+          <div *ngIf="job.actualEndTime">
+            <dt class="text-sm font-medium text-gray-500">Completed At</dt>
+            <dd class="mt-1 text-sm text-gray-900">{{ formatDateTime(job.actualEndTime) }}</dd>
+          </div>
+        </dl>
+      </div>
+    </div>
+
+    <!-- Locations -->
+    <div class="bg-white shadow rounded-lg p-6">
+      <h3 class="text-lg font-medium text-gray-900 mb-4">Locations</h3>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div>
+          <h4 class="text-sm font-medium text-gray-700 mb-2">Pickup Location</h4>
+          <p class="text-sm text-gray-900">{{ job.pickupLocation || 'Not specified' }}</p>
+        </div>
+        <div>
+          <h4 class="text-sm font-medium text-gray-700 mb-2">Delivery Location</h4>
+          <p class="text-sm text-gray-900">{{ job.deliveryLocation || 'Not specified' }}</p>
+        </div>
+      </div>
+      <div *ngIf="job.distance" class="mt-4">
+        <span class="text-sm text-gray-500">Distance: <span class="font-medium text-gray-900">{{ job.distance }} miles</span></span>
+      </div>
+    </div>
+
+    <!-- Job Details -->
+    <div class="bg-white shadow rounded-lg p-6">
+      <h3 class="text-lg font-medium text-gray-900 mb-4">Job Details</h3>
+      <dl class="space-y-3">
+        <div *ngIf="job.specialInstructions">
+          <dt class="text-sm font-medium text-gray-500">Special Instructions</dt>
+          <dd class="mt-1 text-sm text-gray-900 whitespace-pre-wrap">{{ job.specialInstructions }}</dd>
+        </div>
+        <div *ngIf="job.internalNotes">
+          <dt class="text-sm font-medium text-gray-500">Internal Notes</dt>
+          <dd class="mt-1 text-sm text-gray-900 whitespace-pre-wrap">{{ job.internalNotes }}</dd>
+        </div>
+        <div *ngIf="job.customerNotes">
+          <dt class="text-sm font-medium text-gray-500">Customer Notes</dt>
+          <dd class="mt-1 text-sm text-gray-900 whitespace-pre-wrap">{{ job.customerNotes }}</dd>
+        </div>
+      </dl>
+    </div>
+  </div>
+
+  <!-- Add Note Modal -->
+  <div *ngIf="showNoteModal" class="fixed z-10 inset-0 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+    <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+      <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" aria-hidden="true" (click)="closeNoteModal()"></div>
+
+      <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+
+      <div class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+        <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+          <h3 class="text-lg leading-6 font-medium text-gray-900" id="modal-title">
+            Add Note to Job
+          </h3>
+          <div class="mt-4">
+            <textarea
+              [(ngModel)]="newNote"
+              rows="4"
+              class="shadow-sm focus:ring-green-500 focus:border-green-500 block w-full sm:text-sm border-gray-300 rounded-md"
+              placeholder="Enter your note here..."
+            ></textarea>
+          </div>
+        </div>
+        <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+          <button
+            type="button"
+            (click)="addNote()"
+            [disabled]="noteLoading || !newNote.trim()"
+            class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-green-600 text-base font-medium text-white hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 sm:ml-3 sm:w-auto sm:text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {{ noteLoading ? 'Adding...' : 'Add Note' }}
+          </button>
+          <button
+            type="button"
+            (click)="closeNoteModal()"
+            [disabled]="noteLoading"
+            class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Complete Job Modal -->
+  <div *ngIf="showCompletionModal" class="fixed z-10 inset-0 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+    <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+      <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" aria-hidden="true" (click)="closeCompletionModal()"></div>
+
+      <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+
+      <div class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+        <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+          <h3 class="text-lg leading-6 font-medium text-gray-900" id="modal-title">
+            Complete Job
+          </h3>
+          <p class="mt-2 text-sm text-gray-500">
+            Add any completion notes or comments about this job.
+          </p>
+          <div class="mt-4">
+            <label for="completion-notes" class="block text-sm font-medium text-gray-700 mb-2">
+              Completion Notes (Optional)
+            </label>
+            <textarea
+              id="completion-notes"
+              [(ngModel)]="completionNotes"
+              rows="4"
+              class="shadow-sm focus:ring-purple-500 focus:border-purple-500 block w-full sm:text-sm border-gray-300 rounded-md"
+              placeholder="E.g., Job completed successfully. All items delivered and customer satisfied."
+            ></textarea>
+          </div>
+        </div>
+        <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+          <button
+            type="button"
+            (click)="completeJob()"
+            [disabled]="completionLoading"
+            class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-purple-600 text-base font-medium text-white hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 sm:ml-3 sm:w-auto sm:text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {{ completionLoading ? 'Completing...' : 'Complete Job' }}
+          </button>
+          <button
+            type="button"
+            (click)="closeCompletionModal()"
+            [disabled]="completionLoading"
+            class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

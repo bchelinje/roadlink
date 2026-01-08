@@ -1,0 +1,238 @@
+<div class="form-container">
+  <app-header></app-header>
+
+  <div class="form-content">
+<!--    <div class="form-header">-->
+<!--      <h1>{{ isEditMode ? 'Edit Driver' : 'Create New Driver' }}</h1>-->
+<!--      <p>{{ isEditMode ? 'Update driver information' : 'Add a new driver to the system' }}</p>-->
+<!--    </div>-->
+
+    <!-- Loading State -->
+    <div *ngIf="isLoading" class="loading-state">
+      <div class="spinner"></div>
+      <p>Loading driver details...</p>
+    </div>
+
+    <!-- Success Message -->
+    <div *ngIf="successMessage" class="alert alert-success">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+      </svg>
+      <span>{{ successMessage }}</span>
+    </div>
+
+    <!-- Error Message -->
+    <div *ngIf="errorMessage" class="alert alert-error">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
+      </svg>
+      <span>{{ errorMessage }}</span>
+    </div>
+
+    <!-- Driver Form -->
+    <form *ngIf="!isLoading" [formGroup]="driverForm" (ngSubmit)="onSubmit()" class="driver-form">
+        <div class="page-header">
+            <div>
+                <h1>{{ isEditMode ? 'Edit Driver' : 'Create New Driver' }}</h1>
+                <p class="subtitle">{{ isEditMode ? 'Update driver information' : 'Add a new driver to the system' }}</p>
+            </div>
+
+        </div>
+      <!-- User Selection (Create Mode Only) -->
+      <div *ngIf="!isEditMode" class="form-section">
+        <h2>User Account</h2>
+        <div class="form-row">
+          <div class="form-group full-width">
+            <label for="userId">Select User <span class="required">*</span></label>
+            <select
+              id="userId"
+              formControlName="userId"
+              (change)="onUserChange($event)"
+              [class.error]="f['userId'].touched && f['userId'].invalid">
+              <option value="">-- Select a user --</option>
+              <option *ngFor="let user of users" [value]="user.id">
+                {{ user.email }} ({{ user.userName }})
+              </option>
+            </select>
+            <span *ngIf="f['userId'].touched && f['userId'].invalid" class="error-message">
+              Please select a user
+            </span>
+            <span *ngIf="isLoadingUsers" class="helper-text">Loading users...</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Personal Information -->
+      <div class="form-section">
+        <h2>Personal Information</h2>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="firstName">First Name <span class="required">*</span></label>
+            <input
+              type="text"
+              id="firstName"
+              formControlName="firstName"
+              [class.error]="f['firstName'].touched && f['firstName'].invalid"
+              placeholder="Enter first name">
+            <span *ngIf="f['firstName'].touched && f['firstName'].invalid" class="error-message">
+              First name is required
+            </span>
+          </div>
+
+          <div class="form-group">
+            <label for="lastName">Last Name <span class="required">*</span></label>
+            <input
+              type="text"
+              id="lastName"
+              formControlName="lastName"
+              [class.error]="f['lastName'].touched && f['lastName'].invalid"
+              placeholder="Enter last name">
+            <span *ngIf="f['lastName'].touched && f['lastName'].invalid" class="error-message">
+              Last name is required
+            </span>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="email">Email <span class="required">*</span></label>
+            <input
+              type="email"
+              id="email"
+              formControlName="email"
+              [class.error]="f['email'].touched && f['email'].invalid"
+              placeholder="Enter email address">
+            <span *ngIf="f['email'].touched && f['email'].invalid" class="error-message">
+              Valid email is required
+            </span>
+          </div>
+
+          <div class="form-group">
+            <label for="phone">Phone <span class="required">*</span></label>
+            <input
+              type="tel"
+              id="phone"
+              formControlName="phone"
+              [class.error]="f['phone'].touched && f['phone'].invalid"
+              placeholder="Enter phone number">
+            <span *ngIf="f['phone'].touched && f['phone'].invalid" class="error-message">
+              Phone number is required
+            </span>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group full-width">
+            <label for="address">Address</label>
+            <input
+              type="text"
+              id="address"
+              formControlName="address"
+              placeholder="Enter full address">
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group full-width">
+            <label for="emergencyContact">Emergency Contact</label>
+            <input
+              type="text"
+              id="emergencyContact"
+              formControlName="emergencyContact"
+              placeholder="Name and phone number">
+          </div>
+        </div>
+      </div>
+
+      <!-- License Information -->
+      <div class="form-section">
+        <h2>License Information</h2>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="licenseNumber">License Number <span class="required">*</span></label>
+            <input
+              type="text"
+              id="licenseNumber"
+              formControlName="licenseNumber"
+              [class.error]="f['licenseNumber'].touched && f['licenseNumber'].invalid"
+              placeholder="Enter license number">
+            <span *ngIf="f['licenseNumber'].touched && f['licenseNumber'].invalid" class="error-message">
+              License number is required
+            </span>
+          </div>
+
+          <div class="form-group">
+            <label for="licenseExpiry">License Expiry <span class="required">*</span></label>
+            <input
+              type="date"
+              id="licenseExpiry"
+              formControlName="licenseExpiry"
+              [class.error]="f['licenseExpiry'].touched && f['licenseExpiry'].invalid">
+            <span *ngIf="f['licenseExpiry'].touched && f['licenseExpiry'].invalid" class="error-message">
+              License expiry date is required
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Vehicle Information -->
+      <div class="form-section">
+        <h2>Vehicle Information</h2>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="vehicleType">Vehicle Type</label>
+            <select
+              id="vehicleType"
+              formControlName="vehicleType">
+              <option value="">-- Select vehicle type --</option>
+              <option *ngFor="let type of vehicleTypes" [value]="type">{{ type }}</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="vehicleRegistration">Vehicle Registration</label>
+            <input
+              type="text"
+              id="vehicleRegistration"
+              formControlName="vehicleRegistration"
+              placeholder="Enter registration number">
+          </div>
+        </div>
+      </div>
+
+      <!-- Status (Create Mode Only) -->
+      <div *ngIf="!isEditMode" class="form-section">
+        <h2>Status</h2>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="status">Initial Status</label>
+            <select id="status" formControlName="status">
+              <option *ngFor="let status of statuses" [value]="status">{{ status }}</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <!-- Form Actions -->
+      <div class="form-actions">
+        <button
+          type="button"
+          class="btn btn-secondary"
+          (click)="cancel()"
+          [disabled]="isSaving">
+          Cancel
+        </button>
+        <button
+          type="submit"
+          class="btn btn-primary"
+          [disabled]="driverForm.invalid || isSaving">
+          <span *ngIf="!isSaving">{{ isEditMode ? 'Update Driver' : 'Create Driver' }}</span>
+          <span *ngIf="isSaving" class="saving-indicator">
+            <span class="spinner-small"></span>
+            {{ isEditMode ? 'Updating...' : 'Creating...' }}
+          </span>
+        </button>
+      </div>
+    </form>
+  </div>
+</div>

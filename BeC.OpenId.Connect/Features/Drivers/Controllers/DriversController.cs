@@ -1327,6 +1327,7 @@ public async Task<ActionResult<JobDto>> UploadJobPhoto(
             VehicleType = driver.VehicleType,
             VehicleRegistration = driver.VehicleRegistration,
             Status = driver.Status,
+            ApprovalStatus = driver.ApprovalStatus,
             Rating = driver.Rating,
             TotalJobs = driver.TotalJobs,
             CompletedJobs = driver.CompletedJobs,
@@ -1714,6 +1715,7 @@ public class DriverDto
     public string? VehicleType { get; set; }
     public string? VehicleRegistration { get; set; }
     public required string Status { get; set; }
+    public required string ApprovalStatus { get; set; } // pending, approved, rejected, suspended
     public decimal Rating { get; set; }
     public int TotalJobs { get; set; }
     public int CompletedJobs { get; set; }

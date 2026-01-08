@@ -1,0 +1,218 @@
+<!-- Job Detail View -->
+<div class="min-h-screen bg-gray-50">
+  <app-header [title]="job?.jobNumber || 'Job Details'"></app-header>
+
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <!-- Loading State -->
+    <div *ngIf="isLoading" class="flex justify-center items-center py-12">
+      <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+    </div>
+
+    <!-- Error State -->
+    <div *ngIf="errorMessage && !isLoading" class="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg mb-6">
+      {{ errorMessage }}
+    </div>
+
+    <!-- Job Content -->
+    <div *ngIf="job && !isLoading">
+      <!-- Header with Actions -->
+      <div class="bg-white rounded-lg shadow-sm p-6 mb-6">
+        <div class="flex justify-between items-start">
+          <div>
+            <div class="flex items-center gap-3 mb-2">
+              <h2 class="text-2xl font-bold text-gray-900">{{ job.jobNumber }}</h2>
+              <span [class]="'px-3 py-1 text-xs font-semibold rounded-full ' + getStatusBadgeClass(job.status)">
+                {{ formatStatus(job.status) }}
+              </span>
+              <span [class]="'px-3 py-1 text-xs font-semibold rounded-full ' + getPriorityBadgeClass(job.priority)">
+                {{ formatPriority(job.priority) }}
+              </span>
+            </div>
+            <p class="text-sm text-gray-600">
+              Created {{ formatDateTime(job.createdAt) }}
+            </p>
+          </div>
+
+          <div class="flex gap-2">
+            <button (click)="backToList()" class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+              Back to List
+            </button>
+            <button (click)="editJob()" class="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+              Edit Job
+            </button>
+            <button *ngIf="job.status === 'pending'" (click)="assignDriver()" class="px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-lg hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
+              Assign Driver
+            </button>
+            <button (click)="deleteJob()" class="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500">
+              Delete
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <!-- Left Column -->
+        <div class="space-y-6">
+          <!-- Customer Information -->
+          <div class="bg-white rounded-lg shadow-sm p-6">
+            <div class="flex items-center gap-2 mb-4">
+              <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+              </svg>
+              <h3 class="text-lg font-semibold text-gray-900">Customer Information</h3>
+            </div>
+
+            <div class="space-y-3">
+              <div>
+                <label class="block text-sm font-medium text-gray-500 mb-1">Name</label>
+                <p class="text-gray-900">{{ job.customerName }}</p>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-500 mb-1">Phone</label>
+                <p class="text-gray-900">{{ job.customerPhone }}</p>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-500 mb-1">Email</label>
+                <p class="text-gray-900">{{ job.customerEmail }}</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Job Details -->
+          <div class="bg-white rounded-lg shadow-sm p-6">
+            <div class="flex items-center gap-2 mb-4">
+              <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              <h3 class="text-lg font-semibold text-gray-900">Job Details</h3>
+            </div>
+
+            <div class="space-y-3">
+              <div>
+                <label class="block text-sm font-medium text-gray-500 mb-1">Job Type</label>
+                <p class="text-gray-900">{{ formatJobType(job.jobType) }}</p>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-500 mb-1">Vehicle Type Required</label>
+                <p class="text-gray-900">{{ formatVehicleType(job.vehicleTypeRequired) }}</p>
+              </div>
+              <div *ngIf="job.distance">
+                <label class="block text-sm font-medium text-gray-500 mb-1">Distance</label>
+                <p class="text-gray-900">{{ job.distance }} miles</p>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-500 mb-1">Estimated Duration</label>
+                <p class="text-gray-900">{{ job.estimatedDuration || 0 }} minutes</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Schedule -->
+          <div class="bg-white rounded-lg shadow-sm p-6">
+            <div class="flex items-center gap-2 mb-4">
+              <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+              <h3 class="text-lg font-semibold text-gray-900">Schedule</h3>
+            </div>
+
+            <div class="space-y-3">
+              <div>
+                <label class="block text-sm font-medium text-gray-500 mb-1">Scheduled Date</label>
+                <p class="text-gray-900">{{ formatDate(job.scheduledDate) }}</p>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-500 mb-1">Scheduled Time</label>
+                <p class="text-gray-900">{{ job.scheduledTime }}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right Column -->
+        <div class="space-y-6">
+          <!-- Locations -->
+          <div class="bg-white rounded-lg shadow-sm p-6">
+            <div class="flex items-center gap-2 mb-4">
+              <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+              <h3 class="text-lg font-semibold text-gray-900">Locations</h3>
+            </div>
+
+            <div class="space-y-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-500 mb-1">Pickup Location</label>
+                <p class="text-gray-900">{{ job.pickupLocation }}</p>
+              </div>
+              <div class="flex justify-center">
+                <svg class="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+                </svg>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-500 mb-1">Delivery Location</label>
+                <p class="text-gray-900">{{ job.deliveryLocation }}</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Items & Instructions -->
+          <div class="bg-white rounded-lg shadow-sm p-6">
+            <div class="flex items-center gap-2 mb-4">
+              <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+              </svg>
+              <h3 class="text-lg font-semibold text-gray-900">Items & Instructions</h3>
+            </div>
+
+            <div class="space-y-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-500 mb-1">Items</label>
+                <p class="text-gray-900 whitespace-pre-wrap">{{ job.items }}</p>
+              </div>
+              <div *ngIf="job.specialInstructions">
+                <label class="block text-sm font-medium text-gray-500 mb-1">Special Instructions</label>
+                <p class="text-gray-900 whitespace-pre-wrap">{{ job.specialInstructions }}</p>
+              </div>
+              <div *ngIf="job.internalNotes">
+                <label class="block text-sm font-medium text-gray-500 mb-1">Internal Notes</label>
+                <p class="text-gray-900 whitespace-pre-wrap bg-yellow-50 p-3 rounded border border-yellow-200">{{ job.internalNotes }}</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Driver Information -->
+          <div *ngIf="job.driverId" class="bg-white rounded-lg shadow-sm p-6">
+            <div class="flex items-center gap-2 mb-4">
+              <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path d="M4 16c0 .829.335 1.577.879 2.121M4 16c0-.829.335-1.577.879-2.121M4 16h12M20 16c0 .829-.335 1.577-.879 2.121M20 16c0-.829-.335-1.577-.879-2.121M20 16H8m-3.121 2.121C5.333 18.667 6.127 19 7 19c.873 0 1.667-.333 2.121-.879M4.879 13.879C5.333 13.333 6.127 13 7 13c.873 0 1.667.333 2.121.879M9.121 18.121C9.667 17.667 10 16.873 10 16c0-.873-.333-1.667-.879-2.121M9.121 13.879C9.667 14.333 10 15.127 10 16m7 4c0-.373-.075-.73-.207-1.063M17 20c.873 0 1.667-.333 2.121-.879M17 20c-.873 0-1.667-.333-2.121-.879M17 13c.873 0 1.667.333 2.121.879M17 13c-.873 0-1.667.333-2.121.879M19.121 13.879C19.667 14.333 20 15.127 20 16M1 6h9l3 6H3L1 6zm20 6h-3V3H8v3" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" />
+              </svg>
+              <h3 class="text-lg font-semibold text-gray-900">Assigned Driver</h3>
+            </div>
+
+            <div class="space-y-3">
+              <div>
+                <label class="block text-sm font-medium text-gray-500 mb-1">Driver Name</label>
+                <p class="text-gray-900">{{ job.driverName || 'N/A' }}</p>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-500 mb-1">Driver ID</label>
+                <p class="text-gray-900 text-sm text-gray-600">{{ job.driverId }}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Assign Driver Modal -->
+  <app-assign-driver-modal
+    *ngIf="jobId"
+    [jobId]="jobId"
+    [(isOpen)]="isAssignModalOpen"
+    (assigned)="onDriverAssigned()"
+  ></app-assign-driver-modal>
+</div>

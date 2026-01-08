@@ -1,0 +1,247 @@
+<div class="min-h-screen bg-gray-50 py-8">
+  <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+
+    <!-- Header -->
+<!--    <div class="mb-8">-->
+<!--      <div class="flex items-center justify-between">-->
+<!--        <div class="flex items-center gap-4">-->
+<!--          <a-->
+<!--            routerLink="/users"-->
+<!--            class="p-2 rounded-lg hover:bg-gray-200 transition-colors"-->
+<!--          >-->
+<!--            <svg class="h-6 w-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">-->
+<!--              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />-->
+<!--            </svg>-->
+<!--          </a>-->
+<!--          <div>-->
+<!--            <h1 class="text-3xl font-bold text-gray-900">User Details</h1>-->
+<!--            <p class="mt-2 text-sm text-gray-600">View and manage user information</p>-->
+<!--          </div>-->
+<!--        </div>-->
+<!--        <div class="flex gap-2">-->
+<!--          <a-->
+<!--            [routerLink]="['/users', userId, 'edit']"-->
+<!--            class="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"-->
+<!--          >-->
+<!--            Edit User-->
+<!--          </a>-->
+<!--          <button-->
+<!--            (click)="deleteUser()"-->
+<!--            class="px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 transition-colors"-->
+<!--          >-->
+<!--            Delete-->
+<!--          </button>-->
+<!--        </div>-->
+<!--      </div>-->
+<!--    </div>-->
+
+    <app-header
+      title="User Details"
+      description="View and manage user information"
+      icon="eye"
+      [breadcrumbs]="[
+      { label: 'Dashboard', route: '/dashboard', icon: 'home' },
+      { label: 'Users', route: '/users', icon: 'users' },
+      { label: user?.email || 'Details' }
+    ]"
+      [showBackButton]="true"
+      [actionButtons]="true"
+    >
+      <a
+        [routerLink]="['/users', userId, 'edit']"
+        class="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
+      >
+        Edit User
+      </a>
+      <button
+        (click)="deleteUser()"
+        class="px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 transition-colors"
+      >
+        Delete
+      </button>
+    </app-header>
+
+    <!-- Loading State -->
+    <div *ngIf="isLoading" class="bg-white rounded-xl shadow-sm border border-gray-200 p-12 text-center">
+      <svg class="animate-spin h-12 w-12 mx-auto text-blue-600" fill="none" viewBox="0 0 24 24">
+        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+      </svg>
+      <p class="mt-4 text-gray-600">Loading user...</p>
+    </div>
+
+    <!-- Error Message -->
+    <div *ngIf="errorMessage" class="mb-6 bg-red-50 border-l-4 border-red-500 p-4 rounded-md">
+      <div class="flex">
+        <svg class="h-5 w-5 text-red-400" fill="currentColor" viewBox="0 0 20 20">
+          <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
+        </svg>
+        <p class="ml-3 text-sm text-red-700">{{ errorMessage }}</p>
+      </div>
+    </div>
+
+    <!-- User Info -->
+    <div *ngIf="!isLoading && user" class="space-y-6">
+
+      <!-- Profile Card -->
+      <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+        <div class="bg-gradient-to-r from-primary-600 to-orange-500 h-32"></div>
+        <div class="px-6 pb-6">
+          <div class="flex items-end -mt-16 mb-6">
+            <div class="h-32 w-32 rounded-full bg-white border-4 border-white shadow-lg flex items-center justify-center">
+              <div class="h-28 w-28 rounded-full bg-gradient-to-br from-primary-500 to-orange-500 flex items-center justify-center text-white text-4xl font-bold">
+                {{ (user.email || 'U')[0].toUpperCase() }}
+              </div>
+            </div>
+            <div class="ml-6 mb-4">
+              <h2 class="text-2xl font-bold text-gray-900">{{ user.userName }}</h2>
+              <p class="text-gray-600">{{ user.email }}</p>
+              <span [class]="getUserStatusClass()" class="mt-2 inline-flex px-3 py-1 text-sm font-semibold rounded-full">
+                {{ getUserStatusText() }}
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Info Grid -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+        <!-- Account Information -->
+        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+          <h3 class="text-lg font-semibold text-gray-900 mb-4">Account Information</h3>
+          <dl class="space-y-4">
+            <div>
+              <dt class="text-sm font-medium text-gray-500">User ID</dt>
+              <dd class="mt-1 text-sm text-gray-900 font-mono">{{ user.id }}</dd>
+            </div>
+            <div>
+              <dt class="text-sm font-medium text-gray-500">Username</dt>
+              <dd class="mt-1 text-sm text-gray-900">{{ user.userName || '-' }}</dd>
+            </div>
+            <div>
+              <dt class="text-sm font-medium text-gray-500">Email</dt>
+              <dd class="mt-1 text-sm text-gray-900">{{ user.email || '-' }}</dd>
+            </div>
+            <div>
+              <dt class="text-sm font-medium text-gray-500">Phone Number</dt>
+              <dd class="mt-1 text-sm text-gray-900">{{ user.phoneNumber || '-' }}</dd>
+            </div>
+          </dl>
+        </div>
+
+        <!-- Security Information -->
+        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+          <h3 class="text-lg font-semibold text-gray-900 mb-4">Security</h3>
+          <dl class="space-y-4">
+            <div>
+              <dt class="text-sm font-medium text-gray-500">Email Confirmed</dt>
+              <dd class="mt-1">
+                <span *ngIf="user.emailConfirmed" class="inline-flex items-center text-sm text-green-700">
+                  <svg class="h-4 w-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+                  </svg>
+                  Yes
+                </span>
+                <span *ngIf="!user.emailConfirmed" class="inline-flex items-center text-sm text-red-700">
+                  <svg class="h-4 w-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
+                  </svg>
+                  No
+                </span>
+              </dd>
+            </div>
+            <div>
+              <dt class="text-sm font-medium text-gray-500">Phone Confirmed</dt>
+              <dd class="mt-1 text-sm text-gray-900">{{ user.phoneNumberConfirmed ? 'Yes' : 'No' }}</dd>
+            </div>
+            <div>
+              <dt class="text-sm font-medium text-gray-500">Two-Factor Enabled</dt>
+              <dd class="mt-1 text-sm text-gray-900">{{ user.twoFactorEnabled ? 'Yes' : 'No' }}</dd>
+            </div>
+            <div>
+              <dt class="text-sm font-medium text-gray-500">Account Lockout Enabled</dt>
+              <dd class="mt-1 text-sm text-gray-900">{{ user.lockoutEnabled ? 'Yes' : 'No' }}</dd>
+            </div>
+            <div *ngIf="isAccountLocked()">
+              <dt class="text-sm font-medium text-gray-500">Lockout Ends</dt>
+              <dd class="mt-1 text-sm text-red-600 font-semibold">{{ formatDate(user.lockoutEnd) }}</dd>
+            </div>
+          </dl>
+        </div>
+
+        <!-- Roles -->
+        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 md:col-span-2">
+          <h3 class="text-lg font-semibold text-gray-900 mb-4">Roles & Permissions</h3>
+          <div *ngIf="user.roles && user.roles.length > 0" class="flex flex-wrap gap-2">
+            <span *ngFor="let role of user.roles" class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
+              <svg class="h-4 w-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd" />
+              </svg>
+              {{ role }}
+            </span>
+          </div>
+          <p *ngIf="!user.roles || user.roles.length === 0" class="text-sm text-gray-500 italic">
+            No roles assigned
+          </p>
+        </div>
+
+        <!-- Claims (if available) -->
+        <div *ngIf="user.claims && user.claims.length > 0" class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 md:col-span-2">
+          <h3 class="text-lg font-semibold text-gray-900 mb-4">User Claims</h3>
+          <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+              <thead class="bg-gray-50">
+              <tr>
+                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
+                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Value</th>
+              </tr>
+              </thead>
+              <tbody class="bg-white divide-y divide-gray-200">
+              <tr *ngFor="let claim of user.claims">
+                <td class="px-4 py-2 text-sm text-gray-900">{{ claim.type }}</td>
+                <td class="px-4 py-2 text-sm text-gray-600">{{ claim.value }}</td>
+              </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Quick Actions -->
+      <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        <h3 class="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h3>
+        <div class="flex flex-wrap gap-3">
+          <button
+            (click)="resetPassword()"
+            class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors"
+          >
+            <svg class="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+            </svg>
+            Reset Password
+          </button>
+          <button
+            *ngIf="isAccountLocked()"
+            (click)="unlockAccount()"
+            class="inline-flex items-center px-4 py-2 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700 transition-colors"
+          >
+            <svg class="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z" />
+            </svg>
+            Unlock Account
+          </button>
+          <a
+            [routerLink]="['/users', userId, 'edit']"
+            class="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
+          >
+            <svg class="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+            </svg>
+            Edit User
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

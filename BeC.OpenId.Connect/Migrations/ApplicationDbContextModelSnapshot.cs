@@ -87,7 +87,34 @@ namespace BeC.OpenId.Connect.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("ActivityLogs");
+                    b.ToTable("ActivityLogs", (string)null);
+                });
+
+            modelBuilder.Entity("BeC.OpenId.Connect.Features.Customers.Dtos.FavoriteDriver", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("CustomerId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<Guid>("DriverId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DriverId");
+
+                    b.ToTable("FavoriteDrivers", (string)null);
                 });
 
             modelBuilder.Entity("BeC.OpenId.Connect.Features.Customers.Dtos.SavedAddress", b =>
@@ -146,7 +173,7 @@ namespace BeC.OpenId.Connect.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("SavedAddresses");
+                    b.ToTable("SavedAddresses", (string)null);
                 });
 
             modelBuilder.Entity("BeC.OpenId.Connect.Features.Drivers.Dtos.Driver", b =>
@@ -246,7 +273,7 @@ namespace BeC.OpenId.Connect.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("Drivers");
+                    b.ToTable("Drivers", (string)null);
                 });
 
             modelBuilder.Entity("BeC.OpenId.Connect.Features.Drivers.Dtos.DriverDocument", b =>
@@ -300,7 +327,7 @@ namespace BeC.OpenId.Connect.Migrations
 
                     b.HasIndex("Type");
 
-                    b.ToTable("DriverDocuments");
+                    b.ToTable("DriverDocuments", (string)null);
                 });
 
             modelBuilder.Entity("BeC.OpenId.Connect.Features.Drivers.Dtos.Earning", b =>
@@ -327,6 +354,9 @@ namespace BeC.OpenId.Connect.Migrations
                     b.Property<Guid>("DriverId")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<DateTime?>("EarnedAt")
+                        .HasColumnType("datetime2");
+
                     b.Property<DateTime>("JobCompletedDate")
                         .HasColumnType("datetime2");
 
@@ -352,11 +382,17 @@ namespace BeC.OpenId.Connect.Migrations
                     b.Property<string>("Notes")
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<DateTime?>("PaidAt")
+                        .HasColumnType("datetime2");
+
                     b.Property<DateTime?>("PaymentDate")
                         .HasColumnType("datetime2");
 
                     b.Property<string>("PaymentDetails")
                         .HasColumnType("nvarchar(max)");
+
+                    b.Property<Guid?>("PaymentId")
+                        .HasColumnType("uniqueidentifier");
 
                     b.Property<string>("PaymentMethod")
                         .HasMaxLength(100)
@@ -373,6 +409,9 @@ namespace BeC.OpenId.Connect.Migrations
                         .IsRequired()
                         .HasMaxLength(20)
                         .HasColumnType("nvarchar(20)");
+
+                    b.Property<Guid?>("PayoutId")
+                        .HasColumnType("uniqueidentifier");
 
                     b.Property<decimal?>("TipAmount")
                         .HasPrecision(10, 2)
@@ -393,7 +432,7 @@ namespace BeC.OpenId.Connect.Migrations
 
                     b.HasIndex("PaymentStatus");
 
-                    b.ToTable("Earnings");
+                    b.ToTable("Earnings", (string)null);
                 });
 
             modelBuilder.Entity("BeC.OpenId.Connect.Features.Drivers.Dtos.Job", b =>
@@ -526,7 +565,7 @@ namespace BeC.OpenId.Connect.Migrations
 
                     b.HasIndex("Status");
 
-                    b.ToTable("Jobs");
+                    b.ToTable("Jobs", (string)null);
                 });
 
             modelBuilder.Entity("BeC.OpenId.Connect.Features.Drivers.Dtos.Vehicle", b =>
@@ -629,7 +668,7 @@ namespace BeC.OpenId.Connect.Migrations
 
                     b.HasIndex("Status");
 
-                    b.ToTable("Vehicles");
+                    b.ToTable("Vehicles", (string)null);
                 });
 
             modelBuilder.Entity("BeC.OpenId.Connect.Features.Jobs.Dtos.JobStop", b =>
@@ -709,7 +748,7 @@ namespace BeC.OpenId.Connect.Migrations
 
                     b.HasIndex("JobId");
 
-                    b.ToTable("JobStops");
+                    b.ToTable("JobStops", (string)null);
                 });
 
             modelBuilder.Entity("BeC.OpenId.Connect.Features.Jobs.Dtos.JobTemplate", b =>
@@ -818,7 +857,7 @@ namespace BeC.OpenId.Connect.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("JobTemplates");
+                    b.ToTable("JobTemplates", (string)null);
                 });
 
             modelBuilder.Entity("BeC.OpenId.Connect.Features.Jobs.Dtos.RecurringJob", b =>
@@ -922,7 +961,7 @@ namespace BeC.OpenId.Connect.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("RecurringJobs");
+                    b.ToTable("RecurringJobs", (string)null);
                 });
 
             modelBuilder.Entity("BeC.OpenId.Connect.Features.Location.Dtos.DriverLocation", b =>
@@ -972,7 +1011,7 @@ namespace BeC.OpenId.Connect.Migrations
 
                     b.HasIndex("DriverId", "Timestamp");
 
-                    b.ToTable("DriverLocations");
+                    b.ToTable("DriverLocations", (string)null);
                 });
 
             modelBuilder.Entity("BeC.OpenId.Connect.Features.Notifications.Dtos.Notification", b =>
@@ -1075,7 +1114,7 @@ namespace BeC.OpenId.Connect.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("Notifications");
+                    b.ToTable("Notifications", (string)null);
                 });
 
             modelBuilder.Entity("BeC.OpenId.Connect.Features.Notifications.Dtos.NotificationPreferences", b =>
@@ -1228,7 +1267,7 @@ namespace BeC.OpenId.Connect.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("NotificationPreferences");
+                    b.ToTable("NotificationPreferences", (string)null);
                 });
 
             modelBuilder.Entity("BeC.OpenId.Connect.Features.Payments.Dtos.Payment", b =>
@@ -1377,7 +1416,7 @@ namespace BeC.OpenId.Connect.Migrations
 
                     b.HasIndex("Status");
 
-                    b.ToTable("Payments");
+                    b.ToTable("Payments", (string)null);
                 });
 
             modelBuilder.Entity("BeC.OpenId.Connect.Features.Payments.Dtos.Payout", b =>
@@ -1476,7 +1515,7 @@ namespace BeC.OpenId.Connect.Migrations
 
                     b.HasIndex("Status");
 
-                    b.ToTable("Payouts");
+                    b.ToTable("Payouts", (string)null);
                 });
 
             modelBuilder.Entity("BeC.OpenId.Connect.Features.Pricing.Dtos.PricingHistory", b =>
@@ -1560,7 +1599,7 @@ namespace BeC.OpenId.Connect.Migrations
 
                     b.HasIndex("JobId");
 
-                    b.ToTable("PricingHistory");
+                    b.ToTable("PricingHistory", (string)null);
                 });
 
             modelBuilder.Entity("BeC.OpenId.Connect.Features.Pricing.Dtos.PricingRule", b =>
@@ -1650,7 +1689,7 @@ namespace BeC.OpenId.Connect.Migrations
 
                     b.HasIndex("VehicleType");
 
-                    b.ToTable("PricingRules");
+                    b.ToTable("PricingRules", (string)null);
                 });
 
             modelBuilder.Entity("BeC.OpenId.Connect.Features.Reviews.Dtos.Review", b =>
@@ -1762,7 +1801,7 @@ namespace BeC.OpenId.Connect.Migrations
 
                     b.HasIndex("Status");
 
-                    b.ToTable("Reviews");
+                    b.ToTable("Reviews", (string)null);
                 });
 
             modelBuilder.Entity("BeC.OpenId.Connect.Features.Users.Dtos.ApplicationUser", b =>
@@ -2199,6 +2238,17 @@ namespace BeC.OpenId.Connect.Migrations
                         .IsRequired();
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("BeC.OpenId.Connect.Features.Customers.Dtos.FavoriteDriver", b =>
+                {
+                    b.HasOne("BeC.OpenId.Connect.Features.Drivers.Dtos.Driver", "Driver")
+                        .WithMany()
+                        .HasForeignKey("DriverId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Driver");
                 });
 
             modelBuilder.Entity("BeC.OpenId.Connect.Features.Drivers.Dtos.DriverDocument", b =>

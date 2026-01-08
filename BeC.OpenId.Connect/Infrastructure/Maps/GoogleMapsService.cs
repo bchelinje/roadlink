@@ -93,6 +93,8 @@ public class GoogleMapsService : IGoogleMapsService
     {
         try
         {
+            _logger.LogInformation("Creating Distance Matrix request - Origin: {Origin}, Destination: {Destination}", origin, destination);
+
             var request = new DistanceMatrixRequest
             {
                 Key = _apiKey,
@@ -101,12 +103,22 @@ public class GoogleMapsService : IGoogleMapsService
                 TravelMode = GoogleApi.Entities.Maps.Common.Enums.TravelMode.Driving
             };
 
+            _logger.LogInformation("Sending request to Google Maps Distance Matrix API...");
             var response = await GoogleMaps.DistanceMatrix.QueryAsync(request);
+
+            _logger.LogInformation("Received response with status: {Status}", response.Status);
 
             if (response.Status != Status.Ok || !response.Rows.Any())
             {
-                _logger.LogWarning("Distance calculation failed. Origin: {Origin}, Destination: {Destination}. Status: {Status}",
-                    origin, destination, response.Status);
+                _logger.LogWarning("Distance calculation failed. Origin: {Origin}, Destination: {Destination}. Status: {Status}, ErrorMessage: {ErrorMessage}",
+                    origin, destination, response.Status, response.ErrorMessage ?? "None");
+
+                // Log more details about the error
+                if (!string.IsNullOrEmpty(response.ErrorMessage))
+                {
+                    _logger.LogError("Google Maps API Error: {ErrorMessage}", response.ErrorMessage);
+                }
+
                 return null;
             }
 
@@ -120,6 +132,9 @@ public class GoogleMapsService : IGoogleMapsService
             var distanceMeters = element.Distance.Value;
             var durationSeconds = element.Duration.Value;
 
+            _logger.LogInformation("Successfully calculated distance: {Distance} meters ({Miles} miles)",
+                distanceMeters, distanceMeters * 0.000621371);
+
             return new DistanceResult
             {
                 DistanceInMeters = distanceMeters,
@@ -131,9 +146,15 @@ public class GoogleMapsService : IGoogleMapsService
                 DurationText = element.Duration.Text
             };
         }
+        catch (GoogleApi.Exceptions.GoogleApiException ex)
+        {
+            _logger.LogError(ex, "Google Maps API Exception: {Message}", ex.Message);
+            _logger.LogError("This usually means: 1) Distance Matrix API not enabled, 2) Billing not enabled, or 3) API key invalid");
+            return null;
+        }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error calculating distance between {Origin} and {Destination}", origin, destination);
+            _logger.LogError(ex, "Unexpected error calculating distance between {Origin} and {Destination}", origin, destination);
             return null;
         }
     }

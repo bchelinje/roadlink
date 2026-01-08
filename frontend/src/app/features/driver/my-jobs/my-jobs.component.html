@@ -1,0 +1,242 @@
+<!-- features/driver/my-jobs/my-jobs.component.html -->
+<div class="p-6 space-y-6">
+  <!-- Page Header -->
+  <div class="page-header">
+    <div>
+      <h1>My Jobs</h1>
+      <p class="subtitle">Manage and track all your assigned jobs</p>
+    </div>
+  </div>
+
+  <!-- Filters -->
+  <div class="bg-white shadow rounded-lg p-4">
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+      <!-- Search -->
+      <div class="lg:col-span-2">
+        <label for="search" class="block text-sm font-medium text-gray-700 mb-1">Search</label>
+        <input
+          type="text"
+          id="search"
+          [(ngModel)]="searchTerm"
+          (ngModelChange)="onLocalFilterChange()"
+          placeholder="Search by job number, customer..."
+          class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-green-500 focus:border-green-500"
+        />
+      </div>
+
+      <!-- Status Filter -->
+      <div>
+        <label for="status" class="block text-sm font-medium text-gray-700 mb-1">Status</label>
+        <select
+          id="status"
+          [(ngModel)]="selectedStatus"
+          (ngModelChange)="onFilterChange()"
+          class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-green-500 focus:border-green-500"
+        >
+          <option *ngFor="let status of statuses" [value]="status.value">{{ status.label }}</option>
+        </select>
+      </div>
+
+      <!-- Priority Filter -->
+      <div>
+        <label for="priority" class="block text-sm font-medium text-gray-700 mb-1">Priority</label>
+        <select
+          id="priority"
+          [(ngModel)]="selectedPriority"
+          (ngModelChange)="onLocalFilterChange()"
+          class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-green-500 focus:border-green-500"
+        >
+          <option *ngFor="let priority of priorities" [value]="priority.value">{{ priority.label }}</option>
+        </select>
+      </div>
+
+      <!-- Sort -->
+      <div>
+        <label for="sort" class="block text-sm font-medium text-gray-700 mb-1">Sort By</label>
+        <select
+          id="sort"
+          [(ngModel)]="sortBy"
+          (ngModelChange)="onLocalFilterChange()"
+          class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-green-500 focus:border-green-500"
+        >
+          <option value="scheduledDate">Scheduled Date</option>
+          <option value="jobNumber">Job Number</option>
+          <option value="customerName">Customer Name</option>
+          <option value="priority">Priority</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Clear Filters Button -->
+    <div class="mt-4 flex justify-end">
+      <button
+        (click)="clearFilters()"
+        class="inline-flex items-center px-3 py-1.5 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+      >
+        <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+        </svg>
+        Clear Filters
+      </button>
+    </div>
+  </div>
+
+  <!-- Loading State -->
+  <div *ngIf="loading" class="flex items-center justify-center h-64">
+    <div class="text-center">
+      <div class="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-green-600"></div>
+      <p class="mt-4 text-gray-600">Loading jobs...</p>
+    </div>
+  </div>
+
+  <!-- Error State -->
+  <div *ngIf="error && !loading" class="rounded-md bg-red-50 p-4">
+    <div class="flex">
+      <svg class="h-5 w-5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+      </svg>
+      <div class="ml-3">
+        <h3 class="text-sm font-medium text-red-800">{{ error }}</h3>
+      </div>
+    </div>
+  </div>
+
+  <!-- Jobs List -->
+  <div *ngIf="!loading && !error" class="bg-white shadow rounded-lg overflow-hidden">
+    <!-- Jobs Count -->
+    <div class="px-4 py-3 border-b border-gray-200 bg-gray-50">
+      <p class="text-sm text-gray-700">
+        Showing <span class="font-medium">{{ filteredJobs.length }}</span> of <span class="font-medium">{{ totalItems }}</span> jobs
+      </p>
+    </div>
+
+    <!-- Empty State -->
+    <div *ngIf="filteredJobs.length === 0" class="px-4 py-12 text-center">
+      <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+      </svg>
+      <h3 class="mt-2 text-sm font-medium text-gray-900">No jobs found</h3>
+      <p class="mt-1 text-sm text-gray-500">Try adjusting your filters or check back later.</p>
+    </div>
+
+    <!-- Jobs Table -->
+    <div *ngIf="filteredJobs.length > 0" class="overflow-x-auto">
+      <table class="min-w-full divide-y divide-gray-200">
+        <thead class="bg-gray-50">
+          <tr>
+            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              Job Details
+            </th>
+            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              Customer
+            </th>
+            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              Scheduled
+            </th>
+            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              Status
+            </th>
+            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              Priority
+            </th>
+            <th scope="col" class="relative px-6 py-3">
+              <span class="sr-only">View</span>
+            </th>
+          </tr>
+        </thead>
+        <tbody class="bg-white divide-y divide-gray-200">
+          <tr *ngFor="let job of filteredJobs" class="hover:bg-gray-50 cursor-pointer" [routerLink]="['/driver/jobs', job.id]">
+            <td class="px-6 py-4 whitespace-nowrap">
+              <div class="text-sm font-medium text-gray-900">Job #{{ job.jobNumber }}</div>
+              <div class="text-sm text-gray-500">{{ job.jobType }}</div>
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap">
+              <div class="text-sm text-gray-900">{{ job.customerName }}</div>
+              <div class="text-sm text-gray-500">{{ job.customerPhone }}</div>
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap">
+              <div class="text-sm text-gray-900">{{ formatDate(job.scheduledDate) }}</div>
+              <div class="text-sm text-gray-500">{{ formatTime(job.scheduledTime) }}</div>
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap">
+              <span [class]="getStatusBadgeClass(job.status || '')" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium">
+                {{ formatStatus(job.status || '') }}
+              </span>
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap">
+              <span [class]="getPriorityBadgeClass(job.priority || '')" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium">
+                {{ formatPriority(job.priority || '') }}
+              </span>
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+              <a [routerLink]="['/driver/jobs', job.id]" class="text-green-600 hover:text-green-900">
+                View
+              </a>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Pagination -->
+    <div *ngIf="totalPages > 1" class="px-4 py-3 border-t border-gray-200 bg-gray-50 flex items-center justify-between">
+      <div class="flex-1 flex justify-between sm:hidden">
+        <button
+          (click)="onPageChange(currentPage - 1)"
+          [disabled]="currentPage === 1"
+          class="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          Previous
+        </button>
+        <button
+          (click)="onPageChange(currentPage + 1)"
+          [disabled]="currentPage === totalPages"
+          class="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          Next
+        </button>
+      </div>
+      <div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+        <div>
+          <p class="text-sm text-gray-700">
+            Page <span class="font-medium">{{ currentPage }}</span> of <span class="font-medium">{{ totalPages }}</span>
+          </p>
+        </div>
+        <div>
+          <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+            <button
+              (click)="onPageChange(currentPage - 1)"
+              [disabled]="currentPage === 1"
+              class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <span class="sr-only">Previous</span>
+              <svg class="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd" />
+              </svg>
+            </button>
+            <button
+              *ngFor="let page of pages"
+              (click)="onPageChange(page)"
+              [class.bg-green-50]="page === currentPage"
+              [class.border-green-500]="page === currentPage"
+              [class.text-green-600]="page === currentPage"
+              class="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50"
+            >
+              {{ page }}
+            </button>
+            <button
+              (click)="onPageChange(currentPage + 1)"
+              [disabled]="currentPage === totalPages"
+              class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <span class="sr-only">Next</span>
+              <svg class="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd" />
+              </svg>
+            </button>
+          </nav>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

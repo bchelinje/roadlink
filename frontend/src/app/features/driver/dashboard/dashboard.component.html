@@ -1,0 +1,259 @@
+<!-- features/driver/dashboard/dashboard.component.html -->
+<div class="p-6 space-y-6">
+  <!-- Page Header -->
+  <div class="page-header">
+    <div>
+      <h1>Driver Dashboard</h1>
+      <p class="subtitle">Welcome back! Here's your overview</p>
+    </div>
+    <button
+      routerLink="/driver/jobs"
+      class="btn-primary"
+    >
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 002.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 00-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 00.75-.75 2.25 2.25 0 00-.1-.664m-5.8 0A2.251 2.251 0 0113.5 2.25H15c1.012 0 1.867.668 2.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m0 0H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V9.375c0-.621-.504-1.125-1.125-1.125H8.25zM6.75 12h.008v.008H6.75V12zm0 3h.008v.008H6.75V15zm0 3h.008v.008H6.75V18z" />
+      </svg>
+      View All Jobs
+    </button>
+  </div>
+
+  <!-- Availability Toggle Card -->
+  <div class="bg-white rounded-lg shadow p-6">
+    <div class="flex items-center justify-between">
+      <div class="flex items-center gap-4">
+        <div
+          class="w-12 h-12 rounded-full flex items-center justify-center"
+          [class.bg-green-100]="isAvailable"
+          [class.bg-gray-100]="!isAvailable"
+        >
+          <svg
+            class="w-6 h-6"
+            [class.text-green-600]="isAvailable"
+            [class.text-gray-400]="!isAvailable"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M5.636 18.364a9 9 0 010-12.728m12.728 0a9 9 0 010 12.728m-9.9-2.829a5 5 0 010-7.07m7.072 0a5 5 0 010 7.07M13 12a1 1 0 11-2 0 1 1 0 012 0z" />
+          </svg>
+        </div>
+        <div>
+          <h3 class="text-lg font-semibold text-gray-900">
+            {{ isAvailable ? 'You are Online' : 'You are Offline' }}
+          </h3>
+          <p class="text-sm text-gray-600">
+            {{ isAvailable ? 'Ready to receive job assignments' : 'Not accepting new jobs' }}
+          </p>
+        </div>
+      </div>
+      <button
+        (click)="toggleAvailability()"
+        [disabled]="isTogglingAvailability"
+        class="relative inline-flex h-8 w-14 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
+        [class.bg-green-600]="isAvailable"
+        [class.bg-gray-200]="!isAvailable"
+      >
+        <span class="sr-only">Toggle availability</span>
+        <span
+          class="pointer-events-none inline-block h-7 w-7 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out"
+          [class.translate-x-6]="isAvailable"
+          [class.translate-x-0]="!isAvailable"
+        ></span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Loading State -->
+  <div *ngIf="loading" class="flex items-center justify-center h-64">
+    <div class="text-center">
+      <div class="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-green-600"></div>
+      <p class="mt-4 text-gray-600">Loading dashboard...</p>
+    </div>
+  </div>
+
+  <!-- Error State -->
+  <div *ngIf="error && !loading" class="rounded-md bg-red-50 p-4">
+    <div class="flex">
+      <svg class="h-5 w-5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+      </svg>
+      <div class="ml-3">
+        <h3 class="text-sm font-medium text-red-800">{{ error }}</h3>
+      </div>
+    </div>
+  </div>
+
+  <!-- Stats Cards -->
+  <div *ngIf="!loading && !error" class="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+    <!-- Jobs Today -->
+    <div class="bg-white overflow-hidden shadow rounded-lg">
+      <div class="p-5">
+        <div class="flex items-center">
+          <div class="flex-shrink-0">
+            <div class="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+              <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+            </div>
+          </div>
+          <div class="ml-5 w-0 flex-1">
+            <dl>
+              <dt class="text-sm font-medium text-gray-500 truncate">Jobs Today</dt>
+              <dd class="flex items-baseline">
+                <div class="text-2xl font-semibold text-gray-900">{{ stats?.todayJobs || 0 }}</div>
+              </dd>
+            </dl>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Jobs This Week -->
+    <div class="bg-white overflow-hidden shadow rounded-lg">
+      <div class="p-5">
+        <div class="flex items-center">
+          <div class="flex-shrink-0">
+            <div class="w-12 h-12 bg-primary-100 rounded-lg flex items-center justify-center">
+              <svg class="w-6 h-6 text-primary-800" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+              </svg>
+            </div>
+          </div>
+          <div class="ml-5 w-0 flex-1">
+            <dl>
+              <dt class="text-sm font-medium text-gray-500 truncate">Jobs This Week</dt>
+              <dd class="flex items-baseline">
+                <div class="text-2xl font-semibold text-gray-900">{{ stats?.weekJobs || 0 }}</div>
+              </dd>
+            </dl>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Pending Jobs -->
+    <div class="bg-white overflow-hidden shadow rounded-lg">
+      <div class="p-5">
+        <div class="flex items-center">
+          <div class="flex-shrink-0">
+            <div class="w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center">
+              <svg class="w-6 h-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+          </div>
+          <div class="ml-5 w-0 flex-1">
+            <dl>
+              <dt class="text-sm font-medium text-gray-500 truncate">Pending Jobs</dt>
+              <dd class="flex items-baseline">
+                <div class="text-2xl font-semibold text-gray-900">{{ stats?.pending || 0 }}</div>
+              </dd>
+            </dl>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Rating -->
+    <div class="bg-white overflow-hidden shadow rounded-lg">
+      <div class="p-5">
+        <div class="flex items-center">
+          <div class="flex-shrink-0">
+            <div class="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
+              <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
+              </svg>
+            </div>
+          </div>
+          <div class="ml-5 w-0 flex-1">
+            <dl>
+              <dt class="text-sm font-medium text-gray-500 truncate">Your Rating</dt>
+              <dd class="flex items-baseline">
+                <div class="text-2xl font-semibold text-gray-900">{{ stats?.rating?.toFixed(1) || '0.0' }}</div>
+                <span class="ml-2 text-sm text-gray-500">/5.0</span>
+              </dd>
+            </dl>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Upcoming Jobs -->
+  <div *ngIf="!loading && !error" class="bg-white shadow rounded-lg">
+    <div class="px-4 py-5 border-b border-gray-200 sm:px-6">
+      <div class="flex items-center justify-between">
+        <h3 class="text-lg leading-6 font-medium text-gray-900">Upcoming Jobs</h3>
+        <a routerLink="/driver/jobs" class="text-sm font-medium text-green-600 hover:text-green-500">
+          View all
+        </a>
+      </div>
+    </div>
+    <div class="divide-y divide-gray-200">
+      <div *ngIf="upcomingJobs.length === 0" class="px-4 py-8 text-center text-gray-500">
+        No upcoming jobs. Check back later!
+      </div>
+      <div *ngFor="let job of upcomingJobs" class="px-4 py-4 sm:px-6 hover:bg-gray-50 cursor-pointer" [routerLink]="['/driver/jobs', job.id]">
+        <div class="flex items-center justify-between">
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center space-x-3">
+              <p class="text-sm font-medium text-gray-900 truncate">Job #{{ job.jobNumber }}</p>
+              <span [class]="getStatusBadgeClass(job.status || '')" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium">
+                {{ formatStatus(job.status || '') }}
+              </span>
+              <span [class]="getPriorityBadgeClass(job.priority || '')" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium">
+                {{ formatPriority(job.priority || '') }}
+              </span>
+            </div>
+            <p class="mt-1 text-sm text-gray-500">{{ job.customerName }}</p>
+            <div class="mt-2 flex items-center text-sm text-gray-500">
+              <svg class="flex-shrink-0 mr-1.5 h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+              <span>{{ formatDate(job.scheduledDate) }} at {{ formatTime(job.scheduledTime) }}</span>
+            </div>
+          </div>
+          <div class="flex-shrink-0">
+            <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+            </svg>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Recent Jobs -->
+  <div *ngIf="!loading && !error && recentJobs.length > 0" class="bg-white shadow rounded-lg">
+    <div class="px-4 py-5 border-b border-gray-200 sm:px-6">
+      <h3 class="text-lg leading-6 font-medium text-gray-900">Recently Completed</h3>
+    </div>
+    <div class="divide-y divide-gray-200">
+      <div *ngFor="let job of recentJobs" class="px-4 py-4 sm:px-6 hover:bg-gray-50 cursor-pointer" [routerLink]="['/driver/jobs', job.id]">
+        <div class="flex items-center justify-between">
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center space-x-3">
+              <p class="text-sm font-medium text-gray-900 truncate">Job #{{ job.jobNumber }}</p>
+              <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                Completed
+              </span>
+            </div>
+            <p class="mt-1 text-sm text-gray-500">{{ job.customerName }}</p>
+            <div class="mt-2 flex items-center text-sm text-gray-500">
+              <svg class="flex-shrink-0 mr-1.5 h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <span>Completed on {{ formatDate(job.completedAt) }}</span>
+            </div>
+          </div>
+          <div class="flex-shrink-0">
+            <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+            </svg>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

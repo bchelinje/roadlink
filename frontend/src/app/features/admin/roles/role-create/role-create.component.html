@@ -1,0 +1,152 @@
+<div class="min-h-screen bg-gray-50 py-8">
+  <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
+
+    <!-- Header -->
+    <div class="mb-8">
+      <button
+        (click)="cancel()"
+        class="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-4 transition-colors"
+      >
+        <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+        </svg>
+        <span class="text-sm font-medium">Back to Roles</span>
+      </button>
+
+      <div class="flex items-center gap-4">
+        <div class="text-4xl">🎭</div>
+        <div>
+          <h1 class="text-3xl font-bold text-gray-900">Create New Role</h1>
+          <p class="mt-2 text-sm text-gray-600">
+            Define a new role with specific permissions and access levels
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Error Message -->
+    <div *ngIf="errorMessage" class="mb-6 bg-red-50 border-l-4 border-red-500 p-4 rounded-md">
+      <div class="flex">
+        <svg class="h-5 w-5 text-red-400" fill="currentColor" viewBox="0 0 20 20">
+          <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
+        </svg>
+        <p class="ml-3 text-sm text-red-700">{{ errorMessage }}</p>
+      </div>
+    </div>
+
+    <!-- Form Card -->
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200">
+      <form [formGroup]="roleForm" (ngSubmit)="onSubmit()" class="p-6 space-y-6">
+
+        <!-- Role Name -->
+        <div>
+          <label for="name" class="block text-sm font-medium text-gray-700 mb-2">
+            Role Name <span class="text-red-500">*</span>
+          </label>
+          <input
+            id="name"
+            type="text"
+            formControlName="name"
+            [class.border-red-500]="name?.invalid && name?.touched"
+            class="block w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+            placeholder="e.g., Admin, Manager, User"
+          />
+          <p *ngIf="name?.invalid && name?.touched" class="mt-2 text-sm text-red-600">
+            <span *ngIf="name?.errors?.['required']">Role name is required</span>
+            <span *ngIf="name?.errors?.['minlength']">Role name must be at least 2 characters</span>
+          </p>
+          <p class="mt-2 text-xs text-gray-500">
+            Choose a descriptive name that clearly identifies the role's purpose
+          </p>
+        </div>
+
+        <!-- Description -->
+        <div>
+          <label for="description" class="block text-sm font-medium text-gray-700 mb-2">
+            Description
+          </label>
+          <textarea
+            id="description"
+            formControlName="description"
+            rows="4"
+            class="block w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all resize-none"
+            placeholder="Describe the responsibilities and permissions of this role..."
+          ></textarea>
+          <p class="mt-2 text-xs text-gray-500">
+            Optional: Provide a detailed description of what this role can do
+          </p>
+        </div>
+
+        <!-- Info Box -->
+        <div class="bg-blue-50 border-l-4 border-blue-500 p-4 rounded-md">
+          <div class="flex">
+            <svg class="h-5 w-5 text-blue-400" fill="currentColor" viewBox="0 0 20 20">
+              <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" />
+            </svg>
+            <div class="ml-3">
+              <p class="text-sm text-blue-700">
+                <strong>Note:</strong> After creating the role, you can assign it to users from the user management section.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Form Actions -->
+        <div class="pt-6 border-t border-gray-200 flex items-center justify-end gap-3">
+          <button
+            type="button"
+            (click)="cancel()"
+            [disabled]="isLoading"
+            class="px-6 py-3 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            [disabled]="isLoading || roleForm.invalid"
+            class="px-6 py-3 bg-gradient-to-r from-blue-600 to-orange-500 text-white rounded-lg text-sm font-medium hover:from-blue-700 hover:to-orange-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
+          >
+            <svg *ngIf="isLoading" class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            <span *ngIf="!isLoading">Create Role</span>
+            <span *ngIf="isLoading">Creating...</span>
+          </button>
+        </div>
+      </form>
+    </div>
+
+    <!-- Tips Section -->
+    <div class="mt-6 bg-gray-50 rounded-lg p-6 border border-gray-200">
+      <h3 class="text-sm font-semibold text-gray-900 mb-3">💡 Tips for Creating Roles</h3>
+      <ul class="space-y-2 text-sm text-gray-600">
+        <li class="flex items-start gap-2">
+          <svg class="h-5 w-5 text-green-500 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+          </svg>
+          <span>Use clear, descriptive names that reflect the role's purpose</span>
+        </li>
+        <li class="flex items-start gap-2">
+          <svg class="h-5 w-5 text-green-500 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+          </svg>
+          <span>Follow a consistent naming convention (e.g., Admin, Manager, User)</span>
+        </li>
+        <li class="flex items-start gap-2">
+          <svg class="h-5 w-5 text-green-500 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+          </svg>
+          <span>Document the role's responsibilities in the description</span>
+        </li>
+        <li class="flex items-start gap-2">
+          <svg class="h-5 w-5 text-green-500 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+          </svg>
+          <span>Consider creating role hierarchies (SuperAdmin > Admin > User)</span>
+        </li>
+      </ul>
+    </div>
+
+  </div>
+</div>

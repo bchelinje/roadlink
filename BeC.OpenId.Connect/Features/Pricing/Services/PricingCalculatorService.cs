@@ -307,6 +307,30 @@ public class PricingCalculatorService : IPricingCalculatorService
 
         // 11. Calculate total
         result.TotalPrice = result.SubTotal + result.PlatformFee;
+
+        // 12. Enforce Stripe minimum charge amount (£0.30 GBP / $0.50 USD)
+        const decimal MINIMUM_CHARGE_GBP = 0.30m;
+        const decimal MINIMUM_CHARGE_USD = 0.50m;
+
+        // Use GBP minimum for UK, USD for others
+        var minimumCharge = MINIMUM_CHARGE_GBP; // Default to GBP since we're in UK
+
+        if (result.TotalPrice < minimumCharge)
+        {
+            _logger.LogWarning("Calculated price £{Price} is below Stripe minimum. Adjusting to £{Minimum}",
+                result.TotalPrice, minimumCharge);
+
+            var adjustment = minimumCharge - result.TotalPrice;
+            breakdown.Add(new PriceBreakdownItem
+            {
+                Description = "Minimum Charge Adjustment",
+                Amount = adjustment,
+                Details = $"Stripe requires minimum £{minimumCharge:F2} charge"
+            });
+
+            result.TotalPrice = minimumCharge;
+        }
+
         result.Breakdown = breakdown;
 
         _logger.LogInformation("Calculated price: ${TotalPrice} for {Distance} miles, vehicle: {VehicleType}",
@@ -342,7 +366,19 @@ public class PricingCalculatorService : IPricingCalculatorService
             perMileRate = perMileRule.PerMileRate.Value;
         }
 
-        return baseFare + ((decimal)distanceInMiles * perMileRate);
+        // Calculate estimate
+        var estimate = baseFare + ((decimal)distanceInMiles * perMileRate);
+
+        // Stripe minimum charge requirement (£0.30 for GBP)
+        const decimal MINIMUM_CHARGE = 0.30m;
+        if (estimate < MINIMUM_CHARGE)
+        {
+            _logger.LogWarning("Quick estimate £{Estimate} is below Stripe minimum. Returning £{Minimum}",
+                estimate, MINIMUM_CHARGE);
+            estimate = MINIMUM_CHARGE;
+        }
+
+        return estimate;
     }
 
     public async Task<decimal> CalculateSurgeMultiplierAsync(DateTime scheduledDate, string pickupAddress)

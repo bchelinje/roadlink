@@ -1,0 +1,208 @@
+<div class="min-h-screen bg-gray-50 py-8">
+  <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+
+    <!-- Loading State -->
+    <div *ngIf="isLoading" class="flex items-center justify-center py-12">
+      <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+    </div>
+
+    <!-- Error Message -->
+    <div *ngIf="errorMessage" class="mb-6 bg-red-50 border-l-4 border-red-500 p-4 rounded-md">
+      <div class="flex">
+        <svg class="h-5 w-5 text-red-400" fill="currentColor" viewBox="0 0 20 20">
+          <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
+        </svg>
+        <p class="ml-3 text-sm text-red-700">{{ errorMessage }}</p>
+      </div>
+    </div>
+
+    <div *ngIf="!isLoading && role">
+      <!-- Header -->
+      <div class="mb-8">
+        <button
+          (click)="goBack()"
+          class="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-4 transition-colors"
+        >
+          <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+          </svg>
+          <span class="text-sm font-medium">Back to Roles</span>
+        </button>
+
+        <div class="flex items-start justify-between">
+          <div class="flex items-center gap-4">
+            <div class="text-5xl">{{ getRoleIcon(role.name) }}</div>
+            <div>
+              <h1 class="text-3xl font-bold text-gray-900">{{ role.name }}</h1>
+              <p *ngIf="role.normalizedName" class="text-sm text-gray-500 mt-1 uppercase tracking-wider">
+                {{ role.normalizedName }}
+              </p>
+            </div>
+          </div>
+
+          <div class="flex items-center gap-3">
+            <button
+              (click)="editRole()"
+              class="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+            >
+              <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+              </svg>
+              Edit
+            </button>
+            <button
+              (click)="confirmDelete()"
+              class="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 transition-colors"
+            >
+              <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+              Delete
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Role Information Card -->
+      <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
+        <h2 class="text-lg font-semibold text-gray-900 mb-4">Role Information</h2>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <!-- Role ID -->
+          <div>
+            <label class="block text-sm font-medium text-gray-500 mb-2">Role ID</label>
+            <div class="text-sm text-gray-900 font-mono bg-gray-50 px-3 py-2 rounded-lg">
+              {{ role.id }}
+            </div>
+          </div>
+
+          <!-- Role Name -->
+          <div>
+            <label class="block text-sm font-medium text-gray-500 mb-2">Role Name</label>
+            <div class="text-sm text-gray-900 px-3 py-2">
+              {{ role.name }}
+            </div>
+          </div>
+
+          <!-- Normalized Name -->
+          <div>
+            <label class="block text-sm font-medium text-gray-500 mb-2">Normalized Name</label>
+            <div class="text-sm text-gray-900 px-3 py-2 uppercase tracking-wider">
+              {{ role.normalizedName || 'N/A' }}
+            </div>
+          </div>
+
+
+        </div>
+
+        <!-- Description -->
+        <div class="mt-6">
+          <label class="block text-sm font-medium text-gray-500 mb-2">Description</label>
+          <div class="text-sm text-gray-900 px-3 py-2 bg-gray-50 rounded-lg">
+            {{ role.description || 'No description provided' }}
+          </div>
+        </div>
+      </div>
+
+      <!-- Users with this Role -->
+      <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        <div class="flex items-center justify-between mb-6">
+          <h2 class="text-lg font-semibold text-gray-900">Users with this Role</h2>
+          <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
+            {{ usersWithRole.length }} {{ usersWithRole.length === 1 ? 'User' : 'Users' }}
+          </span>
+        </div>
+
+        <!-- Loading Users -->
+        <div *ngIf="isLoadingUsers" class="flex items-center justify-center py-8">
+          <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+        </div>
+
+        <!-- No Users -->
+        <div *ngIf="!isLoadingUsers && usersWithRole.length === 0" class="text-center py-8">
+          <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+          </svg>
+          <h3 class="mt-2 text-sm font-medium text-gray-900">No users assigned</h3>
+          <p class="mt-1 text-sm text-gray-500">No users currently have this role assigned.</p>
+        </div>
+
+        <!-- Users List -->
+        <div *ngIf="!isLoadingUsers && usersWithRole.length > 0" class="space-y-3">
+          <div
+            *ngFor="let user of usersWithRole"
+            class="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors cursor-pointer"
+            (click)="user.id && viewUser(user.id)"
+          >
+            <div class="flex items-center gap-4">
+              <!-- Avatar -->
+              <div class="h-10 w-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-semibold text-sm">
+                {{ getUserInitials(user) }}
+              </div>
+
+              <!-- User Info -->
+              <div>
+                <div class="text-sm font-medium text-gray-900">{{ user.userName }}</div>
+                <div class="text-xs text-gray-500">{{ user.email }}</div>
+              </div>
+            </div>
+
+            <!-- Status Badges -->
+            <div class="flex items-center gap-2">
+              <span
+                *ngIf="user.emailConfirmed"
+                class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800"
+              >
+                Verified
+              </span>
+              <span
+                *ngIf="!user.emailConfirmed"
+                class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800"
+              >
+                Unverified
+              </span>
+              <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+              </svg>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div *ngIf="deleteConfirm" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+  <div class="bg-white rounded-xl shadow-xl max-w-md w-full p-6">
+    <div class="flex items-center gap-4 mb-4">
+      <div class="flex-shrink-0">
+        <svg class="h-12 w-12 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+        </svg>
+      </div>
+      <div>
+        <h3 class="text-lg font-semibold text-gray-900">Delete Role</h3>
+        <p class="text-sm text-gray-600 mt-1">Are you sure you want to delete this role?</p>
+      </div>
+    </div>
+    <p class="text-sm text-gray-600 mb-6">
+      This action cannot be undone. {{ usersWithRole.length }} user(s) will lose this role assignment.
+    </p>
+    <div class="flex items-center justify-end gap-3">
+      <button
+        (click)="cancelDelete()"
+        class="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+      >
+        Cancel
+      </button>
+      <button
+        (click)="deleteRole()"
+        class="px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 transition-colors"
+      >
+        Delete Role
+      </button>
+    </div>
+  </div>
+</div>

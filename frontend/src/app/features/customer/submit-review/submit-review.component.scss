@@ -1,0 +1,23 @@
+.star-button {
+  padding: 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  transition: transform 0.15s ease-in-out;
+
+  &:hover {
+    transform: scale(1.1);
+  }
+
+  &:active {
+    transform: scale(0.95);
+  }
+}
+
+.star-filled {
+  color: #fbbf24; // Amber-400
+}
+
+.star-empty {
+  color: #d1d5db; // Gray-300
+}

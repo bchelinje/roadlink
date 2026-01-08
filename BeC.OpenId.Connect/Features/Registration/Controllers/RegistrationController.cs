@@ -106,18 +106,24 @@ public class RegistrationController : ControllerBase
             ApprovalStatus = "pending",
             Status = "pending",
             EmailVerified = false,
-            PhoneVerified = false
+            PhoneVerified = false,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
         };
 
-        await _repository.InsertEntity(customer);
+        _context.Customers.Add(customer);
+        await _context.SaveChangesAsync();
 
         await _activityLogService.LogActivityAsync(
-            user.Id,
-            "customer_registered",
-            "Customer",
-            customer.Id.ToString(),
-            request.Email,
-            $"Customer {request.FirstName} {request.LastName} registered - pending approval"
+            action: "customer_registered",
+            entityType: "Customer",
+            entityId: customer.Id.ToString(),
+            entityName: $"{request.FirstName} {request.LastName}",
+            description: $"Customer {request.FirstName} {request.LastName} registered - pending approval",
+            severity: "INFO",
+            userId: user.Id,
+            userName: $"{request.FirstName} {request.LastName}",
+            userEmail: request.Email
         );
 
         _logger.LogInformation("New customer registration: {Email}", request.Email);
@@ -223,18 +229,24 @@ public class RegistrationController : ControllerBase
             Status = "inactive",
             BackgroundCheckCompleted = false,
             RightToWorkVerified = false,
-            ProofOfAddressVerified = false
+            ProofOfAddressVerified = false,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
         };
 
-        await _repository.InsertEntity(driver);
+        _context.Drivers.Add(driver);
+        await _context.SaveChangesAsync();
 
         await _activityLogService.LogActivityAsync(
-            user.Id,
-            "driver_registered",
-            "Driver",
-            driver.Id.ToString(),
-            request.Email,
-            $"Driver {request.FirstName} {request.LastName} registered - pending vetting and approval"
+            action: "driver_registered",
+            entityType: "Driver",
+            entityId: driver.Id.ToString(),
+            entityName: $"{request.FirstName} {request.LastName}",
+            description: $"Driver {request.FirstName} {request.LastName} registered - pending vetting and approval",
+            severity: "INFO",
+            userId: user.Id,
+            userName: $"{request.FirstName} {request.LastName}",
+            userEmail: request.Email
         );
 
         _logger.LogInformation("New driver registration: {Email}, License: {LicenseNumber}",

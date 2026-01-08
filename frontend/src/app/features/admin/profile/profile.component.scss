@@ -1,0 +1,69 @@
+// Profile Component Styles
+// Most styling is handled by Tailwind CSS
+
+// Custom animations for smooth transitions
+.tab-content-enter {
+  animation: fadeIn 0.3s ease-in;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+// Password strength indicator animation
+.password-strength-bar {
+  transition: width 0.3s ease, background-color 0.3s ease;
+}
+
+// File input styling
+input[type="file"] {
+  &::-webkit-file-upload-button {
+    display: none;
+  }
+  &::file-selector-button {
+    display: none;
+  }
+}
+
+// Profile picture hover effect
+.profile-picture-wrapper {
+  position: relative;
+
+  &:hover .upload-overlay {
+    opacity: 1;
+  }
+}
+
+.upload-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  cursor: pointer;
+}
+
+// Toggle switch animation
+.toggle-switch {
+  input:checked + div {
+    background-color: #2563eb;
+  }
+
+  input:checked + div::after {
+    transform: translateX(100%);
+  }
+}

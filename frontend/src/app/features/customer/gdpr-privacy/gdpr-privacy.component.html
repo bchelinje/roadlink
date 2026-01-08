@@ -1,0 +1,293 @@
+<div class="gdpr-privacy-container">
+  <!-- Page Header -->
+  <div class="page-header">
+    <div>
+      <h1>Privacy & Data Management</h1>
+      <p class="subtitle">Manage your personal data in compliance with GDPR regulations</p>
+    </div>
+  </div>
+
+  <div class="content">
+    <!-- Data Summary Section -->
+    <div class="section-card">
+      <div class="section-header">
+        <h3>Your Data Summary</h3>
+      </div>
+
+      <div *ngIf="isLoadingSummary" class="loading-state">
+        <div class="spinner"></div>
+        <p>Loading your data...</p>
+      </div>
+
+      <div *ngIf="!isLoadingSummary && dataSummary" class="data-summary">
+        <div class="summary-row">
+          <div class="summary-item">
+            <strong>Username:</strong> <span>{{ dataSummary.username }}</span>
+          </div>
+          <div class="summary-item">
+            <strong>Email:</strong> <span>{{ dataSummary.email }}</span>
+          </div>
+        </div>
+
+        <h4 class="records-title">Related Records ({{ getTotalRecords() }} total)</h4>
+        <div class="records-grid">
+          <div class="record-item">
+            <small>Jobs as Customer:</small>
+            <div class="record-value">{{ dataSummary.details.jobsAsCustomer }}</div>
+          </div>
+          <div class="record-item">
+            <small>Jobs as Driver:</small>
+            <div class="record-value">{{ dataSummary.details.jobsAsDriver }}</div>
+          </div>
+          <div class="record-item">
+            <small>Payments:</small>
+            <div class="record-value">{{ dataSummary.details.paymentsAsCustomer + dataSummary.details.paymentsAsDriver }}</div>
+          </div>
+          <div class="record-item">
+            <small>Reviews:</small>
+            <div class="record-value">{{ dataSummary.details.reviews }}</div>
+          </div>
+          <div class="record-item">
+            <small>Support Tickets:</small>
+            <div class="record-value">{{ dataSummary.details.supportTickets }}</div>
+          </div>
+          <div class="record-item">
+            <small>Chat Messages:</small>
+            <div class="record-value">{{ dataSummary.details.chatMessages }}</div>
+          </div>
+          <div class="record-item">
+            <small>Notifications:</small>
+            <div class="record-value">{{ dataSummary.details.notifications }}</div>
+          </div>
+          <div class="record-item">
+            <small>Documents:</small>
+            <div class="record-value">{{ dataSummary.details.documents }}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Data Rights Actions -->
+    <div class="actions-grid">
+      <div class="action-card">
+        <h3 class="action-title">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
+          </svg>
+          Export Your Data
+        </h3>
+        <p class="action-description">
+          Download all your personal data in JSON format (GDPR Article 20 - Right to Data Portability).
+        </p>
+        <button
+          class="btn-primary"
+          (click)="exportData()"
+          [disabled]="isExportingData">
+          <span *ngIf="isExportingData" class="spinner-small"></span>
+          {{ isExportingData ? 'Exporting...' : 'Export My Data' }}
+        </button>
+      </div>
+
+      <div class="action-card danger">
+        <h3 class="action-title">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
+          </svg>
+          Delete Your Account
+        </h3>
+        <p class="action-description">
+          Request permanent deletion or anonymization of your account and data (GDPR Article 17 - Right to Erasure).
+        </p>
+        <button
+          class="btn-danger"
+          (click)="openDeletionRequestModal()">
+          Request Account Deletion
+        </button>
+      </div>
+    </div>
+
+    <!-- Deletion Requests History -->
+    <div class="section-card">
+      <div class="section-header">
+        <h3>Your Deletion Requests</h3>
+      </div>
+
+      <div *ngIf="isLoadingRequests" class="loading-state">
+        <div class="spinner"></div>
+        <p>Loading deletion requests...</p>
+      </div>
+
+      <div *ngIf="!isLoadingRequests && deletionRequests.length === 0" class="empty-state">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" />
+        </svg>
+        <p>No deletion requests found.</p>
+      </div>
+
+      <div *ngIf="!isLoadingRequests && deletionRequests.length > 0" class="table-container">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Requested At</th>
+              <th>Status</th>
+              <th>Type</th>
+              <th>Scheduled Date</th>
+              <th>Reason</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let request of deletionRequests">
+              <td>{{ request.requestedAt | date:'short' }}</td>
+              <td>
+                <span class="status-badge" [ngClass]="getStatusBadgeClass(request.status)">
+                  {{ request.status }}
+                </span>
+              </td>
+              <td>
+                <span class="type-badge" [ngClass]="request.deletionType === DeletionType.Soft ? 'badge-warning' : 'badge-danger'">
+                  {{ request.deletionType }}
+                </span>
+              </td>
+              <td>{{ request.scheduledDeletionDate ? (request.scheduledDeletionDate | date:'short') : 'N/A' }}</td>
+              <td>
+                <small>{{ request.reason }}</small>
+              </td>
+              <td>
+                <button
+                  *ngIf="canConfirmRequest(request)"
+                  class="btn-sm btn-info"
+                  (click)="openConfirmationModal(request)">
+                  Confirm
+                </button>
+                <button
+                  *ngIf="canCancelRequest(request)"
+                  class="btn-sm btn-warning"
+                  (click)="cancelDeletionRequest(request)">
+                  Cancel
+                </button>
+                <span *ngIf="!canConfirmRequest(request) && !canCancelRequest(request)" class="text-muted">
+                  -
+                </span>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Deletion Request Modal -->
+<div class="modal" [class.show]="showDeletionRequestModal" [style.display]="showDeletionRequestModal ? 'block' : 'none'" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Request Account Deletion</h5>
+        <button type="button" class="btn-close" (click)="closeDeletionRequestModal()"></button>
+      </div>
+      <div class="modal-body">
+        <div class="alert alert-warning">
+          <strong>Warning:</strong> This action will permanently delete or anonymize your account and all associated data.
+          This process cannot be undone after completion.
+        </div>
+
+        <form [formGroup]="deletionForm">
+          <div class="form-group">
+            <label class="form-label">Reason for Deletion <span class="text-danger">*</span></label>
+            <textarea
+              class="form-control"
+              formControlName="reason"
+              rows="3"
+              placeholder="Please tell us why you want to delete your account (minimum 10 characters)"></textarea>
+            <div class="form-text text-danger" *ngIf="deletionForm.get('reason')?.invalid && deletionForm.get('reason')?.touched">
+              Reason must be at least 10 characters long.
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Deletion Type <span class="text-danger">*</span></label>
+            <select class="form-control" formControlName="deletionType">
+              <option [value]="DeletionType.Soft">Soft Delete (Anonymize data - Recommended)</option>
+              <option [value]="DeletionType.Hard">Hard Delete (Permanent removal)</option>
+            </select>
+            <div class="form-text">
+              <strong>Soft Delete:</strong> Your data will be anonymized but kept for historical records.<br>
+              <strong>Hard Delete:</strong> All your data will be permanently removed from the system.
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Grace Period (Days)</label>
+            <input
+              type="number"
+              class="form-control"
+              formControlName="gracePeriodDays"
+              min="0"
+              max="90">
+            <div class="form-text">Number of days before the deletion is executed (0-90 days).</div>
+          </div>
+
+          <div class="form-check">
+            <input
+              type="checkbox"
+              class="form-check-input"
+              id="requestDataExport"
+              formControlName="requestDataExport">
+            <label class="form-check-label" for="requestDataExport">
+              Export my data before deletion
+            </label>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn-secondary" (click)="closeDeletionRequestModal()">Cancel</button>
+        <button
+          type="button"
+          class="btn-danger"
+          (click)="submitDeletionRequest()"
+          [disabled]="deletionForm.invalid || isRequestingDeletion">
+          <span *ngIf="isRequestingDeletion" class="spinner-small"></span>
+          {{ isRequestingDeletion ? 'Submitting...' : 'Submit Request' }}
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="modal-backdrop fade" [class.show]="showDeletionRequestModal" *ngIf="showDeletionRequestModal"></div>
+
+<!-- Confirmation Modal -->
+<div class="modal" [class.show]="showConfirmationModal" [style.display]="showConfirmationModal ? 'block' : 'none'" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Confirm Deletion Request</h5>
+        <button type="button" class="btn-close" (click)="closeConfirmationModal()"></button>
+      </div>
+      <div class="modal-body">
+        <p>Please enter the confirmation token sent to your email to confirm this deletion request.</p>
+        <form [formGroup]="confirmationForm">
+          <div class="form-group">
+            <label class="form-label">Confirmation Token</label>
+            <input
+              type="text"
+              class="form-control"
+              formControlName="token"
+              placeholder="Enter token from email">
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn-secondary" (click)="closeConfirmationModal()">Cancel</button>
+        <button
+          type="button"
+          class="btn-primary"
+          (click)="confirmDeletion()"
+          [disabled]="confirmationForm.invalid">
+          Confirm
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="modal-backdrop fade" [class.show]="showConfirmationModal" *ngIf="showConfirmationModal"></div>

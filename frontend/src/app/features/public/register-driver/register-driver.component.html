@@ -1,0 +1,441 @@
+<div class="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 py-12 px-4 sm:px-6 lg:px-8">
+  <div class="max-w-3xl mx-auto">
+
+    <!-- Header -->
+    <div class="text-center mb-8">
+      <h1 class="text-4xl font-bold text-gray-900 mb-2">Become a LoadLink Driver</h1>
+      <p class="text-lg text-gray-600">Join our network and start earning with your vehicle</p>
+    </div>
+
+    <!-- Progress Bar -->
+    <div class="mb-8">
+      <div class="flex items-center justify-between mb-2">
+        <span class="text-sm font-medium text-gray-700">Step {{ currentStep }} of {{ totalSteps }}</span>
+        <span class="text-sm font-medium text-gray-700">{{ getProgress() }}%</span>
+      </div>
+      <div class="w-full bg-gray-200 rounded-full h-2">
+        <div class="bg-blue-600 h-2 rounded-full transition-all duration-300" [style.width.%]="getProgress()"></div>
+      </div>
+    </div>
+
+    <!-- Registration Form Card -->
+    <div class="bg-white rounded-lg shadow-xl p-8">
+
+      <!-- Success Message -->
+      <div *ngIf="successMessage" class="mb-6 bg-green-50 border border-green-200 rounded-lg p-4">
+        <div class="flex">
+          <svg class="h-5 w-5 text-green-400" fill="currentColor" viewBox="0 0 20 20">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+          </svg>
+          <div class="ml-3">
+            <p class="text-sm font-medium text-green-800">{{ successMessage }}</p>
+            <p class="text-sm text-green-700 mt-1">Redirecting to login...</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Error Message -->
+      <div *ngIf="errorMessage" class="mb-6 bg-red-50 border border-red-200 rounded-lg p-4">
+        <div class="flex">
+          <svg class="h-5 w-5 text-red-400" fill="currentColor" viewBox="0 0 20 20">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
+          </svg>
+          <div class="ml-3">
+            <p class="text-sm font-medium text-red-800">{{ errorMessage }}</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Step 1: Personal Information -->
+      <div *ngIf="currentStep === 1">
+        <h2 class="text-2xl font-bold text-gray-900 mb-6">Personal Information</h2>
+        <form [formGroup]="personalInfoForm" class="space-y-4">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">
+                First Name <span class="text-red-600">*</span>
+              </label>
+              <input
+                type="text"
+                formControlName="firstName"
+                class="block w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                [class.border-red-500]="personalInfoForm.get('firstName')?.invalid && personalInfoForm.get('firstName')?.touched">
+              <p *ngIf="personalInfoForm.get('firstName')?.invalid && personalInfoForm.get('firstName')?.touched" class="mt-1 text-sm text-red-600">
+                First name is required
+              </p>
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">
+                Last Name <span class="text-red-600">*</span>
+              </label>
+              <input
+                type="text"
+                formControlName="lastName"
+                class="block w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                [class.border-red-500]="personalInfoForm.get('lastName')?.invalid && personalInfoForm.get('lastName')?.touched">
+              <p *ngIf="personalInfoForm.get('lastName')?.invalid && personalInfoForm.get('lastName')?.touched" class="mt-1 text-sm text-red-600">
+                Last name is required
+              </p>
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">
+              Email Address <span class="text-red-600">*</span>
+            </label>
+            <input
+              type="email"
+              formControlName="email"
+              placeholder="you@example.com"
+              class="block w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+              [class.border-red-500]="personalInfoForm.get('email')?.invalid && personalInfoForm.get('email')?.touched">
+            <p *ngIf="personalInfoForm.get('email')?.invalid && personalInfoForm.get('email')?.touched" class="mt-1 text-sm text-red-600">
+              Please enter a valid email address
+            </p>
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">
+              Phone Number <span class="text-red-600">*</span>
+            </label>
+            <input
+              type="tel"
+              formControlName="phone"
+              placeholder="+44 7XXX XXXXXX or 07XXX XXXXXX"
+              class="block w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+              [class.border-red-500]="personalInfoForm.get('phone')?.invalid && personalInfoForm.get('phone')?.touched">
+            <p *ngIf="personalInfoForm.get('phone')?.invalid && personalInfoForm.get('phone')?.touched" class="mt-1 text-sm text-red-600">
+              Please enter a valid UK phone number
+            </p>
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">
+              Password <span class="text-red-600">*</span>
+            </label>
+            <input
+              type="password"
+              formControlName="password"
+              class="block w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+              [class.border-red-500]="personalInfoForm.get('password')?.invalid && personalInfoForm.get('password')?.touched">
+            <p *ngIf="personalInfoForm.get('password')?.invalid && personalInfoForm.get('password')?.touched" class="mt-1 text-sm text-red-600">
+              Password must be at least 8 characters
+            </p>
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">
+              Confirm Password <span class="text-red-600">*</span>
+            </label>
+            <input
+              type="password"
+              formControlName="confirmPassword"
+              class="block w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+              [class.border-red-500]="personalInfoForm.get('confirmPassword')?.invalid && personalInfoForm.get('confirmPassword')?.touched">
+            <p *ngIf="personalInfoForm.get('confirmPassword')?.errors?.['passwordMismatch'] && personalInfoForm.get('confirmPassword')?.touched" class="mt-1 text-sm text-red-600">
+              Passwords do not match
+            </p>
+          </div>
+        </form>
+      </div>
+
+      <!-- Step 2: License Information -->
+      <div *ngIf="currentStep === 2">
+        <h2 class="text-2xl font-bold text-gray-900 mb-6">Driving License Information</h2>
+        <form [formGroup]="licenseInfoForm" class="space-y-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">
+              Driving License Number <span class="text-red-600">*</span>
+            </label>
+            <input
+              type="text"
+              formControlName="licenseNumber"
+              placeholder="e.g., SMITH123456AB12C"
+              class="block w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+              [class.border-red-500]="licenseInfoForm.get('licenseNumber')?.invalid && licenseInfoForm.get('licenseNumber')?.touched">
+            <p *ngIf="licenseInfoForm.get('licenseNumber')?.invalid && licenseInfoForm.get('licenseNumber')?.touched" class="mt-1 text-sm text-red-600">
+              License number is required
+            </p>
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">
+              License Expiry Date <span class="text-red-600">*</span>
+            </label>
+            <input
+              type="date"
+              formControlName="licenseExpiry"
+              class="block w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+              [class.border-red-500]="licenseInfoForm.get('licenseExpiry')?.invalid && licenseInfoForm.get('licenseExpiry')?.touched">
+            <p *ngIf="licenseInfoForm.get('licenseExpiry')?.invalid && licenseInfoForm.get('licenseExpiry')?.touched" class="mt-1 text-sm text-red-600">
+              License expiry date is required
+            </p>
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">
+              License Type
+            </label>
+            <select formControlName="drivingLicenseType" class="block w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+              <option value="Full UK">Full UK License</option>
+              <option value="Full EU">Full EU License</option>
+              <option value="International">International License</option>
+            </select>
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">
+              National Insurance Number
+            </label>
+            <input
+              type="text"
+              formControlName="nationalInsuranceNumber"
+              placeholder="e.g., AB123456C"
+              class="block w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+            <p class="mt-1 text-xs text-gray-500">Optional, but recommended for faster vetting</p>
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">
+              Right to Work Expiry (if applicable)
+            </label>
+            <input
+              type="date"
+              formControlName="rightToWorkExpiry"
+              class="block w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+            <p class="mt-1 text-xs text-gray-500">Leave blank if you have indefinite right to work in the UK</p>
+          </div>
+        </form>
+      </div>
+
+      <!-- Step 3: Address -->
+      <div *ngIf="currentStep === 3">
+        <h2 class="text-2xl font-bold text-gray-900 mb-6">Address Information</h2>
+        <form [formGroup]="addressForm" class="space-y-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">
+              Address Line 1 <span class="text-red-600">*</span>
+            </label>
+            <input
+              type="text"
+              formControlName="addressLine1"
+              placeholder="Street address"
+              class="block w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+              [class.border-red-500]="addressForm.get('addressLine1')?.invalid && addressForm.get('addressLine1')?.touched">
+            <p *ngIf="addressForm.get('addressLine1')?.invalid && addressForm.get('addressLine1')?.touched" class="mt-1 text-sm text-red-600">
+              Address is required
+            </p>
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">
+              Address Line 2
+            </label>
+            <input
+              type="text"
+              formControlName="addressLine2"
+              placeholder="Apartment, suite, unit, building, floor, etc."
+              class="block w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">
+                City <span class="text-red-600">*</span>
+              </label>
+              <input
+                type="text"
+                formControlName="city"
+                class="block w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                [class.border-red-500]="addressForm.get('city')?.invalid && addressForm.get('city')?.touched">
+              <p *ngIf="addressForm.get('city')?.invalid && addressForm.get('city')?.touched" class="mt-1 text-sm text-red-600">
+                City is required
+              </p>
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">
+                County
+              </label>
+              <input
+                type="text"
+                formControlName="county"
+                class="block w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">
+                Postal Code <span class="text-red-600">*</span>
+              </label>
+              <input
+                type="text"
+                formControlName="postalCode"
+                placeholder="e.g., SW1A 1AA"
+                class="block w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                [class.border-red-500]="addressForm.get('postalCode')?.invalid && addressForm.get('postalCode')?.touched">
+              <p *ngIf="addressForm.get('postalCode')?.invalid && addressForm.get('postalCode')?.touched" class="mt-1 text-sm text-red-600">
+                Valid UK postal code is required
+              </p>
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">
+                Country
+              </label>
+              <input
+                type="text"
+                formControlName="country"
+                readonly
+                class="block w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 focus:outline-none">
+            </div>
+          </div>
+        </form>
+      </div>
+
+      <!-- Step 4: Emergency Contact & Terms -->
+      <div *ngIf="currentStep === 4">
+        <h2 class="text-2xl font-bold text-gray-900 mb-6">Emergency Contact & Terms</h2>
+        <form [formGroup]="emergencyContactForm" class="space-y-4">
+          <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+            <p class="text-sm text-blue-800">
+              <strong>Emergency Contact:</strong> This person will be contacted in case of emergency while you're on duty.
+            </p>
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">
+              Full Name <span class="text-red-600">*</span>
+            </label>
+            <input
+              type="text"
+              formControlName="name"
+              class="block w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+              [class.border-red-500]="emergencyContactForm.get('name')?.invalid && emergencyContactForm.get('name')?.touched">
+            <p *ngIf="emergencyContactForm.get('name')?.invalid && emergencyContactForm.get('name')?.touched" class="mt-1 text-sm text-red-600">
+              Name is required
+            </p>
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">
+              Relationship <span class="text-red-600">*</span>
+            </label>
+            <input
+              type="text"
+              formControlName="relationship"
+              placeholder="e.g., Spouse, Parent, Sibling"
+              class="block w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+              [class.border-red-500]="emergencyContactForm.get('relationship')?.invalid && emergencyContactForm.get('relationship')?.touched">
+            <p *ngIf="emergencyContactForm.get('relationship')?.invalid && emergencyContactForm.get('relationship')?.touched" class="mt-1 text-sm text-red-600">
+              Relationship is required
+            </p>
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">
+              Phone Number <span class="text-red-600">*</span>
+            </label>
+            <input
+              type="tel"
+              formControlName="phone"
+              placeholder="+44 7XXX XXXXXX or 07XXX XXXXXX"
+              class="block w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+              [class.border-red-500]="emergencyContactForm.get('phone')?.invalid && emergencyContactForm.get('phone')?.touched">
+            <p *ngIf="emergencyContactForm.get('phone')?.invalid && emergencyContactForm.get('phone')?.touched" class="mt-1 text-sm text-red-600">
+              Valid UK phone number is required
+            </p>
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">
+              Email (Optional)
+            </label>
+            <input
+              type="email"
+              formControlName="email"
+              class="block w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+          </div>
+
+          <div class="border-t border-gray-200 pt-6 mt-6 space-y-3">
+            <h3 class="font-semibold text-gray-900 mb-3">Terms & Agreements</h3>
+
+            <label class="flex items-start">
+              <input type="checkbox" formControlName="acceptedTerms" class="mt-1 h-4 w-4 text-blue-600 rounded">
+              <span class="ml-2 text-sm text-gray-700">
+                I accept the <a href="/terms" target="_blank" class="text-blue-600 hover:text-blue-700 underline">Terms and Conditions</a>
+                <span class="text-red-600">*</span>
+              </span>
+            </label>
+
+            <label class="flex items-start">
+              <input type="checkbox" formControlName="acceptedPrivacyPolicy" class="mt-1 h-4 w-4 text-blue-600 rounded">
+              <span class="ml-2 text-sm text-gray-700">
+                I accept the <a href="/privacy" target="_blank" class="text-blue-600 hover:text-blue-700 underline">Privacy Policy</a>
+                <span class="text-red-600">*</span>
+              </span>
+            </label>
+
+            <label class="flex items-start">
+              <input type="checkbox" formControlName="consentBackgroundCheck" class="mt-1 h-4 w-4 text-blue-600 rounded">
+              <span class="ml-2 text-sm text-gray-700">
+                I consent to a background check and vetting process as required by UK law for commercial drivers
+                <span class="text-red-600">*</span>
+              </span>
+            </label>
+          </div>
+        </form>
+      </div>
+
+      <!-- Navigation Buttons -->
+      <div class="flex justify-between mt-8 pt-6 border-t border-gray-200">
+        <button
+          *ngIf="currentStep > 1"
+          type="button"
+          (click)="previousStep()"
+          class="inline-flex items-center px-6 py-3 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+          <svg class="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+          </svg>
+          Previous
+        </button>
+
+        <div class="ml-auto flex space-x-3">
+          <a
+            *ngIf="currentStep === 1"
+            routerLink="/login"
+            class="inline-flex items-center px-6 py-3 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+            Already have an account?
+          </a>
+
+          <button
+            *ngIf="currentStep < totalSteps"
+            type="button"
+            (click)="nextStep()"
+            class="inline-flex items-center px-6 py-3 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+            Next
+            <svg class="h-5 w-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+            </svg>
+          </button>
+
+          <button
+            *ngIf="currentStep === totalSteps"
+            type="button"
+            (click)="onSubmit()"
+            [disabled]="isSubmitting"
+            class="inline-flex items-center px-6 py-3 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:bg-gray-400 disabled:cursor-not-allowed">
+            <svg *ngIf="isSubmitting" class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            {{ isSubmitting ? 'Submitting...' : 'Submit Application' }}
+          </button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>

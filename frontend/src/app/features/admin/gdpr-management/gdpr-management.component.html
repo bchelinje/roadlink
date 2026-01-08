@@ -1,0 +1,427 @@
+<!-- GDPR Deletion Requests Management - Updated to match Activity Logs style -->
+<div class="min-h-screen bg-gray-50 p-6">
+  <div class="max-w-7xl mx-auto">
+
+    <!-- Header -->
+    <div class="page-header">
+      <div>
+        <h1>GDPR Deletion Requests</h1>
+        <p class="subtitle">Review, approve, and process user data deletion requests in compliance with GDPR Article 17</p>
+      </div>
+
+      <div class="flex space-x-3">
+        <button
+          (click)="loadDeletionRequests()"
+          [disabled]="isLoading"
+          class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium bg-white hover:bg-gray-50 disabled:bg-gray-100 disabled:cursor-not-allowed" style="color: #003d82">
+            <svg *ngIf="!isLoading" class="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+            <svg *ngIf="isLoading" class="animate-spin h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            {{ isLoading ? 'Refreshing...' : 'Refresh' }}
+          </button>
+      </div>
+    </div>
+
+    <!-- Stats Summary -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+      <div class="bg-white rounded-lg shadow p-6">
+        <div class="flex items-center">
+          <div class="flex-shrink-0 bg-yellow-100 rounded-md p-3">
+            <svg class="h-6 w-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </div>
+          <div class="ml-4">
+            <p class="text-sm font-medium text-gray-600">Pending Review</p>
+            <p class="text-2xl font-semibold text-gray-900">{{ getPendingCount() }}</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="bg-white rounded-lg shadow p-6">
+        <div class="flex items-center">
+          <div class="flex-shrink-0 bg-green-100 rounded-md p-3">
+            <svg class="h-6 w-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </div>
+          <div class="ml-4">
+            <p class="text-sm font-medium text-gray-600">Approved</p>
+            <p class="text-2xl font-semibold text-gray-900">{{ getApprovedCount() }}</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="bg-white rounded-lg shadow p-6">
+        <div class="flex items-center">
+          <div class="flex-shrink-0 bg-blue-100 rounded-md p-3">
+            <svg class="h-6 w-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+            </svg>
+          </div>
+          <div class="ml-4">
+            <p class="text-sm font-medium text-gray-600">Completed</p>
+            <p class="text-2xl font-semibold text-gray-900">{{ getCompletedCount() }}</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="bg-white rounded-lg shadow p-6">
+        <div class="flex items-center">
+          <div class="flex-shrink-0 bg-gray-100 rounded-md p-3">
+            <svg class="h-6 w-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+          </div>
+          <div class="ml-4">
+            <p class="text-sm font-medium text-gray-600">Total Requests</p>
+            <p class="text-2xl font-semibold text-gray-900">{{ deletionRequests.length }}</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Filters Section -->
+    <div class="bg-white rounded-lg shadow p-6 mb-6">
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="text-lg font-semibold text-gray-900">Filters</h2>
+        <button
+          (click)="clearFilters()"
+          class="text-sm text-blue-600 hover:text-blue-700">
+          Clear All
+        </button>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- Search -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-2">Search</label>
+          <div class="relative">
+            <input
+              type="text"
+              [(ngModel)]="searchTerm"
+              (input)="onSearch(searchTerm)"
+              placeholder="Search by username, email, or reason..."
+              class="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+            </div>
+          </div>
+        </div>
+
+        <!-- Status Filter -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-2">Status</label>
+          <select
+            [(ngModel)]="statusFilter"
+            (change)="onStatusFilterChange(statusFilter)"
+            class="block w-full pl-3 pr-10 py-2 text-base border border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md">
+            <option value="all">All Statuses</option>
+            <option [value]="DeletionRequestStatus.Pending">Pending</option>
+            <option [value]="DeletionRequestStatus.Confirmed">Confirmed</option>
+            <option [value]="DeletionRequestStatus.Approved">Approved</option>
+            <option [value]="DeletionRequestStatus.Rejected">Rejected</option>
+            <option [value]="DeletionRequestStatus.Completed">Completed</option>
+            <option [value]="DeletionRequestStatus.Cancelled">Cancelled</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- Deletion Requests Table -->
+    <div class="bg-white rounded-lg shadow overflow-hidden">
+      <div class="px-6 py-4 border-b border-gray-200">
+        <h3 class="text-lg font-semibold text-gray-900">Deletion Requests ({{ filteredRequests.length }})</h3>
+      </div>
+
+      <!-- Loading State -->
+      <div *ngIf="isLoading" class="flex justify-center items-center py-12">
+        <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      </div>
+
+      <!-- Empty State -->
+      <div *ngIf="!isLoading && filteredRequests.length === 0" class="text-center py-12">
+        <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+        </svg>
+        <h3 class="mt-2 text-sm font-medium text-gray-900">No deletion requests</h3>
+        <p class="mt-1 text-sm text-gray-500">No deletion requests match your current filters.</p>
+      </div>
+
+      <!-- Table -->
+      <div *ngIf="!isLoading && filteredRequests.length > 0" class="overflow-x-auto">
+        <table class="min-w-full divide-y divide-gray-200">
+          <thead class="bg-gray-50">
+            <tr>
+              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                User
+              </th>
+              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Status
+              </th>
+              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Type
+              </th>
+              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Requested
+              </th>
+              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Scheduled
+              </th>
+              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Records
+              </th>
+              <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Actions
+              </th>
+            </tr>
+          </thead>
+          <tbody class="bg-white divide-y divide-gray-200">
+            <tr *ngFor="let request of filteredRequests" class="hover:bg-gray-50">
+              <td class="px-6 py-4 whitespace-nowrap">
+                <div class="text-sm font-medium text-gray-900">{{ request.userName }}</div>
+                <div class="text-sm text-gray-500">{{ request.userEmail }}</div>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap">
+                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full"
+                      [ngClass]="getStatusBadgeClass(request.status)">
+                  {{ request.status }}
+                </span>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap">
+                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full"
+                      [ngClass]="request.deletionType === DeletionType.Soft ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800'">
+                  {{ request.deletionType }}
+                </span>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                {{ request.requestedAt | date:'short' }}
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                {{ request.scheduledDeletionDate ? (request.scheduledDeletionDate | date:'short') : 'N/A' }}
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                <div>Jobs: {{ request.relatedJobsCount || 0 }}</div>
+                <div>Payments: {{ request.relatedPaymentsCount || 0 }}</div>
+                <div class="font-medium">Total: {{ request.relatedRecordsCount || 0 }}</div>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                <div class="flex justify-end space-x-2">
+                  <button
+                    (click)="openDetailsModal(request)"
+                    class="text-blue-600 hover:text-blue-900"
+                    title="View Details">
+                    <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                    </svg>
+                  </button>
+                  <button
+                    *ngIf="canReview(request)"
+                    (click)="openReviewModal(request)"
+                    class="text-green-600 hover:text-green-900"
+                    title="Review">
+                    <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </button>
+                  <button
+                    *ngIf="canProcess(request)"
+                    (click)="openProcessModal(request)"
+                    class="text-red-600 hover:text-red-900"
+                    title="Process Deletion">
+                    <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                  </button>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Pagination -->
+      <div *ngIf="!isLoading && filteredRequests.length > 0" class="bg-white px-4 py-3 border-t border-gray-200 sm:px-6">
+        <div class="flex items-center justify-between">
+          <div class="text-sm text-gray-700">
+            Showing {{ filteredRequests.length }} of {{ totalRecords }} results
+          </div>
+          <div class="flex space-x-2">
+            <button
+              (click)="previousPage()"
+              [disabled]="currentPage === 1"
+              class="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:bg-gray-100 disabled:cursor-not-allowed">
+              Previous
+            </button>
+            <button
+              (click)="nextPage()"
+              [disabled]="currentPage >= totalPages"
+              class="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:bg-gray-100 disabled:cursor-not-allowed">
+              Next
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- Review Modal -->
+<div *ngIf="showReviewModal" class="fixed z-10 inset-0 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+  <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+    <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" aria-hidden="true" (click)="closeReviewModal()"></div>
+    <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+    <div class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+      <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+        <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4">Review Deletion Request</h3>
+        <form [formGroup]="reviewForm">
+          <div class="mb-4">
+            <label class="block text-sm font-medium text-gray-700 mb-2">Decision</label>
+            <div class="space-y-2">
+              <label class="inline-flex items-center">
+                <input type="radio" formControlName="approved" [value]="true" class="form-radio">
+                <span class="ml-2">Approve</span>
+              </label>
+              <label class="inline-flex items-center ml-6">
+                <input type="radio" formControlName="approved" [value]="false" class="form-radio">
+                <span class="ml-2">Reject</span>
+              </label>
+            </div>
+          </div>
+          <div *ngIf="reviewForm.get('approved')?.value === false" class="mb-4">
+            <label class="block text-sm font-medium text-gray-700 mb-2">Rejection Reason</label>
+            <textarea formControlName="rejectionReason" rows="3" class="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md"></textarea>
+          </div>
+        </form>
+      </div>
+      <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+        <button type="button" (click)="reviewRequest()" [disabled]="isProcessing" class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-600 text-base font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:ml-3 sm:w-auto sm:text-sm disabled:bg-gray-400">
+          Submit Review
+        </button>
+        <button type="button" (click)="closeReviewModal()" class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">
+          Cancel
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Process Modal -->
+<div *ngIf="showProcessModal" class="fixed z-10 inset-0 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+  <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+    <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" aria-hidden="true" (click)="closeProcessModal()"></div>
+    <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+    <div class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+      <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+        <div class="sm:flex sm:items-start">
+          <div class="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-red-100 sm:mx-0 sm:h-10 sm:w-10">
+            <svg class="h-6 w-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+          </div>
+          <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left">
+            <h3 class="text-lg leading-6 font-medium text-gray-900">Process Deletion Request</h3>
+            <div class="mt-2">
+              <p class="text-sm text-gray-500">
+                Are you sure you want to process this deletion request? This will permanently {{ selectedRequest?.deletionType === DeletionType.Soft ? 'anonymize' : 'delete' }} the user's data. This action cannot be undone.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+        <button type="button" (click)="processDeletion()" [disabled]="isProcessing" class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-red-600 text-base font-medium text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 sm:ml-3 sm:w-auto sm:text-sm disabled:bg-gray-400">
+          {{ isProcessing ? 'Processing...' : 'Process Deletion' }}
+        </button>
+        <button type="button" (click)="closeProcessModal()" class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">
+          Cancel
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Details Modal -->
+<div *ngIf="showDetailsModal && selectedRequest" class="fixed z-10 inset-0 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+  <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+    <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" aria-hidden="true" (click)="closeDetailsModal()"></div>
+    <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+    <div class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-2xl sm:w-full">
+      <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+        <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4">Deletion Request Details</h3>
+        <dl class="grid grid-cols-1 gap-x-4 gap-y-6 sm:grid-cols-2">
+          <div>
+            <dt class="text-sm font-medium text-gray-500">User</dt>
+            <dd class="mt-1 text-sm text-gray-900">{{ selectedRequest.userName }}</dd>
+          </div>
+          <div>
+            <dt class="text-sm font-medium text-gray-500">Email</dt>
+            <dd class="mt-1 text-sm text-gray-900">{{ selectedRequest.userEmail }}</dd>
+          </div>
+          <div>
+            <dt class="text-sm font-medium text-gray-500">Status</dt>
+            <dd class="mt-1">
+              <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full" [ngClass]="getStatusBadgeClass(selectedRequest.status)">
+                {{ selectedRequest.status }}
+              </span>
+            </dd>
+          </div>
+          <div>
+            <dt class="text-sm font-medium text-gray-500">Type</dt>
+            <dd class="mt-1">
+              <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full" [ngClass]="selectedRequest.deletionType === DeletionType.Soft ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800'">
+                {{ selectedRequest.deletionType }}
+              </span>
+            </dd>
+          </div>
+          <div class="sm:col-span-2">
+            <dt class="text-sm font-medium text-gray-500">Reason</dt>
+            <dd class="mt-1 text-sm text-gray-900">{{ selectedRequest.reason }}</dd>
+          </div>
+          <div>
+            <dt class="text-sm font-medium text-gray-500">Requested At</dt>
+            <dd class="mt-1 text-sm text-gray-900">{{ selectedRequest.requestedAt | date:'full' }}</dd>
+          </div>
+          <div>
+            <dt class="text-sm font-medium text-gray-500">Scheduled For</dt>
+            <dd class="mt-1 text-sm text-gray-900">{{ selectedRequest.scheduledDeletionDate ? (selectedRequest.scheduledDeletionDate | date:'full') : 'Not scheduled' }}</dd>
+          </div>
+          <div class="sm:col-span-2">
+            <dt class="text-sm font-medium text-gray-500 mb-2">Related Records</dt>
+            <dd class="mt-1 grid grid-cols-2 gap-2">
+              <div class="bg-gray-50 p-2 rounded">
+                <div class="text-xs text-gray-500">Jobs</div>
+                <div class="text-lg font-semibold">{{ selectedRequest.relatedJobsCount || 0 }}</div>
+              </div>
+              <div class="bg-gray-50 p-2 rounded">
+                <div class="text-xs text-gray-500">Payments</div>
+                <div class="text-lg font-semibold">{{ selectedRequest.relatedPaymentsCount || 0 }}</div>
+              </div>
+              <div class="bg-gray-50 p-2 rounded">
+                <div class="text-xs text-gray-500">Reviews</div>
+                <div class="text-lg font-semibold">{{ selectedRequest.relatedReviewsCount || 0 }}</div>
+              </div>
+              <div class="bg-gray-50 p-2 rounded">
+                <div class="text-xs text-gray-500">Messages</div>
+                <div class="text-lg font-semibold">{{ selectedRequest.relatedMessagesCount || 0 }}</div>
+              </div>
+            </dd>
+          </div>
+        </dl>
+      </div>
+      <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+        <button type="button" (click)="closeDetailsModal()" class="w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:w-auto sm:text-sm">
+          Close
+        </button>
+      </div>
+    </div>
+  </div>
+</div>

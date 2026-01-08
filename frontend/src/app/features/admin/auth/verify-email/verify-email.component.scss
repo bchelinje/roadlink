@@ -1,0 +1,15 @@
+// Verify Email Component Styles
+// Most styling is handled by Tailwind CSS
+
+@keyframes bounce-once {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+.animate-bounce-once {
+  animation: bounce-once 0.6s ease-in-out;
+}

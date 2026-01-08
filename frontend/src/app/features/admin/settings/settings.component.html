@@ -1,0 +1,226 @@
+<div class="settings-container">
+  <div class="page-header">
+    <div>
+      <h1>Platform Settings</h1>
+      <p class="subtitle">Configure and manage platform-wide settings</p>
+    </div>
+    <button class="btn-primary" (click)="openCreateModal()">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+      </svg>
+      Create Setting
+    </button>
+  </div>
+
+  <div class="filters-section">
+    <div class="filter-group">
+      <label for="category">Category:</label>
+      <select id="category" [(ngModel)]="selectedCategory" (change)="onCategoryChange()" class="form-select">
+        <option *ngFor="let cat of categories" [value]="cat.value">{{ cat.label }}</option>
+      </select>
+    </div>
+
+    <div class="filter-group search-group">
+      <label for="search">Search:</label>
+      <input
+        type="text"
+        id="search"
+        [(ngModel)]="searchTerm"
+        (input)="onSearchChange()"
+        placeholder="Search settings..."
+        class="form-input"
+      />
+    </div>
+  </div>
+
+  <div class="settings-content" *ngIf="!loading">
+    <div *ngIf="filteredSettings.length === 0" class="no-results">
+      <p>No settings found</p>
+    </div>
+
+    <div *ngIf="selectedCategory === 'all'" class="settings-by-category">
+      <div *ngFor="let category of getCategoryKeys()" class="category-section">
+        <h2 class="category-title">{{ category | titlecase }}</h2>
+        <div class="settings-grid">
+          <div *ngFor="let setting of getSettingsByCategory()[category]" class="setting-card">
+            <div class="setting-header">
+              <div class="setting-info">
+                <h3>{{ setting.settingName }}</h3>
+                <span class="setting-key">{{ setting.settingKey }}</span>
+              </div>
+              <div class="setting-badges">
+                <span class="badge badge-public" *ngIf="setting.isPublic">Public</span>
+                <span class="badge badge-editable" *ngIf="setting.isEditable">Editable</span>
+                <span class="badge badge-type">{{ setting.valueType }}</span>
+              </div>
+            </div>
+            <p class="setting-description" *ngIf="setting.description">{{ setting.description }}</p>
+            <div class="setting-value">
+              <strong>Value:</strong>
+              <code>{{ setting.settingValue || '(empty)' }}</code>
+            </div>
+            <div class="setting-actions">
+              <button class="btn btn-sm btn-secondary" (click)="openEditModal(setting)" [disabled]="!setting.isEditable">
+                <svg xmlns="http://www.w3.org/2000/svg" class="icon-sm" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                </svg>
+                Edit
+              </button>
+              <button class="btn btn-sm btn-danger" (click)="openDeleteModal(setting)">
+                <svg xmlns="http://www.w3.org/2000/svg" class="icon-sm" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div *ngIf="selectedCategory !== 'all'" class="settings-grid">
+      <div *ngFor="let setting of filteredSettings" class="setting-card">
+        <div class="setting-header">
+          <div class="setting-info">
+            <h3>{{ setting.settingName }}</h3>
+            <span class="setting-key">{{ setting.settingKey }}</span>
+          </div>
+          <div class="setting-badges">
+            <span class="badge badge-public" *ngIf="setting.isPublic">Public</span>
+            <span class="badge badge-editable" *ngIf="setting.isEditable">Editable</span>
+            <span class="badge badge-type">{{ setting.valueType }}</span>
+          </div>
+        </div>
+        <p class="setting-description" *ngIf="setting.description">{{ setting.description }}</p>
+        <div class="setting-value">
+          <strong>Value:</strong>
+          <code>{{ setting.settingValue || '(empty)' }}</code>
+        </div>
+        <div class="setting-actions">
+          <button class="btn btn-sm btn-secondary" (click)="openEditModal(setting)" [disabled]="!setting.isEditable">
+            <svg xmlns="http://www.w3.org/2000/svg" class="icon-sm" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+            </svg>
+            Edit
+          </button>
+          <button class="btn btn-sm btn-danger" (click)="openDeleteModal(setting)">
+            <svg xmlns="http://www.w3.org/2000/svg" class="icon-sm" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+            </svg>
+            Delete
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="loading-spinner" *ngIf="loading">
+    <div class="spinner"></div>
+    <p>Loading settings...</p>
+  </div>
+</div>
+
+<!-- Create Modal -->
+<div class="modal-overlay" *ngIf="showCreateModal" (click)="closeCreateModal()">
+  <div class="modal-content" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h2>Create Platform Setting</h2>
+      <button class="close-btn" (click)="closeCreateModal()">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label for="createKey">Setting Key *</label>
+        <input type="text" id="createKey" [(ngModel)]="createForm.settingKey" class="form-input" required />
+      </div>
+      <div class="form-group">
+        <label for="createName">Setting Name *</label>
+        <input type="text" id="createName" [(ngModel)]="createForm.settingName" class="form-input" required />
+      </div>
+      <div class="form-group">
+        <label for="createValue">Setting Value</label>
+        <textarea id="createValue" [(ngModel)]="createForm.settingValue" class="form-input" rows="3"></textarea>
+      </div>
+      <div class="form-group">
+        <label for="createValueType">Value Type</label>
+        <select id="createValueType" [(ngModel)]="createForm.valueType" class="form-select">
+          <option *ngFor="let type of valueTypes" [value]="type">{{ type }}</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="createDescription">Description</label>
+        <textarea id="createDescription" [(ngModel)]="createForm.description" class="form-input" rows="2"></textarea>
+      </div>
+      <div class="form-group">
+        <label for="createCategory">Category</label>
+        <select id="createCategory" [(ngModel)]="createForm.category" class="form-select">
+          <option *ngFor="let cat of categories.slice(1)" [value]="cat.value">{{ cat.label }}</option>
+        </select>
+      </div>
+      <div class="form-group checkbox-group">
+        <label>
+          <input type="checkbox" [(ngModel)]="createForm.isPublic" />
+          Is Public (accessible by all authenticated users)
+        </label>
+      </div>
+      <div class="form-group checkbox-group">
+        <label>
+          <input type="checkbox" [(ngModel)]="createForm.isEditable" />
+          Is Editable
+        </label>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" (click)="closeCreateModal()">Cancel</button>
+      <button class="btn btn-primary" (click)="createSetting()" [disabled]="!createForm.settingKey || !createForm.settingName">
+        Create
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Edit Modal -->
+<div class="modal-overlay" *ngIf="showEditModal" (click)="closeEditModal()">
+  <div class="modal-content" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h2>Edit Setting</h2>
+      <button class="close-btn" (click)="closeEditModal()">&times;</button>
+    </div>
+    <div class="modal-body" *ngIf="selectedSetting">
+      <div class="setting-info-display">
+        <p><strong>Setting Name:</strong> {{ selectedSetting.settingName }}</p>
+        <p><strong>Setting Key:</strong> {{ selectedSetting.settingKey }}</p>
+        <p><strong>Type:</strong> {{ selectedSetting.valueType }}</p>
+      </div>
+      <div class="form-group">
+        <label for="editValue">Setting Value</label>
+        <textarea id="editValue" [(ngModel)]="editValue" class="form-input" rows="4"></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" (click)="closeEditModal()">Cancel</button>
+      <button class="btn btn-primary" (click)="updateSetting()">Update</button>
+    </div>
+  </div>
+</div>
+
+<!-- Delete Modal -->
+<div class="modal-overlay" *ngIf="showDeleteModal" (click)="closeDeleteModal()">
+  <div class="modal-content" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h2>Delete Setting</h2>
+      <button class="close-btn" (click)="closeDeleteModal()">&times;</button>
+    </div>
+    <div class="modal-body" *ngIf="selectedSetting">
+      <p>Are you sure you want to delete this platform setting?</p>
+      <div class="warning-box">
+        <p><strong>Setting Name:</strong> {{ selectedSetting.settingName }}</p>
+        <p><strong>Setting Key:</strong> {{ selectedSetting.settingKey }}</p>
+        <p class="warning-text">This action cannot be undone.</p>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" (click)="closeDeleteModal()">Cancel</button>
+      <button class="btn btn-danger" (click)="deleteSetting()">Delete</button>
+    </div>
+  </div>
+</div>
